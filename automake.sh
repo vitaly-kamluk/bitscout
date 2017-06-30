@@ -9,6 +9,7 @@ scripts/chroot_create_user.sh &&
 scripts/chroot_create_container.sh && 
 scripts/chroot_configure.sh && 
 scripts/chroot_configure_openvpn.sh && 
+scripts/chroot_configure_ssh.sh && 
 scripts/chroot_add_customtools.sh && 
 scripts/image_prepare.sh && 
 scripts/initrd_configure.sh && 
