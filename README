@@ -1,0 +1,125 @@
+Bitscout 2.0
+Date: June 2017
+Author: Vitaly Kamluk
+
+This project is created by security researchers for security researchers. In
+addition, it can be useful to Law Enforcement and private companies that assist
+them. The project allows anyone who is running Ubuntu OS to build own 
+LiveCD/LiveUSB image to be used for remote digital forensics.
+
+
+Roles:
+Bitscout relies on 3 roles in the process of remote forensics:
+1. The Owner
+   The owner is a user who has physical access to the target system and owns it.
+   The owner's role is to download, verify and burn Live ISO image file to a
+   removable storage. After that the target system must be started from this
+   bootable media. In case of LAN DHCP network configuration everything shall 
+   work automatically. In case of other setup, the owner has to configure
+   network access using management utility that is available on the Live system
+   (starts automatically on the TTY1 on boot).
+2. The Expert
+   The expert is a remote user that connects to the target system over SSH using
+   VPN link through the expert's server. Bitscout shall be built with VPN server
+   certificates, configuration and SSH keys placed on the disk image.
+3. Expert's Server
+   The expert's server shall be located in the internet and is used to run a VPN
+   server as well as chat server for communication.
+
+Bitscout Features:
+1. Transparent
+  a. You build your own Live disk instead of using someone else's. The build
+  process is straightforward and verbose. There is no place for mistrust, given
+  that the OS repositories are trusted.
+  b. Live disk image is built using bash scripts only and standard Ubuntu tools
+  and packages, making it both transparent and customizable for all.
+  c. Owner can monitor what is going on in expert's container. It's possible to
+  attach and monitor changes in the expert's container as root. 
+
+2. Forensically sound
+  a. We have tested that Bitscout doesn't modify hard drive data or other
+  storage media attached to the system. This is essential base for forensic
+  operations.
+  b. Bitscout contains most popular tools to acquire and analyze harddrive disk
+  images on site.
+  c. The owner of the system has to manually authorize which disk devices to be
+  accessible by the expert in read-only (or read-write) mode.
+  d. While running as root the expert cannot modify or reset access to the
+  provided devices, which prevents potential data loss from the source disk.
+
+3. Customizable
+  a. The set of tools available on Bitscout can be easily customized by editing
+  respective text files in the script directory before building. You can add
+  standard packages or your own tools to it. Make it available to expert, system
+  owner or both.
+  b. Both system owner and expert can install additional software packages on
+  already running system. All changes will be done indepently (expert can't
+  change owner's environment) and only in memory.
+  c. If certain operations require more memory or large disk which is not
+  available on the system, the owner may attach writable external storage device
+  (such as fast USB flash memory) to be used for storage or swap.
+
+4. Compact
+  a. Bitscout project is designed to be minimal yet universal tool to access
+  remote storage device. It contains minimal set of packages, libraries and
+  tools to start the system and provide most common forensic tools to the expert
+  immediately. Certain optimizations yet to be added to reduce size even
+  further. All suggestions and contributions are welcome!
+  b. The system uses no graphical interface on purpose. This reduces disk image
+  size and used RAM.
+  c. The expert's environment runs as unprivileged LXC container, which saves
+  from overhead of full virtualization. The container relies on the same kernel
+  as the host system.
+  d. The container spawns from overlayed source rootfs. This allows to avoid
+  duplication of system binaries and configuration.
+  Yet, mapped with copy-on-write access it provides almost unlimited
+  modification of the whole OS. The real limit is just the size of available
+  memory and swap.
+
+  As a matter of fact fully running OS with a child OS inside the container used
+  less than 32Mb of RAM in our tests.
+
+
+F.A.Q:
+
+Q: Why was the system created?
+A: There is a lot of commercial and very expensive forensics software suites out
+there. We tried several most popular of them and always bumped into
+functionality limitations and lack of transparency in the processes. While some
+suites provide scriptability, they lack remote analysis features that do not
+modify the evidence. The others weren designed for remote analysis, but lacked 
+flexibility and costed a fortune. 
+We found that there was a niche for a new tool which is
+  a. fully trusted (made by you)
+  b. customizable
+  c. transparent and open-source
+  d. reliable and stable
+  e. optimal and compact
+  f. fast and not memory greedy
+  g. free of charge
+  h. runs on old and new hardware
+
+Q: Why is it version 2.0? Where is version 1.0?
+A: This is the second generation of the project. The main difference from 1.0 is
+that 1.0 was a Live disk image itself without containers. We never made it
+available publicly because there was no use for it: VPN configuration and SSH
+settings had to be changed before disk image was created. And after all users
+had to put trust into large collection of binary tools with unverified origin.
+
+Q: How was the project developped?
+The project was initially developped for internal use while doing remote malware
+forensics in some distant location. The first variant relied on full trust
+to the remote user, who was provided with root access to the live system.
+Soon we realized that the remote system owner is willing to track the progress,
+communicate with the remote expert and be able to assist. Most importantly
+to increase trust level between system's owner and the remote expert we decided
+to isolate expert into virtualized container environment. This feature assured
+the owner of the system that the source disk information will never be tampered
+(unless explicitly autorized by the owner in case of system remediation request).
+
+
+Credits:
+  Kaspersky Lab
+  INTERPOL Global Complex For Innovations and specifically 
+  IGCI's Digital Forensics Lab
+

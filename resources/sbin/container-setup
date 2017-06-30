@@ -1,0 +1,27 @@
+#!/bin/bash
+
+#Exit if the script was started on the host system.
+#It must be run only within container!
+if head -n 1 /proc/1/sched | grep -q "(1, #threads"
+then
+ touch /tmp/this_is_host
+ exit
+else
+ touch /tmp/this_is_container
+fi
+
+if [ $# -eq 0 ]
+then
+ echo "Usage $1 [start|stop]"
+fi
+
+if [ "$1" == "start" ]
+then
+  locale-gen en_US.UTF-8
+fi
+
+#if [ "$1" == "stop" ]
+#then
+#  umount /tmp
+#fi
+

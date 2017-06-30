@@ -1,0 +1,38 @@
+<PROJECTNAME> 2.0.
+<PROJECTNAME> is the project initially created by Vitaly Kamluk
+for remote triage and forensic analysis of compromised systems.
+It is based on idea of transparent and managed remote 
+forensic analysis which maintains trust relationship with 
+the owner of the system. Based on live booting system it 
+constructs a virtual container with child operating system 
+and virtualizes super-user privileges. It automatically 
+connects to the pre-defined VPN server and allows incoming
+SSH connections over VPN link directly to the container.
+
+You can use this simple tool to do some of standard 
+operations and let the remote forensic expert work on
+locally attached evidence disks. 
+
+Here is what you need for that:
+ 1. Connect current system to the internet.
+    Note: DHCP/static IP is supported
+          LAN/WiFi is supported
+          HTTP/SOCKS proxy is supported
+          IPv6 is NOT supported
+ 2. Talk to the remote expert, confirm access to the
+    container.
+
+ 3. Map physical disks (or partitions) to virtual devices
+    in the container.
+    Note: the disks are mapped in read-only mode.
+
+Once the session started you can monitor the progress and
+chat with the expert.
+
+Note: All changes will be made only to RAM or USB drives
+attached and authorized for writing. If the system reboots 
+or power is off the process has to be restarted unless
+saved to persistence storage (remote disk or locally
+attached USB flash drive).
+
+Good luck!

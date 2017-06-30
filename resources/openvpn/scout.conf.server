@@ -1,0 +1,38 @@
+mode server
+local <SERVER_IP> #SET SERVER EXTERNAL IP HERE!
+port <SERVER_PORT>
+proto <SERVER_PROTOCOL>
+
+tun-mtu 1500
+daemon
+dev tap1
+
+user nobody
+group nobody
+
+ifconfig 10.1.0.1 255.255.255.0
+
+ifconfig-pool 10.1.0.2 10.1.0.250
+ifconfig-pool-persist /etc/openvpn/<PROJECTSHORTNAME>/ip_pool.lst 0
+
+tls-server
+tls-auth /etc/openvpn/<PROJECTSHORTNAME>/ta.key 0
+ca /etc/openvpn/<PROJECTSHORTNAME>/ca.crt
+cert /etc/openvpn/<PROJECTSHORTNAME>/<PROJECTSHORTNAME>server.crt
+key /etc/openvpn/<PROJECTSHORTNAME>/<PROJECTSHORTNAME>server.key
+dh /etc/openvpn/<PROJECTSHORTNAME>/dh4096.pem
+
+verb 3
+cipher AES-256-CBC
+
+persist-key
+persist-tun
+
+log-append /var/log/openvpn.<PROJECTSHORTNAME>.log
+
+comp-lzo
+keepalive 60 180
+client-to-client
+max-clients 10
+status /var/run/openvpn.<PROJECTSHORTNAME>.status
+

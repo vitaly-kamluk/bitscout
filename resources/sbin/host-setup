@@ -1,0 +1,117 @@
+#!/bin/bash
+#single instance shall be running at all times
+[ "${FLOCKER}" != "$0" ] && exec env FLOCKER="$0" flock -en "$0" "$0" "$@" || :
+
+#Exit if the script was started NOT on the host system.
+#It must NOT be run within container!
+if head -n 1 /proc/1/sched | grep -q "(1, #threads"
+then
+ touch /tmp/this_is_host
+else
+ touch /tmp/this_is_container
+ exit
+fi
+
+CONTAINERDIR="/opt/container"
+CONTAINERNAME="<CONTAINERNAME>"
+CONTAINERUSER=<CONTAINERUSERNAME>
+USERSUBUID=100000
+USERSUBGID=100000
+
+if [ $# -eq 0 ]
+then
+ echo "Usage $1 [start|stop]"
+fi
+
+if [ "$1" == "start" ]
+then
+  if ! mount | grep -q "$CONTAINERDIR/tmp"
+  then
+    #making and mounting tmpfs for overlayfs work dirs
+    mkdir -p "$CONTAINERDIR/"{tmp,chroot,chroot.user}
+    mount tmpfs -t tmpfs "$CONTAINERDIR/tmp"
+    mkdir -p "$CONTAINERDIR/tmp/"{upper,work}
+    
+    #mount /rofs (squashfs) to the chroot via overlayfs 
+    mount /rofs -t overlay -o "rw,relatime,lowerdir=/rofs,upperdir=$CONTAINERDIR/tmp/upper,workdir=$CONTAINERDIR/tmp/work" "$CONTAINERDIR/chroot"
+    
+    #the following is required to run userland container (mapping host uid/gid to container's uid/gid)
+    #bindfs -u $USERSUBUID -g $USERSUBGID -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
+    IDMAP=`( cat /etc/passwd | cut -d: -f3 | awk '{print $1"/"($1+100000)}'; cat /etc/group | cut -d: -f3 | awk '{print "@"$1"/@"($1+100000)}' ) | tr $'\n' ':'| sed 's/:$//'`
+    bindfs --map=$IDMAP -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
+
+    #do necessary changes TO THE CONTAINER'S (GUEST) rootfs
+      #disable lxcbr0 creation within container
+      echo "USE_LXC_BRIDGE=\"false\"" >  "$CONTAINERDIR/chroot/etc/default/lxc-net"
+
+      #enable lo/eth0 auto-configuration
+      echo -e "auto lo\niface lo inet loopback\nauto eth0\niface eth0 inet dhcp" >> "$CONTAINERDIR/chroot/etc/network/interfaces"
+
+      #set default DNS servers (supersede for dhclient)
+      if ! grep -q "supersede domain-name-servers 8.8.8.8, 8.8.4.4;" "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf"
+      then
+        echo "supersede domain-name-servers 8.8.8.8, 8.8.4.4;" | sudo tee -a "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf" > /dev/null
+      fi
+
+      #disable openvpn auto-start
+      sed -i '/^AUTOSTART="[^"]*"$/d' "$CONTAINERDIR/chroot/etc/default/openvpn"
+      echo "AUTOSTART=\"none\"" >> "$CONTAINERDIR/chroot/etc/default/openvpn"
+
+      #re-enable ssh service
+      rm "$CONTAINERDIR/chroot/etc/ssh/sshd_not_to_be_run"
+
+      #remove host iptables setup script
+      rm "$CONTAINERDIR/chroot/etc/network/if-pre-up.d/firewall"
+      rm "$CONTAINERDIR/chroot/sbin/host-iptables"
+
+      #remove <PROJECTSHORTNAME>-manage startup
+      rm "$CONTAINERDIR/chroot/lib/systemd/system/<PROJECTSHORTNAME>-manage.service"
+      rm "$CONTAINERDIR/chroot/usr/share/<PROJECTNAME>/<PROJECTSHORTNAME>-manage.service"
+      rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/<PROJECTSHORTNAME>-manage.service"
+
+      #set terminal to "linux" to support colors
+      if ! grep -q "^TERM=linux$" "$CONTAINERDIR/chroot/home/<CONTAINERUSERNAME>/.profile" 
+      then
+        echo "TERM=linux" | sudo tee -a "$CONTAINERDIR/chroot/home/<CONTAINERUSERNAME>/.profile"
+      fi
+
+    #remove authorized ssh-keys from the host (shall be preserved in the container)
+    rm /home/$CONTAINERUSER/.ssh/authorized_keys
+
+    #create set of virtual mapping device for container:
+    DEVDIR="/dev/container"
+    mkdir -p "$DEVDIR"
+    for((i=0;i<10;i++)) #this set of devices is suggested for readonly use
+    do
+      if [ -b "$DEVDIR/evidence$i" ]; then continue; fi;
+      mknod "$DEVDIR/evidence$i" b 7 $[8+$i]
+      mknod /dev/loop$[8+$i] b 7 $[8+$i]
+    done 
+
+    for((i=0;i<10;i++)) #this set of devices is suggested for read-write access
+    do
+      if [ -b "$DEVDIR/storage$i" ]; then continue; fi;
+      mknod "$DEVDIR/storage$i" b 7 $[18+$i]
+      mknod /dev/loop$[18+$i] b 7 $[18+$i]
+    done 
+
+    #start userland container after all
+    sudo -H -u $CONTAINERUSER lxc-start -n "$CONTAINERNAME" -d
+  fi
+fi
+
+if [ "$1" == "stop" ]
+then
+  if mount | grep -q "$CONTAINERDIR/tmp"
+  then
+    sudo -H -u $CONTAINERUSER lxc-stop -k -n "$CONTAINERNAME"
+    umount "$CONTAINERDIR/chroot.user"
+    umount "$CONTAINERDIR/chroot"
+    umount "$CONTAINERDIR/tmp"
+    if [ "$CONTAINERDIR" != "/" -a -n "$CONTAINERDIR" ]
+    then
+      rm -rf "$CONTAINERDIR"
+    fi
+  fi
+fi
+

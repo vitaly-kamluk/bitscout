@@ -1,0 +1,118 @@
+#Bitscout project
+#Copyright Kaspersky Lab
+
+PROJECTNAME="bitscout"
+PROJECTSHORTNAME="scout"
+BASEARCHITECTURE="i386"
+BASERELEASE="xenial"
+CONTAINERNAME="forensic"
+CONTAINERUSERNAME="user"
+CRYPTOKEYSIZE=2048
+
+INITRDPATH=image/casper/initrd.gz
+SCREENNAME=${PROJECTNAME}_chroot #creates a screen session for interactive configuration. see scripts/chroot_enter.sh and scripts/chroot_leave.sh
+
+[ -f "config/$PROJECTNAME-build.conf" ] && . "config/$PROJECTNAME-build.conf"
+
+statusprint()
+{
+  if [ "$QUIET" == "true" ]
+  then
+    return 0
+  else
+    echo -e$PRINTOPTIONS "$1"
+  fi
+}
+
+runinchroot()
+{
+  #init
+  OPID="$RANDOM"
+
+  #create lock file
+  mkfifo chroot/tmp/lock.$OPID
+
+  #prepare command file
+  echo "#!/bin/bash
+  echo -e '[DEBUG]: Running the followng script:\n[START]'
+  cat /tmp/cmd.$OPID | tail -n +5
+  echo -e '[END]'
+$1
+echo OK > /tmp/lock.$OPID" > chroot/tmp/cmd.$OPID
+  chmod +x chroot/tmp/cmd.$OPID
+
+  #start screen switcher
+  ( cat chroot/tmp/lock.$OPID && sudo screen -S $SCREENNAME -X detach ) &
+
+  #run command file
+  sudo screen -S $SCREENNAME -X stuff "/tmp/cmd.$OPID\n"
+  #attach to screen
+  sudo screen -r $SCREENNAME
+
+  #wait for semaphore unlock
+  echo -n "Waiting for command completion: "
+  #cat chroot/tmp/lock.$OPID
+  rm chroot/tmp/lock.$OPID
+  rm chroot/tmp/cmd.$OPID
+}
+
+
+typeinchroot()
+{
+  sudo screen -S $SCREENNAME -X stuff "$1"
+}
+
+
+unpackinitrd()
+{
+  statusprint "Unpacking initrd image from $INITRDPATH.."
+  rm -rf ./initrd
+  mkdir ./initrd
+  cd ./initrd
+  if [ -f "../$INITRDPATH" ]
+  then
+    gzip -dc "../$INITRDPATH" | cpio -id
+  else
+    echo "[ERROR]: initrd image not found in $INITRDPATH."
+  fi
+  cd ..
+}
+
+packinitrd()
+{
+  statusprint "Packing initrd image into $INITRDPATH.."
+  if [ -d "./initrd" ]
+  then
+    cd ./initrd
+    find . | cpio -o -H newc | gzip -7 -c | sudo tee "../$INITRDPATH" >/dev/null
+    cd ..
+  else
+    echo "[ERROR]: initrd directory not found. Aborting."
+  fi
+}
+
+
+install_required_package()
+{
+  PKGNAME="$1"
+  if ! dpkg-query --show --showformat='${db:Status-Status}\n' $PKGNAME | grep -q "^installed$"
+  then
+    statusprint "$PKGNAME was not found your system. It is required to continue.\nPlease authorize installing $PKGNAME.."
+    if ! sudo apt -y install "$PKGNAME"; then exit 1; fi;
+  fi
+}
+
+filelist_exists()
+{
+  statusprint "Checking if file (filelist) exists.."
+  for i in $@
+  do
+    if [ ! -f "$i" ]; then
+      statusprint "File is NOT FOUND: $i"
+      return 1;
+    else
+      statusprint "File exists: $i"
+    fi;
+  done;
+  return 0;
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Container system setup
+Before=networking.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/container-setup start
+ExecStop=/sbin/container-setup stop
+
+[Install]
+WantedBy=multi-user.target

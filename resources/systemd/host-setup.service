@@ -1,0 +1,12 @@
+[Unit]
+Description=Host system setup
+After=lxc.service lxc-net.service rc-local.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/host-setup start
+ExecStop=/sbin/host-setup stop
+
+[Install]
+WantedBy=multi-user.target
