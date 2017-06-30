@@ -44,7 +44,7 @@ then
   if [ ! -z "$choice" -a ! "$choice" == "y" -a ! "$choice" == "Y" ] 
   then
   echo "Build process aborted."
-    exit 0
+    exit 1
   else
     mkdir config 2>&-
 

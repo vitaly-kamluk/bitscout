@@ -15,6 +15,7 @@ then
   statusprint "Found existing keys. Using existing keys/config.."
 else
   statusprint "Preparing OpenVPN configs based on templates.."
+  mkdir -p "$VPNCFGDIR" 2>&-
   SERVERPROTOCOL=${GLOBAL_VPNPROTOCOL}
   CLIENTPROTOCOL=${GLOBAL_VPNPROTOCOL}
   if [ "$SRVPROTOCOL" == "tcp" ]
@@ -31,7 +32,6 @@ else
   if ! [ -d "$VPNCFGDIR/easy-rsa" ]
   then
     statusprint "Couldn't find existing Easy-RSA directory in $VPNCFGDIR."
-    mkdir -p "$VPNCFGDIR" 2>&-
     install_required_package easy-rsa
   fi
 
