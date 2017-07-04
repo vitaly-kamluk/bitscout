@@ -117,15 +117,15 @@ settings had to be changed before disk image was created. And after all users
 had to put trust into large collection of binary tools with unverified origin.
 
 Q: How was the project developed?
-A: The project was initially developed for internal use while doing remote malware
-forensics in some distant location. The first variant relied on full trust
-to the remote user, who was provided with root access to the live system.
-Soon we realized that the remote system owner is willing to track the progress,
-communicate with the remote expert and be able to assist. Most importantly
-to increase trust level between system's owner and the remote expert we decided
-to isolate expert into virtualized container environment. This feature assured
-the owner of the system that the source disk information will never be tampered
-(unless explicitly autorized by the owner in case of system remediation request).
+A: The project was initially developed as a hobby project. The first variant 
+relied on full trust to the remote user, who was provided with root access to 
+the live system. Soon we realized that the remote system owner is willing to 
+track the progress, communicate with the expert and be able to assist. Most 
+importantly to increase trust level between system's owner and the remote 
+expert we decided to isolate expert into virtualized container environment. 
+This feature assured the owner of the system that the source disk information 
+will never be tampered (unless explicitly autorized by the owner in case of 
+system remediation request).
 
 Q: Does the author provide VPN server with this project?
 A: No, you have to use own server. All you need is OpenVPN instance. It's free and 
@@ -141,6 +141,11 @@ us in the past under some compicated conditions and time pressure. If it works
 for you we will be happy to hear your story. If not, perhaps you could suggest a
 patch?
 
+Q: Is this project used for Kaspersky Lab business?
+A: This project was created independently of Kaspersky Lab product line and
+outside of scope of company's business operation. The tool is developed is not
+limited to particular users and might be useful to researchers, high-tech crime
+units of Law Enforcement and educational institutions.
 
 
 Credits:
@@ -153,4 +158,4 @@ Thanks to
   Canonical Ltd
   All open-source software developers
   LXC developers
-
+  All those awesome authors of Linux forensics tools
