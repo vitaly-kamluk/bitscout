@@ -1,14 +1,24 @@
 Bitscout 2.0
-Date: June 2017
-Author: Vitaly Kamluk
+Date: July 2017
+Author: Vitaly Kamluk  // Vitaly.Kamluk [at] kaspersky[.]com
 
 This project is created by security researchers for security researchers. In
 addition, it can be useful to Law Enforcement and private companies that assist
 them. The project allows anyone who is running Ubuntu OS to build own 
-LiveCD/LiveUSB image to be used for remote digital forensics.
+LiveCD/LiveUSB image to be used for remote digital forensics (or other tasks of
+your own choice).
 
+Basic usage:
+Run ./automake.sh on your Ubuntu system. Hint: if you haven't got one, you can try 
+running it from LiveCD. When the process is done you shall find a new ISO file in
+current directory.
 
-Roles:
+Note: this script may ask for super-user permission. This is essential for some
+operations. All changes shall affect only current directory and subdirectories,
+unless your system is missing some essential packages to build the ISO (in this 
+case they will be installed to your system).
+
+User roles:
 Bitscout relies on 3 roles in the process of remote forensics:
 1. The Owner
    The owner is a user who has physical access to the target system and owns it.
@@ -106,8 +116,8 @@ available publicly because there was no use for it: VPN configuration and SSH
 settings had to be changed before disk image was created. And after all users
 had to put trust into large collection of binary tools with unverified origin.
 
-Q: How was the project developped?
-The project was initially developped for internal use while doing remote malware
+Q: How was the project developed?
+A: The project was initially developed for internal use while doing remote malware
 forensics in some distant location. The first variant relied on full trust
 to the remote user, who was provided with root access to the live system.
 Soon we realized that the remote system owner is willing to track the progress,
@@ -117,9 +127,30 @@ to isolate expert into virtualized container environment. This feature assured
 the owner of the system that the source disk information will never be tampered
 (unless explicitly autorized by the owner in case of system remediation request).
 
+Q: Does the author provide VPN server with this project?
+A: No, you have to use own server. All you need is OpenVPN instance. It's free and 
+opensource and runs on all platforms. For more information see https://openvpn.net.
+
+Q: Will the product be supported?
+A: It will be supported as long as their is need for such systems. We will move
+to newer version of base systems (currently it's Ubuntu 16.04 LTS).
+
+Q: Is this the best forensic product to save the world?
+A: It is not and was never meant to be. It serves it's task though and did help
+us in the past under some compicated conditions and time pressure. If it works
+for you we will be happy to hear your story. If not, perhaps you could suggest a
+patch?
+
+
 
 Credits:
   Kaspersky Lab
   INTERPOL Global Complex For Innovations and specifically 
   IGCI's Digital Forensics Lab
+
+Thanks to
+  Linux kernel developers
+  Canonical Ltd
+  All open-source software developers
+  LXC developers
 

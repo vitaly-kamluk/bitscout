@@ -1,0 +1,89 @@
+Bitscout 2.0
+Date: July 2017
+Author: Vitaly Kamluk // Vitaly.Kamluk [at] kaspersky[.]com
+
+This file briefly describes the structure of the project for developers.
+
+Base system
+Current base system is Ubuntu 16.04 LTS. It was chosen as somewhat most popular
+and friendly Linux system as per popular common users' opinion.
+
+Virtualization
+Bitscout relies on LXC 1.0 for virtualization. One option was to use full VM, but
+given that we are runing from Live media, it had to be something lightweight
+and optimal. LXC perfectly works here, because kernel becomes shared between the
+container and the host. Also, kernel mechanisms for IPC, such as file locking
+and pipes can be used for IPC between the host and the guest. We used
+unprivileged container that runs as user. However, we need to provide rootfs to
+such container and as far as we used the same source from squashfs, we had to
+remap uid/gid for some otherwise inaccessible files. So far the script that
+starts the container does this job and remaps uid/gid to subuid/subgid of the
+target user for the whole root filesystem. This lets us avoid data duplication
+in memory.
+
+Optimisation
+We aimed to make the system optimal in size. You may find extensive usage of
+overlayfs, compressed memory block device (zram) and more tuning to save space.
+Both host and guest system run from the same source image, but each of the
+system can be independently extended or modified.
+
+Extension
+The system is designed to be extended in memory. Both host and gust users can
+install additional packages in RAM.
+
+Customisation
+The best way to customize your own build of Bitscout is to create additional
+script in scripts directory. Unless you suggest a bugfix, please stick to
+extension of the code, rather than patching existing pieces. And you are very
+welcome to submit you suggested fixes and improvements. We know there is a lot
+to be done to improve security, stability and usability of the project.
+When you make a new task to modify rootfs or other things, please write in the
+way that doesn't apply changes twice if the same script is executed again.
+Current scripts follow this idea, this allows to make tiny changes and rerun the
+subscripts without risk to break some things. I.e. you can make some change to
+the way how container is created (./scripts/chroot_create_container.sh) and then
+manually run ISO rebuild (./scripts/image_build.sh). That shall generate you the
+new ISO file with your changes applied.
+
+Structure and description of the files:
+automake.sh - this is core script that runs others. Feel free to run it whole or
+part of it (i.e. to avoid recurring base system download).
+
+scripts/ - this is directory with scripts to do main tasks. Some are prefixed
+according to current stage of execution:
+  welcome.sh - the initial global configuration script and welcome message.
+  chroot_* - scripts to install, configure and change root filesystem
+  image_*  - scripts to pack rootfs and generate ISO file
+  export_generate.sh - export configs for other systems (VPN server, expert)
+  initrd_* - these can pack/unpack initrd image. Currently not used, but may be
+             used for some fine-tuning in the future.
+  chroot_enter.sh/chroot_leave.sh - these scripts can be used if you would like
+             to run shell in chrooted environment. For the sake of automation it
+             relies on screen tool that runs as root. To use this, run the first
+             script and then "sudo screen -r" to join the screen session. To
+             leave it simply run scripts/chroot_leave.sh from a separate shell.
+             And, yes, if you know a better way to do that, please suggest!
+  functions - this file is included by others, provides most common settings and
+             global utility functions, i.e. running commands in chrooted screen 
+             session.
+
+
+Running scripts
+Currently all scripts have to be called from the root directory of the project, i.e.
+$ ./scripts/image_build.sh
+
+How to contribute
+We'd love to have you contrivute! Our goal is to have a builder that can build really
+tiny Live OS. It would be nice to further reduce the size of the ISO file to barely 
+possible minimum. If you are into it, take a look into image_prebuild_cleanup.sh.
+Perhaps you could bring it to a new level! One thing to consider: we need to keep 
+essential features, which include:
+ 1. Disk controllers
+ 2. Network devices
+ 3. LXC
+ 4. Filesystems
+
+If you want to start, look into these articles first:
+https://wiki.debian.org/ReduceDebian
+https://wiki.ubuntu.com/ReducingDiskFootprint
+

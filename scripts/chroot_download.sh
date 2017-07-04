@@ -4,30 +4,33 @@
 
 . ./scripts/functions
 
-echo -en "This will recreate and download new chroot and should overwrite existing data.\nAre you sure you want to continue (Y/n)?: "
-read choice
-
-if [ ! -z "$choice" -a ! "$choice" == "y" -a ! "$choice" == "Y" ] 
-then
-  echo "Aborted."
-  exit 1
-else
-  sudo rm -rf ./chroot/
-fi
-
 statusprint "Checking requirements.."
-
 if [ -z "$(which dpkg-query)" ]
 then
  echo "dpkg is required to continue. Please install manually."
  exit 2
 fi
 
+if [ -d "./chroot" ]
+then
+  PRINTOPTIONS=n statusprint "Found existing chroot directory. Please choose what to do:\n 1. Remove existing chroot and re-download.\n 2. Do not re-download, skip this step.\n 3. Abort.\n You choice (1|2|3): "
+  read choice
 
-install_required_package debootstrap
+  case $choice in
+    1)
+     sudo rm -rf ./chroot/
+     install_required_package debootstrap
 
-statusprint "Downloading $BASERELEASE:$BASEARCHITECTURE.."
-sudo debootstrap --arch=$BASEARCHITECTURE $BASERELEASE chroot
-
+      statusprint "Downloading $BASERELEASE:$BASEARCHITECTURE.."
+      sudo debootstrap --arch=$BASEARCHITECTURE $BASERELEASE chroot
+     ;;
+    2)
+      statusprint "Download operation skipped. Build continues.."
+     ;; 
+    *)
+     statusprint "Operation aborted. Build stopped."
+     ;;
+  esac
+fi
 
 exit 0;

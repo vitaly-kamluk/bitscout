@@ -1,0 +1,34 @@
+servers = (
+  { address = "10.1.0.1"; port = "6667"; autoconnect = "yes"; chatnet="main"; }
+);
+
+chatnets = { main = { type = "IRC";}; };
+
+channels = (
+  { name = "#main"; chatnet="main"; autojoin = "Yes"; }
+);
+
+settings = {
+  core = {
+    real_name = "owner";
+    user_name = "owner";
+    nick = "owner";
+  };
+  "fe-text" = { actlist_sort = "refnum"; term_force_colors = "yes"; };
+};
+
+windows = {
+  1 = { immortal = "yes"; name = "(status)"; level = "ALL"; };
+  2 = {
+    items = (
+      {
+        type = "CHANNEL";
+        chat_type = "IRC";
+        name = "#main";
+        tag = "main";
+      }
+    );
+  };
+};
+
+mainwindows = { 2 = { first_line = "1"; lines = "22"; } };

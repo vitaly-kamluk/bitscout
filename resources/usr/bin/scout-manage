@@ -6,6 +6,7 @@ CONTAINERUSER=<CONTAINERUSERNAME>
 BOXHEIGHT=25
 BOXWIDTH=80
 BOXHEIGHT2=20
+HISTORIANDIR=/opt/container/history
 
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
 
@@ -23,7 +24,8 @@ declare -a MAINMENU;
 MAINMENU+=("INTRODUCTION:What is <PROJECTNAME> and how to use it.")
 MAINMENU+=("NETWORK:Connect to WiFi, setup static IP or proxy.")
 MAINMENU+=("DISK:Manage attached disks (i.e. let expert work on it).")
-MAINMENU+=("STATUS:Monitor progress of the analysis, chat, etc.")
+MAINMENU+=("STATUS:System status, and expert sessions monitoring.")
+MAINMENU+=("CHAT:Enter IRC chat with the expert.")
 MAINMENU+=("CONTAINER-SHELL:Start a root shell inside guest container.")
 MAINMENU+=("SHELL:Start a root local shell.")
 MAINMENU+=("EXIT:Return to previous environment.")
@@ -305,6 +307,30 @@ do
      "SHELL")
          clear;
          /bin/bash -l;
+         continue;
+         ;;
+     "CHAT")
+         dialog --title "COMMON USER WARNING" --msgbox "You are about to enter IRC chat application. If you would like to exit chat, you have to type command \"/quit\" and press ENTER. IRC chat can be started from any shell session as well just by running \"irssi\" command. It will automatically use settings at /etc/irssi.conf to connect to internal IRC server." $BOXHEIGHT $BOXWIDTH 
+         /usr/bin/irssi
+         continue;
+         ;;
+     "STATUS")
+         SESSNAME="status"
+         if ! tmux has-session -t "$SESSNAME" >/dev/null
+         then
+           tmux new-session -d -n main -s "$SESSNAME" /usr/bin/<PROJECTSHORTNAME>-monitor
+         fi
+           
+         ls -1 "$HISTORIANDIR"/log/*.log | 
+         while read f; 
+         do
+           LOGID="${f/*\//}"; LOGID=${LOGID%%.log};       
+           if ! tmux list-windows -t "status:main" 2>&- | grep -q "$LOGID"
+           then
+             tmux new-window -a -t "status:main" -n "$LOGID" -d "tail -n80 -f \"$f\""
+           fi
+         done
+         tmux attach-session -t "$SESSNAME"
          continue;
          ;;
      *)

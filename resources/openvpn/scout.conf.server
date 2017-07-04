@@ -20,7 +20,7 @@ tls-auth /etc/openvpn/<PROJECTSHORTNAME>/ta.key 0
 ca /etc/openvpn/<PROJECTSHORTNAME>/ca.crt
 cert /etc/openvpn/<PROJECTSHORTNAME>/<PROJECTSHORTNAME>server.crt
 key /etc/openvpn/<PROJECTSHORTNAME>/<PROJECTSHORTNAME>server.key
-dh /etc/openvpn/<PROJECTSHORTNAME>/dh4096.pem
+dh /etc/openvpn/<PROJECTSHORTNAME>/dh<CRYPTOKEYSIZE>.pem
 
 verb 3
 cipher AES-256-CBC

@@ -11,7 +11,7 @@ statusprint "Setting up isolated container.."
 
 statusprint "Copying default LXC configuration.."
 sudo mkdir -p "chroot/home/$CONTAINERUSERNAME/.local/share/lxc/$CONTAINERNAME"
-sed "s/<CONTAINERNAME>/${CONTAINERNAME}/g" resources/lxc/config/default.conf | sudo tee "chroot/home/$CONTAINERUSERNAME/.local/share/lxc/$CONTAINERNAME/config" >/dev/null
+sed "s/<CONTAINERNAME>/${CONTAINERNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g;" resources/lxc/config/default.conf | sudo tee "chroot/home/$CONTAINERUSERNAME/.local/share/lxc/$CONTAINERNAME/config" >/dev/null
 sudo chown -R $USERUID:$USERGID chroot/home/$CONTAINERUSERNAME
 
 statusprint "Adding $CONTAINERUSERNAME's subuid and sudgid for unprivileged container.."
@@ -30,7 +30,7 @@ fi
 statusprint "Setting up fixed LXC container IP via dnsmasq.."
 sudo cp -v resources/lxc/config/lxc-net chroot/etc/default/
 echo "dhcp-hostsfile=/etc/lxc/dnsmasq-hosts.conf" | sudo tee chroot/etc/lxc/dnsmasq.conf >/dev/null
-echo "${PROJECTSHORTNAME},10.0.3.2" | sudo tee chroot/etc/lxc/dnsmasq-hosts.conf >/dev/null
+echo "${PROJECTNAME},10.0.3.2" | sudo tee chroot/etc/lxc/dnsmasq-hosts.conf >/dev/null
 
 statusprint "Adding systemd task to setup host system on startup.."
 sudo cp -v resources/systemd/host-setup.service chroot/lib/systemd/system/host-setup.service
@@ -43,6 +43,15 @@ sudo cp -v resources/systemd/container-setup.service chroot/lib/systemd/system/c
 sudo cp -v resources/sbin/container-setup chroot/sbin/container-setup
 sudo chmod +x chroot/sbin/container-setup
 sudo ln -s /lib/systemd/system/container-setup.service chroot/etc/systemd/system/multi-user.target.wants/container-setup.service 2>/dev/null
+
+statusprint "Adding systemd task to start historian service (container commands logger) on LXC start.."
+sudo cp -v resources/systemd/historian.service chroot/lib/systemd/system/historian.service
+sudo cp -v resources/sbin/historian.sh chroot/sbin/historian.sh
+sudo chmod +x chroot/sbin/historian.sh
+sudo ln -s /lib/systemd/system/historian.service chroot/etc/systemd/system/multi-user.target.wants/historian.service 2>/dev/null
+sudo mkdir -p chroot/usr/share/${PROJECTNAME}/etc/ 2>&-
+sudo cp -v resources/etc/historian.profile chroot/usr/share/${PROJECTNAME}/etc/historian.profile
+
 
 statusprint "Adding iptables setup script.."
 sudo cp resources/sbin/host-iptables chroot/sbin/host-iptables

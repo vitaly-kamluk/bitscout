@@ -10,6 +10,7 @@ CONTAINERUSERNAME="user"
 CRYPTOKEYSIZE=2048
 
 INITRDPATH=image/casper/initrd.gz
+RESERVEDIR=reserve
 SCREENNAME=${PROJECTNAME}_chroot #creates a screen session for interactive configuration. see scripts/chroot_enter.sh and scripts/chroot_leave.sh
 
 [ -f "config/$PROJECTNAME-build.conf" ] && . "config/$PROJECTNAME-build.conf"
@@ -34,9 +35,9 @@ runinchroot()
 
   #prepare command file
   echo "#!/bin/bash
-  echo -e '[DEBUG]: Running the followng script:\n[START]'
-  cat /tmp/cmd.$OPID | tail -n +5
-  echo -e '[END]'
+  echo -e '[>>>>>>>]: Running the followng script in screen session:\n[START]'
+  cat /tmp/cmd.$OPID | tail -n +5 | sed 's/^/       /g'
+  echo -e '[END]\n[<<<<<<<]'
 $1
 echo OK > /tmp/lock.$OPID" > chroot/tmp/cmd.$OPID
   chmod +x chroot/tmp/cmd.$OPID
@@ -50,7 +51,7 @@ echo OK > /tmp/lock.$OPID" > chroot/tmp/cmd.$OPID
   sudo screen -r $SCREENNAME
 
   #wait for semaphore unlock
-  echo -n "Waiting for command completion: "
+  echo "Waiting for screen session to complete.."
   #cat chroot/tmp/lock.$OPID
   rm chroot/tmp/lock.$OPID
   rm chroot/tmp/cmd.$OPID

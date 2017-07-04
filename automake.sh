@@ -10,8 +10,10 @@ scripts/chroot_create_container.sh &&
 scripts/chroot_configure.sh && 
 scripts/chroot_configure_openvpn.sh && 
 scripts/chroot_configure_ssh.sh && 
-scripts/chroot_add_customtools.sh && 
+scripts/chroot_configure_irc.sh &&
+scripts/chroot_add_managementtool.sh && 
 scripts/image_prepare.sh && 
 scripts/initrd_configure.sh && 
+scripts/image_prebuild_cleanup.sh && 
 scripts/image_build.sh && 
 scripts/export_generate.sh  

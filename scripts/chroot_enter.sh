@@ -5,7 +5,6 @@
 . ./scripts/functions
 
 install_required_package screen
-
 statusprint "Entering chroot.."
 
 statusprint "Binding /dev to chroot/dev"

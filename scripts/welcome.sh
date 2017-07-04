@@ -36,9 +36,20 @@ validate_vpnport()
   fi
 }
 
+validate_releasesize()
+{
+  if [ -n "$1" ]
+  then
+     test $1 -ge 1 -a $1 -le 3;
+     return $?
+  else
+     return 1;
+  fi
+}
+
 if ! [ -f "$BUILDCONFPATH" ]
 then
-  statusprint "It seems that you are at fresh build environment.\nWe need to populate the config with some essential data.\nPlease answer the following questions or put your existing build config to configs/$PROJECTNAME-build.conf."
+  statusprint "It seems that you are at fresh build environment.\nWe need to populate the config with some essential data.\nPlease answer the following questions or put your existing build config to config/$PROJECTNAME-build.conf."
   PRINTOPTIONS=n statusprint "Proceed with interactive settings? [Y/n]: "
   read choice
   if [ ! -z "$choice" -a ! "$choice" == "y" -a ! "$choice" == "Y" ] 
@@ -48,9 +59,21 @@ then
   else
     mkdir config 2>&-
 
+    releasesize=""
+    while ! validate_releasesize "$releasesize"
+    do
+      PRINTOPTIONS=n statusprint "${PROJECTNAME} may be built to be compact or normal.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers. <260Mb\n 2. normal - includes most common forensic tools,drivers,etc. <350Mb\n 3. maximal - includes maximum of forensic tools and frameworks. <750Mb\n Your choice (1|2|3): "
+      read releasesize
+      if ! validate_releasesize "$releasesize"
+      then
+        statusprint "Invalid input data format. Please try again.."
+      fi
+    done
+
     vpnhost=""
     while ! validate_vpnhostname "$vpnhost"
     do
+      statusprint "To use ${PROJECTNAME} remotely you will need a VPN server."
       PRINTOPTIONS=n statusprint "Please enter your designated VPN server hostname/IP: "
       read vpnhost
       if ! validate_vpnhostname "$vpnhost"
@@ -83,7 +106,8 @@ then
 
     
     statusprint "Saving configuration.."
-    echo "GLOBAL_VPNSERVER=\"$vpnhost\"
+    echo "GLOBAL_RELEASESIZE=\"$releasesize\"
+GLOBAL_VPNSERVER=\"$vpnhost\"
 GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
 GLOBAL_VPNPORT=\"$vpnport\"" > "$BUILDCONFPATH"
   fi

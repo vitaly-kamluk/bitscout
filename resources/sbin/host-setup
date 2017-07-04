@@ -28,7 +28,7 @@ then
   if ! mount | grep -q "$CONTAINERDIR/tmp"
   then
     #making and mounting tmpfs for overlayfs work dirs
-    mkdir -p "$CONTAINERDIR/"{tmp,chroot,chroot.user}
+    mkdir -p "$CONTAINERDIR/"{tmp,chroot,chroot.user,history}
     mount tmpfs -t tmpfs "$CONTAINERDIR/tmp"
     mkdir -p "$CONTAINERDIR/tmp/"{upper,work}
     
@@ -41,39 +41,54 @@ then
     bindfs --map=$IDMAP -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
 
     #do necessary changes TO THE CONTAINER'S (GUEST) rootfs
-      #disable lxcbr0 creation within container
-      echo "USE_LXC_BRIDGE=\"false\"" >  "$CONTAINERDIR/chroot/etc/default/lxc-net"
+        #disable lxcbr0 creation within container
+        echo "USE_LXC_BRIDGE=\"false\"" >  "$CONTAINERDIR/chroot/etc/default/lxc-net"
 
-      #enable lo/eth0 auto-configuration
-      echo -e "auto lo\niface lo inet loopback\nauto eth0\niface eth0 inet dhcp" >> "$CONTAINERDIR/chroot/etc/network/interfaces"
+        #enable lo/eth0 auto-configuration
+        echo -e "auto lo\niface lo inet loopback\nauto eth0\niface eth0 inet dhcp" >> "$CONTAINERDIR/chroot/etc/network/interfaces"
 
-      #set default DNS servers (supersede for dhclient)
-      if ! grep -q "supersede domain-name-servers 8.8.8.8, 8.8.4.4;" "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf"
-      then
-        echo "supersede domain-name-servers 8.8.8.8, 8.8.4.4;" | sudo tee -a "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf" > /dev/null
-      fi
+        #set default DNS servers (supersede for dhclient)
+        if ! grep -q "supersede domain-name-servers 8.8.8.8, 8.8.4.4;" "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf"
+        then
+          echo "supersede domain-name-servers 8.8.8.8, 8.8.4.4;" | sudo tee -a "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf" > /dev/null
+        fi
 
-      #disable openvpn auto-start
-      sed -i '/^AUTOSTART="[^"]*"$/d' "$CONTAINERDIR/chroot/etc/default/openvpn"
-      echo "AUTOSTART=\"none\"" >> "$CONTAINERDIR/chroot/etc/default/openvpn"
+        #disable openvpn auto-start
+        sed -i '/^AUTOSTART="[^"]*"$/d' "$CONTAINERDIR/chroot/etc/default/openvpn"
+        echo "AUTOSTART=\"none\"" >> "$CONTAINERDIR/chroot/etc/default/openvpn"
 
-      #re-enable ssh service
-      rm "$CONTAINERDIR/chroot/etc/ssh/sshd_not_to_be_run"
+        #re-enable ssh service
+        rm "$CONTAINERDIR/chroot/etc/ssh/sshd_not_to_be_run"
 
-      #remove host iptables setup script
-      rm "$CONTAINERDIR/chroot/etc/network/if-pre-up.d/firewall"
-      rm "$CONTAINERDIR/chroot/sbin/host-iptables"
+        #remove host iptables setup script
+        rm "$CONTAINERDIR/chroot/etc/network/if-pre-up.d/firewall"
+        rm "$CONTAINERDIR/chroot/sbin/host-iptables"
 
-      #remove <PROJECTSHORTNAME>-manage startup
-      rm "$CONTAINERDIR/chroot/lib/systemd/system/<PROJECTSHORTNAME>-manage.service"
-      rm "$CONTAINERDIR/chroot/usr/share/<PROJECTNAME>/<PROJECTSHORTNAME>-manage.service"
-      rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/<PROJECTSHORTNAME>-manage.service"
+        #remove <PROJECTSHORTNAME>-manage startup
+        rm "$CONTAINERDIR/chroot/lib/systemd/system/<PROJECTSHORTNAME>-manage.service"
+        rm "$CONTAINERDIR/chroot/usr/share/<PROJECTNAME>/<PROJECTSHORTNAME>-manage.service"
+        rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/<PROJECTSHORTNAME>-manage.service"
 
-      #set terminal to "linux" to support colors
-      if ! grep -q "^TERM=linux$" "$CONTAINERDIR/chroot/home/<CONTAINERUSERNAME>/.profile" 
-      then
-        echo "TERM=linux" | sudo tee -a "$CONTAINERDIR/chroot/home/<CONTAINERUSERNAME>/.profile"
-      fi
+        #remove the historian service from the guest
+        rm "$CONTAINERDIR/chroot/lib/systemd/system/historian.service"
+        rm "$CONTAINERDIR/chroot/sbin/historian.sh"
+        rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/historian.service"
+
+        #prepare and mount historian compressed RAM filesystem for logs
+        modprobe zram num_devices=1 
+        echo 256M > /sys/block/zram0/disksize # max ram usage = 256 Mbytes
+        mke2fs -q -m 0 -b 4096 -O sparse_super -L zram /dev/zram0
+        mount -o relatime,noexec,nosuid /dev/zram0 "$CONTAINERDIR/history"
+        mkdir "$CONTAINERDIR/history/log"
+
+        #create system-wide overriding profile for container to enable historian feature
+        cat "$CONTAINERDIR/chroot/etc/profile" "/usr/share/<PROJECTNAME>/etc/historian.profile" > "$CONTAINERDIR/history/.profile"
+
+        #set terminal to "linux" to support colors
+        if ! grep -q "^TERM=linux$" "$CONTAINERDIR/chroot/home/<CONTAINERUSERNAME>/.profile" 
+        then
+          echo "TERM=linux" | sudo tee -a "$CONTAINERDIR/chroot/home/<CONTAINERUSERNAME>/.profile"
+        fi
 
     #remove authorized ssh-keys from the host (shall be preserved in the container)
     rm /home/$CONTAINERUSER/.ssh/authorized_keys

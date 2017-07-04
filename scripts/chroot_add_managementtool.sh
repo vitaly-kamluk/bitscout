@@ -4,26 +4,31 @@
 
 . ./scripts/functions
 
-statusprint "Adding custom tools to host system.."
+statusprint "Adding management tool for system owner with autostart.."
 
-statusprint "Adding Text-UI management script.."
+statusprint "Adding Text-UI management and monitoring scripts.."
 sed "s/<PROJECTNAME>/${PROJECTNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<CONTAINERNAME>/${CONTAINERNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g;" resources/usr/bin/${PROJECTSHORTNAME}-manage | sudo tee chroot/usr/bin/${PROJECTSHORTNAME}-manage >/dev/null
 sudo chmod +x chroot/usr/bin/${PROJECTSHORTNAME}-manage
+
+sed "s/<PROJECTNAME>/${PROJECTNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<CONTAINERNAME>/${CONTAINERNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g;" resources/usr/bin/${PROJECTSHORTNAME}-monitor | sudo tee chroot/usr/bin/${PROJECTSHORTNAME}-monitor >/dev/null
+sudo chmod +x chroot/usr/bin/${PROJECTSHORTNAME}-monitor
+
 sudo mkdir -p chroot/usr/share/${PROJECTNAME}
 sed "s/<PROJECTNAME>/${PROJECTNAME}/g;" resources/usr/share/${PROJECTNAME}/introduction | sudo tee chroot/usr/share/${PROJECTNAME}/introduction > /dev/null
 
+
 statusprint "Adding autostart of ${PROJECTSHORTNAME}-manage tool on tty.."
 echo "[Unit]
-Description=scount-manage on tty1
-After=getty.target
-Conflicts=getty@tty1.service
+Description=scount-manage on tty2
+After=getty.target networking.service host-system.service
+Conflicts=getty@tty2.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/share/${PROJECTNAME}/${PROJECTSHORTNAME}-manage.service
 ExecStop=/bin/kill -HUP ${MAINPID}
-TTYPath=/dev/tty1
+TTYPath=/dev/tty2
 TTYReset=yes
 TTYVHangup=yes
 StandardInput=tty
