@@ -30,6 +30,12 @@ runinchroot()
   #init
   OPID="$RANDOM"
 
+  if [ ! -d "./chroot" ]
+  then
+   statusprint "ERROR: Couldn't find chroot directory. Aborting.."
+   exit 1
+  fi
+
   #create lock file
   mkfifo chroot/tmp/lock.$OPID
 
@@ -51,7 +57,7 @@ echo OK > /tmp/lock.$OPID" > chroot/tmp/cmd.$OPID
   sudo screen -r $SCREENNAME
 
   #wait for semaphore unlock
-  echo "Waiting for screen session to complete.."
+  statusprint "Waiting for screen session to complete.."
   #cat chroot/tmp/lock.$OPID
   rm chroot/tmp/lock.$OPID
   rm chroot/tmp/cmd.$OPID
@@ -99,6 +105,18 @@ install_required_package()
   if ! dpkg-query --show --showformat='${db:Status-Status}\n' $PKGNAME | grep -q "^installed$"
   then
     statusprint "$PKGNAME was not found your system. It is required to continue.\nPlease authorize installing $PKGNAME.."
+    if ! apt-cache search "$PKGNAME" | grep -q "$PKGNAME"
+    then
+      #let's check that universe repository is enabled. required for some packages, i.e. easy-rsa 
+      REPOSITORY="universe"
+      if ! apt-cache policy | grep -q "$REPOSITORY"
+      then
+        statusprint "Enabling additional repository ($REPOSITORY) for your system.."
+        OSCODENAME=`lsb_release -c| awk '{print $2}'`
+        sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu/ $OSCODENAME $REPOSITORY"
+      fi
+      sudo apt -y update
+    fi;
     if ! sudo apt -y install "$PKGNAME"; then exit 1; fi;
   fi
 }

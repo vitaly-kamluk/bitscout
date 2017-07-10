@@ -18,8 +18,8 @@ then
 
   case $choice in
     1)
-     sudo rm -rf ./chroot/
-     install_required_package debootstrap
+      sudo rm -rf ./chroot/
+      install_required_package debootstrap
 
       statusprint "Downloading $BASERELEASE:$BASEARCHITECTURE.."
       sudo debootstrap --arch=$BASEARCHITECTURE $BASERELEASE chroot
@@ -28,7 +28,7 @@ then
       statusprint "Download operation skipped. Build continues.."
      ;; 
     *)
-     statusprint "Operation aborted. Build stopped."
+      statusprint "Operation aborted. Build stopped."
      ;;
   esac
 else
