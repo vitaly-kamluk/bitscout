@@ -1,25 +1,33 @@
 Bitscout 2.0
 Date: July 2017
-Author: Vitaly Kamluk  // Vitaly.Kamluk [at] kaspersky[.]com
+Author: Vitaly Kamluk  // bitscout [at] kaspersky[.]com
 
-This project is created by security researchers for security researchers. In
-addition, it can be useful to Law Enforcement and private companies that assist
-them. The project allows anyone who is running Ubuntu OS to build own 
-LiveCD/LiveUSB image to be used for remote digital forensics (or other tasks of
-your own choice).
+This project was created by security researchers for security researchers. In
+addition, it shall be useful to Law Enforcement and private companies which assist
+LE. The project allows anyone who is running Debian-based OS such as Ubuntu 
+to build own LiveCD/LiveUSB image to be used for remote digital forensics 
+(or perhaps any other task of your choice).
 
 Basic usage:
-Run ./automake.sh on your Ubuntu system. Hint: if you haven't got one, you can try 
-running it from LiveCD. When the process is done you shall find a new ISO file in
-current directory.
+Run ./automake.sh on your Ubuntu system. 
+Hint: if you are not running Linux and want to try Bitscout, you can start
+Ubuntu from LiveCD. It works perfectly fine, but we suggest you to have at least
+2Gb+ RAM in this case. To download Ubuntu LiveCD, please go here:
+https://www.ubuntu.com/download/desktop
 
-Note: this script may ask for super-user permission. This is essential for some
-operations. All changes shall affect only current directory and subdirectories,
+Bitscout build demo from Ubuntu LiveCD:
+https://www.youtube.com/watch?v=knA0NS9tWsY
+
+Note: the automake.sh script may ask for super-user permission. This is essential 
+for some operations. All changes shall affect only current directory and subdirectories,
 unless your system is missing some essential packages to build the ISO (in this 
 case they will be installed to your system).
 
+To better understand what Bitscout is, we suggest you read further description
+of users' roles in the process and the FAQ below.
+
 User roles:
-Bitscout relies on 3 roles in the process of remote forensics:
+Bitscout relies on at least three participants in the process of remote forensics:
 1. The Owner
    The owner is a user who has physical access to the target system and owns it.
    The owner's role is to download, verify and burn Live ISO image file to a
@@ -27,14 +35,17 @@ Bitscout relies on 3 roles in the process of remote forensics:
    bootable media. In case of LAN DHCP network configuration everything shall 
    work automatically. In case of other setup, the owner has to configure
    network access using management utility that is available on the Live system
-   (starts automatically on the TTY1 on boot).
+   (starts automatically on the TTY on boot).
 2. The Expert
-   The expert is a remote user that connects to the target system over SSH using
+   The expert is a remote user who connects to the target system over SSH using
    VPN link through the expert's server. Bitscout shall be built with VPN server
-   certificates, configuration and SSH keys placed on the disk image.
+   certificates, configuration and SSH keys placed on the disk image. This can
+   be changed at any time. Feel free to run some last build stages manually if
+   you don't want to start from scratch.
 3. Expert's Server
    The expert's server shall be located in the internet and is used to run a VPN
-   server as well as chat server for communication.
+   server as well as chat server for communication. Suggested server 
+   configuration files can be found in the respective "exports" subdirectory.
 
 Bitscout Features:
 1. Transparent
@@ -94,11 +105,11 @@ F.A.Q:
 
 Q: Why was the system created?
 A: There is a lot of commercial and very expensive forensics software suites out
-there. We tried several most popular of them and always bumped into
+there. We tried several most popular of them and always bumped into 
 functionality limitations and lack of transparency in the processes. While some
 suites provide scriptability, they lack remote analysis features that do not
-modify the evidence. The others weren designed for remote analysis, but lacked 
-flexibility and costed a fortune. 
+modify the evidence. The others were not designed for remote analysis, but 
+lacked flexibility and costed a fortune. 
 We found that there was a niche for a new tool which is
   a. fully trusted (made by you)
   b. customizable
@@ -128,12 +139,22 @@ will never be tampered (unless explicitly autorized by the owner in case of
 system remediation request).
 
 Q: Does the author provide VPN server with this project?
-A: No, you have to use own server. All you need is OpenVPN instance. It's free and 
-opensource and runs on all platforms. For more information see https://openvpn.net.
+A: No, you have to use own server. All you need is an OpenVPN instance. It's 
+free and opensource, it runs on all platforms. 
+For more information, see https://openvpn.net
 
 Q: Will the product be supported?
 A: It will be supported as long as their is need for such systems. We will move
 to newer version of base systems (currently it's Ubuntu 16.04 LTS).
+
+Q: Do I need to re-run ./automake.sh every time I change anything, i.e. put my
+own VPN certificate or SSH key?
+A: No. automake.sh script is just an easy do-everything script to build new ISO
+file from scratch in one run. Feel free to copy and modify it. Comment out
+stages that you don't want to pass again from top to bottom and run it. Make
+sure you run the last stage image_build.sh to rebuild the ISO file. If you
+didn't modify the rootfs in chroot directory, you can use
+scripts/image_build-nosquashfs-rebuild.sh to save time for ISO rebuild.
 
 Q: Is this the best forensic product to save the world?
 A: It is not and was never meant to be. It serves it's task though and did help
