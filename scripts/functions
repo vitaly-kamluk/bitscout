@@ -102,6 +102,12 @@ packinitrd()
 install_required_package()
 {
   PKGNAME="$1"
+  if [ -z "$APT_UPDATED" -o "$APT_UPDATED" != "1" ]
+  then
+    sudo apt -y update
+    export APT_UPDATED="1"
+  fi
+
   if ! dpkg-query --show --showformat='${db:Status-Status}\n' $PKGNAME | grep -q "^installed$"
   then
     statusprint "$PKGNAME was not found your system. It is required to continue.\nPlease authorize installing $PKGNAME.."
@@ -115,7 +121,6 @@ install_required_package()
         OSCODENAME=`lsb_release -c| awk '{print $2}'`
         sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu/ $OSCODENAME $REPOSITORY"
       fi
-      sudo apt -y update
     fi;
     if ! sudo apt -y install "$PKGNAME"; then exit 1; fi;
   fi
