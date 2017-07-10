@@ -16,12 +16,6 @@ sudo mount --bind /proc chroot/proc
 statusprint "Binding /sys to chroot/sys"
 sudo mount --bind /sys chroot/sys
 
-statusprint "Binding /dev/pts to chroot/dev/pts"
-sudo mount --bind /dev/pts chroot/dev/pts
-
-#statusprint "Mounting tmpfs to chroot/tmp"
-#sudo mount none -t tmpfs chroot/tmp
-
 statusprint "Starting chroot in a screen session.."
 if sudo screen -d -m -S ${PROJECTNAME}_chroot -U chroot chroot
 then

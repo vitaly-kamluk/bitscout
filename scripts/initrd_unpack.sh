@@ -4,4 +4,5 @@
 
 . ./scripts/functions
 
+statusprint "Unpacking initrd.."
 unpackinitrd

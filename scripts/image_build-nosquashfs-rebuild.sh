@@ -11,6 +11,6 @@ cd ..
 statusprint "Creating grub-powered image..."
 install_required_package grub-common
 
-sudo grub-mkrescue -d /usr/lib/grub/i386-pc --modules="linux ext2 fshelp ls boot" --output=./$PROJECTNAME-16.04.iso ./image
+sudo grub-mkrescue -d /usr/lib/grub/i386-pc --modules="linux ext2 fshelp ls boot" --output=./$PROJECTNAME-16.04.iso ./image -- -volid "${PROJECTNAME}-${GLOBAL_BUILDID}"
 
 exit 0;

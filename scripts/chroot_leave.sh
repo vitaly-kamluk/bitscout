@@ -12,7 +12,6 @@ runinchroot "rm /var/lib/dbus/machine-id 2>&-
 rm /sbin/initctl
 dpkg-divert --rename --remove /sbin/initctl
 apt-get clean
-umount -lf /dev/pts
 umount -lf /sys
 umount -lf /dev
 umount -lf /proc"

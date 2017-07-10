@@ -104,12 +104,14 @@ then
       fi
     done
 
+    buildid=`dd if=/dev/urandom bs=1 count=4 2>&- | xxd -pos`
     
     statusprint "Saving configuration.."
     echo "GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_VPNSERVER=\"$vpnhost\"
 GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
-GLOBAL_VPNPORT=\"$vpnport\"" > "$BUILDCONFPATH"
+GLOBAL_VPNPORT=\"$vpnport\"
+GLOBAL_BUILDID=\"$buildid\"" > "$BUILDCONFPATH"
   fi
 fi
 
