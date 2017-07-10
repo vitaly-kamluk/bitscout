@@ -31,6 +31,10 @@ then
      statusprint "Operation aborted. Build stopped."
      ;;
   esac
+else
+  install_required_package debootstrap
+  statusprint "Downloading $BASERELEASE:$BASEARCHITECTURE.."
+  sudo debootstrap --arch=$BASEARCHITECTURE $BASERELEASE chroot  
 fi
 
 exit 0;
