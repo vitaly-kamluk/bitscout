@@ -46,5 +46,21 @@ cd ../../
 
 statusprint "Copying boot configuration from resources.."
 cp -r ./resources/boot/ ./image/
-sed -i "s/<PROJECTNAME>/${PROJECTNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g; " ./image/boot/grub/grub.cfg
+sed -i "s/<PROJECTNAME>/${PROJECTNAME}/g; s/<PROJECTCAPNAME>/${PROJECTCAPNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g; " ./image/boot/grub/grub.cfg
+
+
+statusprint "Preparing font for grub bootloader.."
+install_required_package fonts-dejavu-core
+install_required_package grub-common
+FONTNAME="DejaVuSansMono-Bold.ttf"
+FONTSIZE=18
+FONTPATH="/usr/share/fonts/truetype/dejavu/$FONTNAME"
+statusprint "Generating grub font from $FONTNAME.."
+if [ ! -f "$FONTPATH" ]
+then
+  statusprint "Couldn't find required font at $FONTPATH. Aborting.."
+  exit 1;
+fi
+grub-mkfont -s $FONTSIZE -o ./image/boot/grub/font.pf2 "$FONTPATH"
+
 exit 0;

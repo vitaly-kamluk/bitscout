@@ -1,10 +1,8 @@
-#StylishDark grub2 theme
-
-desktop-image: "background.png"
-
+desktop-image: "background.jpg"
 title-text: "Boot Menu"
 
 terminal-box: "terminal_box_*.png"
+terminal-font: "DejaVu Sans Bold 18"
 
 + boot_menu {
   left = 25%
@@ -12,13 +10,13 @@ terminal-box: "terminal_box_*.png"
   top = 25%
   height = 50%	
 
-  #item_font = "DejaVu Sans Bold 20"
+  item_font = "DejaVu Sans 18"
   item_color = "#bbbbbb"
   item_height = 48
   item_icon_space = 8
   item_spacing = 2
 
-  #selected_item_font = "DejaVu Sans Bold 12"
+  selected_item_font = "DejaVu Sans Bold 18"
   selected_item_color= "#ffffff"
   selected_item_pixmap_style = "select_*.png"
 
@@ -32,27 +30,12 @@ terminal-box: "terminal_box_*.png"
 
 + progress_bar {
   id = "__timeout__"
-
   left = 25%
   top = 85%
   height = 10
   width = 50%
-
-  # font = "DejaVu Sans Regular 12"
-
-  # text_color = "#aaaaaa"
-  #fg_color = "#3f4446"
   fg_color = "#ffffff"
-
-  #bg_color = "#323637"
   bg_color = "#203030"
   border_color = "#ffffff"
-  #border_color = "#323637"
-
-  # instead of the above colors, use pixmaps
-  # bar_style = "progress_bar_*.png"
-  # highlight_style = "progress_highlight_*.png"
-
-  # text = "@TIMEOUT_NOTIFICATION_LONG@"
 }
 

@@ -4,7 +4,7 @@
 
 . ./scripts/functions
 
-statusprint "Checking requirements.."
+statusprint "Checking base requirements.."
 if [ -z "$(which dpkg-query)" ]
 then
  echo "dpkg is required to continue. Please install manually."
@@ -22,7 +22,7 @@ then
       install_required_package debootstrap
 
       statusprint "Downloading $BASERELEASE:$BASEARCHITECTURE.."
-      sudo debootstrap --arch=$BASEARCHITECTURE $BASERELEASE chroot
+      DISPLAY="" sudo debootstrap --arch=$BASEARCHITECTURE $BASERELEASE chroot
      ;;
     2)
       statusprint "Download operation skipped. Build continues.."
@@ -34,7 +34,7 @@ then
 else
   install_required_package debootstrap
   statusprint "Downloading $BASERELEASE:$BASEARCHITECTURE.."
-  sudo debootstrap --arch=$BASEARCHITECTURE $BASERELEASE chroot  
+  DISPLAY="" sudo debootstrap --arch=$BASEARCHITECTURE $BASERELEASE chroot  
 fi
 
 exit 0;

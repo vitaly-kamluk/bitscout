@@ -21,6 +21,10 @@ then
     echo "
 find_livefs() {
   srcdevice=\$(blkid -L \"${PROJECTNAME}-${GLOBAL_BUILDID}\")
+  if [ -z \"\$(blkid \$srcdevice)\" ] && blkid \${srcdevice%%?} | grep -q \"${PROJECTNAME}-${GLOBAL_BUILDID}\"
+  then
+    srcdevice=\"\${srcdevice%%?}\"
+  fi
   mount -t \$(get_fstype \"\$srcdevice\") -o ro,noatime \"\$srcdevice\" \"\$mountpoint\"
   echo \"\$mountpoint\"
   return 0

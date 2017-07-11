@@ -98,7 +98,7 @@ Bitscout Features:
   memory and swap.
 
   As a matter of fact fully running OS with a child OS inside the container used
-  less than 32Mb of RAM in our tests.
+  less than 200Mb of RAM in our tests.
 
 
 F.A.Q:

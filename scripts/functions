@@ -2,6 +2,7 @@
 #Copyright Kaspersky Lab
 
 PROJECTNAME="bitscout"
+PROJECTCAPNAME="Bitscout"
 PROJECTSHORTNAME="scout"
 BASEARCHITECTURE="i386"
 BASERELEASE="xenial"
