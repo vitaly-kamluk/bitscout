@@ -4,7 +4,6 @@ PRIVPIPE=/var/host/ipc/privexec.pipe
 (
  flock 9
  S="$# $0"
- ARGS=$#
  for arg in "$@"; do S="$S \"$arg\""; done;
  echo "$S" > "$PRIVPIPE"
  cat "$PRIVPIPE"

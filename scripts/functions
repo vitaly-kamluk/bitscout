@@ -39,6 +39,7 @@ runinchroot()
 
   #create lock file
   mkfifo chroot/tmp/lock.$OPID
+  chmod o+rw chroot/tmp/lock.$OPID
 
   #prepare command file
   echo "#!/bin/bash
@@ -58,8 +59,7 @@ echo OK > /tmp/lock.$OPID" > chroot/tmp/cmd.$OPID
   sudo screen -r $SCREENNAME
 
   #wait for semaphore unlock
-  statusprint "Waiting for screen session to complete.."
-  #cat chroot/tmp/lock.$OPID
+  PRINTOPTIONS=n statusprint "Waiting for screen session to complete.."
   rm chroot/tmp/lock.$OPID
   rm chroot/tmp/cmd.$OPID
 }
