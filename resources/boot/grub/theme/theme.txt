@@ -2,7 +2,7 @@ desktop-image: "background.jpg"
 title-text: "Boot Menu"
 
 terminal-box: "terminal_box_*.png"
-terminal-font: "DejaVu Sans Bold 18"
+terminal-font: "DejaVu Sans 18"
 
 + boot_menu {
   left = 25%
@@ -16,7 +16,7 @@ terminal-font: "DejaVu Sans Bold 18"
   item_icon_space = 8
   item_spacing = 2
 
-  selected_item_font = "DejaVu Sans Bold 18"
+  selected_item_font = "DejaVu Sans 18"
   selected_item_color= "#ffffff"
   selected_item_pixmap_style = "select_*.png"
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Privileged execution service
+After=lxc.service lxc-net.service rc-local.service host-setup.service
+
+[Service]
+Type=simple
+ExecStart=/sbin/privexecd.sh
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

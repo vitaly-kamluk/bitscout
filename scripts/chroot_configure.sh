@@ -25,5 +25,8 @@ cat /dev/null | sudo tee chroot/etc/legal >/dev/null
 statusprint "Setting up automounting for tmpfs.."
 echo -e "tmpfs\t/tmp\ttmpfs\tnosuid,nodev\t0\t0" | sudo tee chroot/etc/fstab >/dev/null
 
+DEFTERM=xterm-color
+statusprint "Setting default TERM to $DEFTERM.."
+echo "TERM=$DEFTERM" | sudo tee chroot/etc/profile.d/terminal.sh >/dev/null
 
 exit 0;

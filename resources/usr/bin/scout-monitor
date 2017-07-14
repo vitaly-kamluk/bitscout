@@ -20,13 +20,15 @@ align_center() {
 
 monitor_new_sessions() {
   HISTORIANDIR=/opt/container/history
-  ls -1 "$HISTORIANDIR"/log/*.log |
+  TRACKLIST=/var/run/scout-monitor.$$.tracklist
+  ls -1 "$HISTORIANDIR"/log/*.log 2>/dev/null |
   while read f; 
   do
     LOGID="${f/*\//}"; LOGID=${LOGID%%.log};
-    if ! tmux list-windows -t "status:main" 2>&- | grep -q "$LOGID"
+    if ! ( grep -q "$LOGID" "$TRACKLIST" 2>/dev/null || tmux list-windows -t "status:main" 2>&- | grep -q "$LOGID" )
     then
-      tmux new-window -a -t "status:main" -n "$LOGID" -d "tail -n80 -f \"$f\""
+      tmux new-window -a -t "status:main" -n "$LOGID" -d "tail -n80 -f \"$f\"" 2>&-
+      echo "$LOGID" >> "$TRACKLIST"
     fi
   done
 }
@@ -56,6 +58,6 @@ do
   hr
   echo "Latest OpenVPN messages:"
   tail -n10 /var/log/openvpn.scout.log
-  sleep $DELAY
   monitor_new_sessions
+  sleep $DELAY
 done

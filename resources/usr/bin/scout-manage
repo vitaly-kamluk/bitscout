@@ -17,19 +17,22 @@ DIALOG_EXTRA=3
 DIALOG_ITEM_HELP=4
 DIALOG_ESC=255
 
-MAINMENUTEXT="Welcome to <PROJECTNAME> 2.0!
+MAINMENUTEXT="Welcome to <PROJECTCAPNAME> 2.0!
 You can use this simple tool for most common operations on the system.
 Please choose one of the menu items below:" 
 declare -a MAINMENU;
-MAINMENU+=("INTRODUCTION:What is <PROJECTNAME> and how to use it.")
+MAINMENU+=("INTRODUCTION:What is <PROJECTCAPNAME> and how to use it.")
 MAINMENU+=("NETWORK:Connect to WiFi, setup static IP or proxy.")
 MAINMENU+=("DISK:Manage attached disks (i.e. let expert work on it).")
 MAINMENU+=("STATUS:System status, and expert sessions monitoring.")
 MAINMENU+=("CHAT:Enter IRC chat with the expert.")
 MAINMENU+=("CONTAINER-SHELL:Start a root shell inside guest container.")
 MAINMENU+=("SHELL:Start a root local shell.")
-MAINMENU+=("EXIT:Return to previous environment.")
-
+if ! ps -p $(ps -p "$$" -o "ppid=") -o cmd= | grep -q '\.service'
+then
+ MAINMENU+=("EXIT:Return to previous environment.")
+fi
+MAINMENU+=("SHUTDOWN:Shutdown current system.")
 
 NETWORKMENUTEXT="The following menu should help you change network configuration 
 and connect to the Internet:"
@@ -285,11 +288,16 @@ do
 	continue
         ;;
   ### OTHER COMMANDS ###
-    "EXIT") 
+     "SHUTDOWN") 
+        clear;
+        poweroff;
+        break; 
+        ;;
+     "EXIT") 
         clear; 
         break; 
         ;;
-    "INTRODUCTION")
+     "INTRODUCTION")
         dialog --title "INTRODUCTION" --textbox /usr/share/<PROJECTNAME>/introduction $BOXHEIGHT $BOXWIDTH
         continue;
         ;;
@@ -318,19 +326,10 @@ do
          SESSNAME="status"
          if ! tmux has-session -t "$SESSNAME" >/dev/null
          then
-           tmux new-session -d -n main -s "$SESSNAME" /usr/bin/<PROJECTSHORTNAME>-monitor
+           tmux new-session -n main -s "$SESSNAME" /usr/bin/<PROJECTSHORTNAME>-monitor
+         else
+           tmux attach-session -t "$SESSNAME:main"
          fi
-           
-         ls -1 "$HISTORIANDIR"/log/*.log | 
-         while read f; 
-         do
-           LOGID="${f/*\//}"; LOGID=${LOGID%%.log};       
-           if ! tmux list-windows -t "status:main" 2>&- | grep -q "$LOGID"
-           then
-             tmux new-window -a -t "status:main" -n "$LOGID" -d "tail -n80 -f \"$f\""
-           fi
-         done
-         tmux attach-session -t "$SESSNAME"
          continue;
          ;;
      *)
