@@ -45,9 +45,14 @@ privileged_bin_mount()
 
   SRC=${LINE[$ARGLEN]}
   DST=${LINE[$ARGLEN+1]}
-  log_add "Running: chroot \"/opt/container/chroot\" mount -t \"$FSTYPE\" -o \"$MOUNTOPT\" --source \"$SRC\" --target \"$DST\" 2>&1"
-  chroot "/opt/container/chroot" mount -v -t "$FSTYPE" -o "$MOUNTOPT" --source "$SRC" --target "$DST" 2>&1 >"$PRIVPIPE"
-  return 0;
+  if is_valid_path "$SRC" && is_valid_path "$DST" && is_valid_option "$MOUNTOPT" && is_valid_option "$FSTYPE"
+  then
+    log_add "Running: chroot \"/opt/container/chroot\" mount -t \"$FSTYPE\" -o \"$MOUNTOPT\" --source \"$SRC\" --target \"$DST\" 2>&1"
+    chroot "/opt/container/chroot" mount -v -t "$FSTYPE" -o "$MOUNTOPT" --source "$SRC" --target "$DST" 2>&1 >"$PRIVPIPE"
+    return 0;
+  else
+    return 1;
+  fi
 }
 
 privileged_bin_umount()
@@ -65,6 +70,20 @@ is_cmd_authorized()
   for allowed in "${CMD_WHITELIST[@]}"; do [[ "$1" == "$allowed" ]] && return 0; done; return 1;
 }
 
+is_valid_path()
+{
+ echo "$1" | grep -q "^[/a-zA-Z0-9_. ()=+-]\{2,256\}$" && return 0
+ log_add "Path validation failed: $1"
+ return 1
+}
+
+is_valid_option()
+{
+ echo "$1" | grep -q "^[\/\\a-zA-Z0-9_. ()=+,:;-]\{1,256\}$" && return 0
+ log_add "Params validation failed: $1"
+ return 1
+}
+
 [ ! -p "$PRIVPIPE" ] && mkfifo "$PRIVPIPE" && chmod o+rw "$PRIVPIPE";
 [ ! -p "$PRIVLOCK" ] && touch "$PRIVLOCK" && chmod o+rw "$PRIVLOCK";
 
@@ -72,13 +91,14 @@ while true
 do
   mapfile -t LINE < <(head -n1 "$PRIVPIPE" | awk -vFPAT='([^ ]*)|("[^"]+")' -vOFS=" " '{for(i=1;i<=NF;i++){print $i;}}'| sed 's/^"//; s/"$//' )
   CMDPATH=${LINE[1]}; CMDPATH=${CMDPATH%%.priv}
-  if is_cmd_authorized "$CMDPATH"
+  if is_valid_path "$CMDPATH" && is_cmd_authorized "$CMDPATH"
   then
     log_add "Request to run privileged $CMDPATH"
     PROCNAME=${CMDPATH////_}
     if ! eval "privileged$PROCNAME"; then log_add "Failed to run privileged$PROCNAME"; fi;
   else
     log_add "Denied running $CMDPATH"
+    echo "Couldn't process your request due to input validation."
   fi
   #declare -p LINE
 done
