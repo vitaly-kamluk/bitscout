@@ -2,6 +2,7 @@
 CONTAINERNAME=forensic
 CONTAINERUSER=user
 CONTAINERROOT=/opt/container/chroot
+CONTROLFILE=/var/run/privexec.enabled
 IPCDIR=/opt/container/ipc
 PRIVPIPE="$IPCDIR/privexec.pipe"
 PRIVLOCK="$IPCDIR/privexec.lock"
@@ -13,7 +14,7 @@ declare -a LINE
 
 log_add()
 {
-  T=$(TZ=UTC date +"%H:%M:%S %Y-%m-%d %Z")
+  T=$(TZ=UTC date +"%H:%M:%S %Y-%m-%d")
   echo "$T: $1" >> "$PRIVLOG"
   echo "$T: $1"
 }
@@ -57,6 +58,7 @@ privileged_bin_mount()
 
 privileged_bin_umount()
 {
+  log_add "Running: chroot \"/opt/container/chroot\" umount \"${LINE[2]}\" 2>&1"
   chroot "/opt/container/chroot" umount "${LINE[2]}" 2>&1 >"$PRIVPIPE"
 }
 
@@ -90,6 +92,14 @@ is_valid_option()
 while true
 do
   mapfile -t LINE < <(head -n1 "$PRIVPIPE" | awk -vFPAT='([^ ]*)|("[^"]+")' -vOFS=" " '{for(i=1;i<=NF;i++){print $i;}}'| sed 's/^"//; s/"$//' )
+  if [ ! -f "$CONTROLFILE" ]
+  then
+    echo "Privileged execution mode is not enabled." > "$PRIVPIPE"
+    CMDREQ=$(echo "${LINE[*]}" | sed 's/^[0-9]\{1,2\} //')
+    log_add "Guest container requested privileged mode command but was denied: $CMDREQ"
+    continue
+  fi
+
   CMDPATH=${LINE[1]}; CMDPATH=${CMDPATH%%.priv}
   if is_valid_path "$CMDPATH" && is_cmd_authorized "$CMDPATH"
   then

@@ -13,8 +13,7 @@ statusprint "Removing packages which are not essential anymore.."
 if [ ${GLOBAL_RELEASESIZE} -eq 1 ]
 then
   runinchroot 'export DEBIAN_FRONTEND=noninteractive
-  apt-get --yes ca-certificates python3-requests ssh-import-id python3-chardet python3-pkg-resources python3-six python3-urllib3
-geoip-database krb5-locales libavahi-client3 libavahi-common3 libcups2 python-samba samba-common-bin samba-libs wget'
+  apt-get --yes purge ca-certificates python3-requests ssh-import-id python3-chardet python3-pkg-resources python3-six python3-urllib3 geoip-database krb5-locales libavahi-client3 libavahi-common3 libcups2 python-samba samba-common-bin samba-libs wget'
 fi
 runinchroot 'export DEBIAN_FRONTEND=noninteractive
 apt-get --yes purge plymouth python-samba samba-common samba-common-bin samba-libs cifs-utils

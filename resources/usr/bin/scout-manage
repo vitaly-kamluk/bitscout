@@ -3,10 +3,12 @@ OPENVPNCONFIG=/etc/openvpn/<PROJECTSHORTNAME>.conf
 TERMINAL=linux
 CONTAINERNAME=<CONTAINERNAME>
 CONTAINERUSER=<CONTAINERUSERNAME>
-BOXHEIGHT=25
-BOXWIDTH=80
-BOXHEIGHT2=20
+BOXHEIGHT=$[`tput lines`*4/5]
+BOXWIDTH=$[`tput cols`*4/5];
+BOXHEIGHT2=$[$BOXHEIGHT-5]
 HISTORIANDIR=/opt/container/history
+PRIVMODECONTROLFILE=/var/run/privexec.enabled
+PRIVMODELOG=/opt/container/history/log/privexecd.log
 
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
 
@@ -49,7 +51,21 @@ declare -a DISKMENU
 DISKMENU+=("VIEW:View all available block devices.")
 DISKMENU+=("MAP:Map device to expert's container.")
 DISKMENU+=("UNMAP:Unmap device from expert's container.")
+DISKMENU+=("PRIVILEGED MODE:Allow expert to use kernel mount drivers.")
 DISKMENU+=("BACK:Return to previous menu.")
+
+PRIVMODEMENUTEXT="This menu allows to control the usage of privileged mount mode.
+This mode allows expert to call mount/unmount utils from the host as root.
+It is currently the only way to mount some filesystems that have got no
+userspace filesystem drivers. The mechanism to do such privileged calls may
+introduce security issues and is disabled by default.
+"
+declare -a PRIVMODEMENU
+PRIVMODEMENU+=("ENABLE:Enable privileged mount mode..")
+PRIVMODEMENU+=("DISABLE:Disable privileged mount mode.")
+PRIVMODEMENU+=("LOG:View log of privileged mode commands.")
+PRIVMODEMENU+=("BACK:Return to previous menu.")
+
 
 function dialog_menu()
 {
@@ -281,6 +297,39 @@ do
 	    losetup -d "/dev/loop$LOOPCHOICE1" && dialog --title "INFO" --msgbox "Succesfully unmapped $CHOICE1." $BOXHEIGHT $BOXWIDTH 
 	    continue
 	  fi
+    
+	  if [ "$DISKCHOICE" == "PRIVILEGED MODE" ]; 
+      then
+        while true
+        do
+          PMSTATE="DISABLED"
+          if [ -f "$PRIVMODECONTROLFILE" ]; then PMSTATE="ENABLED"; fi;
+          _PRIVMODEMENUTEXT="$PRIVMODEMENUTEXT
+Privileged mount mode is currently $PMSTATE.";
+          read PRIVMODECHOICE <<< $(dialog_menu "PRIVILEGED MOUNT MODE" "${_PRIVMODEMENUTEXT}" "$(declare -p PRIVMODEMENU)")
+          case "$PRIVMODECHOICE" in
+            "ENABLE")
+              touch "$PRIVMODECONTROLFILE"
+            ;;
+            "DISABLE")
+              rm -f "$PRIVMODECONTROLFILE"
+            ;;
+            "LOG")
+              if [ -f "$PRIVMODELOG" ]
+              then
+                dialog --title "PRIVILEGED OPERATIONS LOG" --textbox "$PRIVMODELOG" $BOXHEIGHT $BOXWIDTH
+              else
+                dialog --title "PRIVILEGED MOUNT MODE" --msgbox "The log file for privileged mode was not created yet. This is normal and means that there were no attempts to use privileged mode yet." $BOXHEIGHT $BOXWIDTH
+              fi
+            ;;
+            "BACK")
+             break;
+            ;;
+          esac
+        done
+        continue;
+      fi;
+        
      
 	  if [ "$DISKCHOICE" == "BACK" ]; then break; fi;
 	  feature_not_implemented
