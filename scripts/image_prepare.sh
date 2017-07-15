@@ -52,7 +52,7 @@ sed -i "s/<PROJECTNAME>/${PROJECTNAME}/g; s/<PROJECTCAPNAME>/${PROJECTCAPNAME}/g
 statusprint "Preparing font for grub bootloader.."
 install_required_package fonts-dejavu-core
 install_required_package grub-common
-FONTNAME="DejaVuSansMono-Bold.ttf"
+FONTNAME="DejaVuSansMono.ttf"
 FONTSIZE=18
 FONTPATH="/usr/share/fonts/truetype/dejavu/$FONTNAME"
 statusprint "Generating grub font from $FONTNAME.."

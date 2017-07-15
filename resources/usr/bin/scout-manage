@@ -3,10 +3,12 @@ OPENVPNCONFIG=/etc/openvpn/<PROJECTSHORTNAME>.conf
 TERMINAL=linux
 CONTAINERNAME=<CONTAINERNAME>
 CONTAINERUSER=<CONTAINERUSERNAME>
-BOXHEIGHT=25
-BOXWIDTH=80
-BOXHEIGHT2=20
+BOXHEIGHT=$[`tput lines`*4/5]
+BOXWIDTH=$[`tput cols`*4/5];
+BOXHEIGHT2=$[$BOXHEIGHT-5]
 HISTORIANDIR=/opt/container/history
+PRIVMODECONTROLFILE=/var/run/privexec.enabled
+PRIVMODELOG=/opt/container/history/log/privexecd.log
 
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
 
@@ -17,19 +19,22 @@ DIALOG_EXTRA=3
 DIALOG_ITEM_HELP=4
 DIALOG_ESC=255
 
-MAINMENUTEXT="Welcome to <PROJECTNAME> 2.0!
+MAINMENUTEXT="Welcome to <PROJECTCAPNAME> 2.0!
 You can use this simple tool for most common operations on the system.
 Please choose one of the menu items below:" 
 declare -a MAINMENU;
-MAINMENU+=("INTRODUCTION:What is <PROJECTNAME> and how to use it.")
+MAINMENU+=("INTRODUCTION:What is <PROJECTCAPNAME> and how to use it.")
 MAINMENU+=("NETWORK:Connect to WiFi, setup static IP or proxy.")
 MAINMENU+=("DISK:Manage attached disks (i.e. let expert work on it).")
 MAINMENU+=("STATUS:System status, and expert sessions monitoring.")
 MAINMENU+=("CHAT:Enter IRC chat with the expert.")
 MAINMENU+=("CONTAINER-SHELL:Start a root shell inside guest container.")
 MAINMENU+=("SHELL:Start a root local shell.")
-MAINMENU+=("EXIT:Return to previous environment.")
-
+if ! ps -p $(ps -p "$$" -o "ppid=") -o cmd= | grep -q '\.service'
+then
+ MAINMENU+=("EXIT:Return to previous environment.")
+fi
+MAINMENU+=("SHUTDOWN:Shutdown current system.")
 
 NETWORKMENUTEXT="The following menu should help you change network configuration 
 and connect to the Internet:"
@@ -46,7 +51,21 @@ declare -a DISKMENU
 DISKMENU+=("VIEW:View all available block devices.")
 DISKMENU+=("MAP:Map device to expert's container.")
 DISKMENU+=("UNMAP:Unmap device from expert's container.")
+DISKMENU+=("PRIVILEGED MODE:Allow expert to use kernel mount drivers.")
 DISKMENU+=("BACK:Return to previous menu.")
+
+PRIVMODEMENUTEXT="This menu allows to control the usage of privileged mount mode.
+This mode allows expert to call mount/unmount utils from the host as root.
+It is currently the only way to mount some filesystems that have got no
+userspace filesystem drivers. The mechanism to do such privileged calls may
+introduce security issues and is disabled by default.
+"
+declare -a PRIVMODEMENU
+PRIVMODEMENU+=("ENABLE:Enable privileged mount mode..")
+PRIVMODEMENU+=("DISABLE:Disable privileged mount mode.")
+PRIVMODEMENU+=("LOG:View log of privileged mode commands.")
+PRIVMODEMENU+=("BACK:Return to previous menu.")
+
 
 function dialog_menu()
 {
@@ -278,6 +297,39 @@ do
 	    losetup -d "/dev/loop$LOOPCHOICE1" && dialog --title "INFO" --msgbox "Succesfully unmapped $CHOICE1." $BOXHEIGHT $BOXWIDTH 
 	    continue
 	  fi
+    
+	  if [ "$DISKCHOICE" == "PRIVILEGED MODE" ]; 
+      then
+        while true
+        do
+          PMSTATE="DISABLED"
+          if [ -f "$PRIVMODECONTROLFILE" ]; then PMSTATE="ENABLED"; fi;
+          _PRIVMODEMENUTEXT="$PRIVMODEMENUTEXT
+Privileged mount mode is currently $PMSTATE.";
+          read PRIVMODECHOICE <<< $(dialog_menu "PRIVILEGED MOUNT MODE" "${_PRIVMODEMENUTEXT}" "$(declare -p PRIVMODEMENU)")
+          case "$PRIVMODECHOICE" in
+            "ENABLE")
+              touch "$PRIVMODECONTROLFILE"
+            ;;
+            "DISABLE")
+              rm -f "$PRIVMODECONTROLFILE"
+            ;;
+            "LOG")
+              if [ -f "$PRIVMODELOG" ]
+              then
+                dialog --title "PRIVILEGED OPERATIONS LOG" --textbox "$PRIVMODELOG" $BOXHEIGHT $BOXWIDTH
+              else
+                dialog --title "PRIVILEGED MOUNT MODE" --msgbox "The log file for privileged mode was not created yet. This is normal and means that there were no attempts to use privileged mode yet." $BOXHEIGHT $BOXWIDTH
+              fi
+            ;;
+            "BACK")
+             break;
+            ;;
+          esac
+        done
+        continue;
+      fi;
+        
      
 	  if [ "$DISKCHOICE" == "BACK" ]; then break; fi;
 	  feature_not_implemented
@@ -285,11 +337,16 @@ do
 	continue
         ;;
   ### OTHER COMMANDS ###
-    "EXIT") 
+     "SHUTDOWN") 
+        clear;
+        poweroff;
+        break; 
+        ;;
+     "EXIT") 
         clear; 
         break; 
         ;;
-    "INTRODUCTION")
+     "INTRODUCTION")
         dialog --title "INTRODUCTION" --textbox /usr/share/<PROJECTNAME>/introduction $BOXHEIGHT $BOXWIDTH
         continue;
         ;;
@@ -318,19 +375,10 @@ do
          SESSNAME="status"
          if ! tmux has-session -t "$SESSNAME" >/dev/null
          then
-           tmux new-session -d -n main -s "$SESSNAME" /usr/bin/<PROJECTSHORTNAME>-monitor
+           tmux new-session -n main -s "$SESSNAME" /usr/bin/<PROJECTSHORTNAME>-monitor
+         else
+           tmux attach-session -t "$SESSNAME:main"
          fi
-           
-         ls -1 "$HISTORIANDIR"/log/*.log | 
-         while read f; 
-         do
-           LOGID="${f/*\//}"; LOGID=${LOGID%%.log};       
-           if ! tmux list-windows -t "status:main" 2>&- | grep -q "$LOGID"
-           then
-             tmux new-window -a -t "status:main" -n "$LOGID" -d "tail -n80 -f \"$f\""
-           fi
-         done
-         tmux attach-session -t "$SESSNAME"
          continue;
          ;;
      *)

@@ -11,7 +11,7 @@ statusprint "Setting up isolated container.."
 
 statusprint "Copying default LXC configuration.."
 sudo mkdir -p "chroot/home/$CONTAINERUSERNAME/.local/share/lxc/$CONTAINERNAME"
-sed "s/<CONTAINERNAME>/${CONTAINERNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g;" resources/lxc/config/default.conf | sudo tee "chroot/home/$CONTAINERUSERNAME/.local/share/lxc/$CONTAINERNAME/config" >/dev/null
+sudo_file_template_copy resources/lxc/config/default.conf "chroot/home/$CONTAINERUSERNAME/.local/share/lxc/$CONTAINERNAME/config"
 sudo chown -R $USERUID:$USERGID chroot/home/$CONTAINERUSERNAME
 
 statusprint "Adding $CONTAINERUSERNAME's subuid and sudgid for unprivileged container.."
@@ -34,7 +34,7 @@ echo "${PROJECTNAME},10.0.3.2" | sudo tee chroot/etc/lxc/dnsmasq-hosts.conf >/de
 
 statusprint "Adding systemd task to setup host system on startup.."
 sudo cp -v resources/systemd/host-setup.service chroot/lib/systemd/system/host-setup.service
-sed "s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g; s/<CONTAINERNAME>/${CONTAINERNAME}/g; s/<PROJECTNAME>/${PROJECTNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g;" resources/sbin/host-setup | sudo tee chroot/sbin/host-setup >/dev/null
+sudo_file_template_copy resources/sbin/host-setup chroot/sbin/host-setup
 sudo chmod +x chroot/sbin/host-setup
 sudo ln -s /lib/systemd/system/host-setup.service chroot/etc/systemd/system/multi-user.target.wants/host-setup.service 2>/dev/null
 
@@ -52,10 +52,17 @@ sudo ln -s /lib/systemd/system/historian.service chroot/etc/systemd/system/multi
 sudo mkdir -p chroot/usr/share/${PROJECTNAME}/etc/ 2>&-
 sudo cp -v resources/etc/historian.profile chroot/usr/share/${PROJECTNAME}/etc/historian.profile
 
-
 statusprint "Adding iptables setup script.."
 sudo cp resources/sbin/host-iptables chroot/sbin/host-iptables
 sudo chmod +x chroot/sbin/host-iptables
 sudo ln -s /sbin/host-iptables chroot/etc/network/if-pre-up.d/firewall 2>&-
+
+statusprint "Adding privileged execution service and client.."
+sudo cp resources/sbin/privexecd.sh chroot/sbin/privexecd.sh
+sudo cp resources/systemd/privexec.service chroot/lib/systemd/system/privexec.service
+sudo ln -s /lib/systemd/system/privexec.service chroot/etc/systemd/system/multi-user.target.wants/privexec.service 2>/dev/null
+sudo cp resources/usr/bin/privexec chroot/usr/bin/privexec
+sudo chmod +x chroot/sbin/privexecd.sh chroot/usr/bin/privexec
+
 
 exit 0;

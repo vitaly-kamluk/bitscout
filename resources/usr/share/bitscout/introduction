@@ -1,5 +1,5 @@
-<PROJECTNAME> 2.0.
-<PROJECTNAME> is the project initially created by Vitaly Kamluk
+<PROJECTCAPNAME> 2.0.
+<PROJECTCAPNAME> is the project initially created by Vitaly Kamluk
 for remote triage and forensic analysis of compromised systems.
 It is based on idea of transparent and managed remote 
 forensic analysis which maintains trust relationship with 

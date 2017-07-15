@@ -1,17 +1,17 @@
 
 #Initiates historian session from within monitored session
 SESSPID=$$
-SESSLOGDIR="/var/log/history"
+IPCDIR="/var/host/ipc"
 (
 flock 8
-echo -e "$USER\n$SESSPID" > "$SESSLOGDIR/host.pipe"
+echo -e "$USER\n$SESSPID" > "$IPCDIR/historian.pipe"
 (
  flock 9
- ) 9>"$SESSLOGDIR/host.lock"
+ ) 9>"$IPCDIR/historian.lock"
 ) 8>"$HOME/.guest.lock"
 
 if test -t 0
 then
-  script --timing="$SESSLOGDIR/${USER}_$SESSPID.time.pipe" -f -q "$SESSLOGDIR/${USER}_$SESSPID.log.pipe";
+  script --timing="$IPCDIR/${USER}_$SESSPID.time" -f -q "$IPCDIR/${USER}_$SESSPID.log";
   exit
 fi

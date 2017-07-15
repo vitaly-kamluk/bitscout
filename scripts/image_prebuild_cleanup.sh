@@ -33,7 +33,7 @@ apt-get --yes purge deborphan
 apt-get --yes clean'
 
 statusprint "Removing .pyc files cache.."
-sudo find ./chroot/ -iname "*.pyc" 2>&- | while read f; do sudo rm "$f" 2>&-; done 
+sudo find chroot/usr/share/python* chroot/usr/lib/python* -iname "*.pyc" 2>&- | while read f; do sudo rm "$f" 2>&-; done 
 
 statusprint "Cleaning APT cache.."
 sudo rm -rf chroot/var/lib/apt/lists/*

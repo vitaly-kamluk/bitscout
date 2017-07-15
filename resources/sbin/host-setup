@@ -13,6 +13,7 @@ else
 fi
 
 CONTAINERDIR="/opt/container"
+CONTAINERHOSTDEV="/dev/host"
 CONTAINERNAME="<CONTAINERNAME>"
 CONTAINERUSER=<CONTAINERUSERNAME>
 USERSUBUID=100000
@@ -39,6 +40,11 @@ then
     #bindfs -u $USERSUBUID -g $USERSUBGID -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
     IDMAP=`( cat /etc/passwd | cut -d: -f3 | awk '{print $1"/"($1+100000)}'; cat /etc/group | cut -d: -f3 | awk '{print "@"$1"/@"($1+100000)}' ) | tr $'\n' ':'| sed 's/:$//'`
     bindfs --map=$IDMAP -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
+
+    #bind container's devices to chroot dev subdir. THis is used further by privexecd.sh
+    mkdir -p "$CONTAINERDIR/chroot/dev/host" 2>&-
+    mount --bind /dev/container "$CONTAINERDIR/chroot/dev/host"
+    mount --bind "$CONTAINERDIR/ipc" "$CONTAINERDIR/chroot/var/host/ipc"
 
     #do necessary changes TO THE CONTAINER'S (GUEST) rootfs
         #disable lxcbr0 creation within container
@@ -74,21 +80,31 @@ then
         rm "$CONTAINERDIR/chroot/sbin/historian.sh"
         rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/historian.service"
 
+        #remove privexec service from the guest
+        rm "$CONTAINERDIR/chroot/lib/systemd/system/privexec.service"
+        rm "$CONTAINERDIR/chroot/sbin/privexecd.sh"
+        rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/privexec.service"
+
+        #prepare guest-host communication directory (guest-host IPC)
+        mkdir -p "$CONTAINERDIR/ipc" 2>&-
+        mkdir -p "$CONTAINERDIR/chroot/var/host/ipc" 2>&-
+
         #prepare and mount historian compressed RAM filesystem for logs
         modprobe zram num_devices=1 
         echo 256M > /sys/block/zram0/disksize # max ram usage = 256 Mbytes
         mke2fs -q -m 0 -b 4096 -O sparse_super -L zram /dev/zram0
         mount -o relatime,noexec,nosuid /dev/zram0 "$CONTAINERDIR/history"
-        mkdir "$CONTAINERDIR/history/log"
+        mkdir -p "$CONTAINERDIR/history/log" 2>&-
 
         #create system-wide overriding profile for container to enable historian feature
         cat "$CONTAINERDIR/chroot/etc/profile" "/usr/share/<PROJECTNAME>/etc/historian.profile" > "$CONTAINERDIR/history/.profile"
 
-        #set terminal to "linux" to support colors
-        if ! grep -q "^TERM=linux$" "$CONTAINERDIR/chroot/home/<CONTAINERUSERNAME>/.profile" 
-        then
-          echo "TERM=linux" | sudo tee -a "$CONTAINERDIR/chroot/home/<CONTAINERUSERNAME>/.profile"
-        fi
+        #Add mount.priv and umount.priv tools for privileged disk operations
+        ln -s /usr/bin/privexec "$CONTAINERDIR/chroot/bin/mount.priv"
+        ln -s /usr/bin/privexec "$CONTAINERDIR/chroot/bin/umount.priv"
+
+    #remove privexec client from the host
+    rm /usr/bin/privexec
 
     #remove authorized ssh-keys from the host (shall be preserved in the container)
     rm /home/$CONTAINERUSER/.ssh/authorized_keys
@@ -110,6 +126,9 @@ then
       mknod /dev/loop$[18+$i] b 7 $[18+$i]
     done 
 
+    #bind host-guest devices to be accessible from chroot (used by mount-escalation)
+    mount --bind "$DEVDIR" "$CONTAINERDIR/chroot/$CONTAINERHOSTDEV"
+
     #start userland container after all
     sudo -H -u $CONTAINERUSER lxc-start -n "$CONTAINERNAME" -d
   fi
@@ -123,6 +142,7 @@ then
     umount "$CONTAINERDIR/chroot.user"
     umount "$CONTAINERDIR/chroot"
     umount "$CONTAINERDIR/tmp"
+    umount "$CONTAINERDIR/chroot/$CONTAINERHOSTDEV"
     if [ "$CONTAINERDIR" != "/" -a -n "$CONTAINERDIR" ]
     then
       rm -rf "$CONTAINERDIR"

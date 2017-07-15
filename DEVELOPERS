@@ -54,9 +54,8 @@ according to current stage of execution:
   welcome.sh - the initial global configuration script and welcome message.
   chroot_* - scripts to install, configure and change root filesystem
   image_*  - scripts to pack rootfs and generate ISO file
-  export_generate.sh - export configs for other systems (VPN server, expert)
-  initrd_* - these can pack/unpack initrd image. Currently not used, but may be
-             used for some fine-tuning in the future.
+  export_generate.sh - prepare configs for other systems (VPN server, expert)
+  initrd_* - these can pack/unpack initrd image. Used for initrd patches.
   chroot_enter.sh/chroot_leave.sh - these scripts can be used if you would like
              to run shell in chrooted environment. For the sake of automation it
              relies on screen tool that runs as root. To use this, run the first
@@ -73,8 +72,8 @@ Currently all scripts have to be called from the root directory of the project, 
 $ ./scripts/image_build.sh
 
 How to contribute
-We'd love to have you contrivute! Our goal is to have a builder that can build really
-tiny Live OS. It would be nice to further reduce the size of the ISO file to barely 
+We'd love to have you contribute! Our goal is to have a builder that can build smallest
+Live OS. It would be nice to further reduce the size of the ISO file to barely 
 possible minimum. If you are into it, take a look into image_prebuild_cleanup.sh.
 Perhaps you could bring it to a new level! One thing to consider: we need to keep 
 essential features, which include:
