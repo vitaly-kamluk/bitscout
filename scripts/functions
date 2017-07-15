@@ -26,9 +26,13 @@ statusprint()
   fi
 }
 
-runinchroot()
+chrootscreen_exec()
 {
-  #init
+  #chrootscreen session is used for automation where user interaction is required.
+  #currently not used, preserved for future potential use. TO use it, run chrootscreen_start.sh
+  #first, then chrootscreen_exec "command" and to close interactive session, run
+  # chrootscreen_end.sh
+  
   OPID="$RANDOM"
 
   if [ ! -d "./chroot" ]
@@ -37,8 +41,8 @@ runinchroot()
    exit 1
   fi
 
-  #create lock file
-  mkfifo chroot/tmp/lock.$OPID
+  #create pipe 
+  mkfifo chroot/tmp/pipe.$OPID && chmod o+rw chroot/tmp/pipe.$OPID
 
   #prepare command file
   echo "#!/bin/bash
@@ -46,30 +50,56 @@ runinchroot()
   cat /tmp/cmd.$OPID | tail -n +5 | sed 's/^/       /g'
   echo -e '[END]\n[<<<<<<<]'
 $1
-echo OK > /tmp/lock.$OPID" > chroot/tmp/cmd.$OPID
+echo OK > /tmp/pipe.$OPID" > chroot/tmp/cmd.$OPID
   chmod +x chroot/tmp/cmd.$OPID
 
   #start screen switcher
-  ( cat chroot/tmp/lock.$OPID && sudo screen -S $SCREENNAME -X detach ) &
+  ( cat chroot/tmp/pipe.$OPID && sudo screen -S $SCREENNAME -X detach ) &
 
   #run command file
-  sudo screen -S $SCREENNAME -X stuff "/tmp/cmd.$OPID\n"
+  sudo screen -S $SCREENNAME -X stuff "\n/tmp/cmd.$OPID\n"
   #attach to screen
   sudo screen -r $SCREENNAME
 
-  #wait for semaphore unlock
+  #wait for empty pipe 
   statusprint "Waiting for screen session to complete.."
-  #cat chroot/tmp/lock.$OPID
-  rm chroot/tmp/lock.$OPID
-  rm chroot/tmp/cmd.$OPID
+  #cat chroot/tmp/pipe.$OPID
+  rm chroot/tmp/{pipe,cmd}.$OPID
 }
 
-
-typeinchroot()
+chroot_exec()
 {
-  sudo screen -S $SCREENNAME -X stuff "$1"
-}
+  if [ ! -d "chroot/dev" ]
+  then
+    sudo mkdir -p chroot/dev
+    cd chroot/dev
+    sudo MAKEDEV std
+    cd ../../
+  fi
 
+  statusprint "Executing command in chroot:"
+  statusprint "$1"
+    echo "#!/bin/bash
+    mkdir -p /dev/pts 2>&-
+    mount -t devpts devpts /dev/pts
+    mount -t proc proc /proc
+    mount -t sysfs sysfs /sys
+    export HOME=/root
+    mkdir -p /var/lib/dbus 2>&-
+    dbus-uuidgen > /var/lib/dbus/machine-id 2>&-
+    dpkg-divert --local --rename --add /sbin/initctl >/dev/null
+    ln -s /bin/true /sbin/initctl 2>&-
+    rm /tmp/chroot_session.sh
+    $1
+    rm /var/lib/dbus/machine-id 2>&-
+    rm /sbin/initctl
+    dpkg-divert --rename --remove /sbin/initctl >/dev/null" > ./chroot/tmp/chroot_session.sh
+  
+  chmod +x ./chroot/tmp/chroot_session.sh
+  sudo chroot chroot /tmp/chroot_session.sh
+  sudo umount -lf "$PWD/chroot/dev/pts" "$PWD/chroot/sys" "$PWD/chroot/proc"
+
+}
 
 unpackinitrd()
 {
@@ -98,7 +128,6 @@ packinitrd()
     echo "[ERROR]: initrd directory not found. Aborting."
   fi
 }
-
 
 install_required_package()
 {
