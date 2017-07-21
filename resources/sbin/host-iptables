@@ -1,9 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 
 IPT="/sbin/iptables"
 INET_IFACE=eth0
 LXC_IFACE=lxcbr0
 VPN_IFACE=tap0
+
+LXC_IP=10.0.3.2
 
 # Required to enable IPv4 forwarding.
 # Redhat users can try setting FORWARD_IPV4 in /etc/sysconfig/network to true
@@ -66,8 +68,15 @@ $IPT -t nat -A POSTROUTING -o $INET_IFACE -j MASQUERADE
 $IPT -A INPUT -i $LXC_IFACE -p UDP --destination-port 67 -j ACCEPT
 
 #Redirect connections on port 22 from VPN interface to container's port 22
-$IPT -t nat -A PREROUTING -i $VPN_IFACE -p tcp --dport 22 -j DNAT --to-destination 10.0.3.2:22
-$IPT -A FORWARD -i $LXC_IFACE -o $VPN_IFACE -s 10.0.3.2 -j ACCEPT
-$IPT -A FORWARD -o $LXC_IFACE -i $VPN_IFACE -d 10.0.3.2  -j ACCEPT
+$IPT -t nat -A PREROUTING -i $VPN_IFACE -p tcp --dport 22 -j DNAT --to-destination $LXC_IP:22
+
+#
+for((i=0;i<10;i++))
+do
+  $IPT -t nat -A PREROUTING -i $VPN_IFACE -p tcp --dport $[2000+$i] -j DNAT --to-destination $LXC_IP:$[2000+$i]
+done
+
+$IPT -A FORWARD -i $LXC_IFACE -o $VPN_IFACE -s $LXC_IP -j ACCEPT
+$IPT -A FORWARD -o $LXC_IFACE -i $VPN_IFACE -d $LXC_IP  -j ACCEPT
 
 
