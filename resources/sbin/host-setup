@@ -103,6 +103,10 @@ then
         ln -s /usr/bin/privexec "$CONTAINERDIR/chroot/bin/mount.priv"
         ln -s /usr/bin/privexec "$CONTAINERDIR/chroot/bin/umount.priv"
 
+        #Create guest prompt color script
+        sed -i 's,\\\[\\e\[1;37;41m\\\]\\h,\\[\\e[1;37;44m\\]\\h,g' "$CONTAINERDIR/chroot/etc/bash.bashrc" "$CONTAINERDIR/chroot/etc/skel/.bashrc"
+
+
     #remove privexec client from the host
     rm /usr/bin/privexec
 

@@ -76,5 +76,6 @@ then
 fi
 
 sudo rm -rf chroot/tmp/*
+sudo rm -f chroot/root/.bashrc chroot/home/user/.bashrc
 
 exit 0;

@@ -394,14 +394,14 @@ Privileged mount mode is currently $PMSTATE.";
          echo "Waiting for container.."
          sudo chown "$CONTAINERUSER" `tty`
          sudo -u "$CONTAINERUSER" -H lxc-wait -n "$CONTAINERNAME" -s RUNNING 2>/dev/null
-         sudo -u "$CONTAINERUSER" -H lxc-attach -n "$CONTAINERNAME"
+         sudo -u "$CONTAINERUSER" -H lxc-attach -n "$CONTAINERNAME" -- /bin/bash --rcfile /etc/bash.bashrc -i
          clear
          continue;
          ;;
 
      "SHELL")
          clear;
-         /bin/bash -l;
+         /bin/bash --rcfile /etc/bash.bashrc -i
          continue;
          ;;
      "CHAT")

@@ -29,4 +29,11 @@ DEFTERM=xterm-color
 statusprint "Setting default TERM to $DEFTERM.."
 echo "TERM=$DEFTERM" | sudo tee chroot/etc/profile.d/terminal.sh >/dev/null
 
+statusprint "Adjusting colors and color schemes.."
+sudo cp -v ./resources/etc/vtrgb chroot/etc/console-setup/vtrgb.vga.${PROJECTSHORTNAME}
+sudo ln -fs /etc/console-setup/vtrgb.vga.${PROJECTSHORTNAME} ./chroot/etc/alternatives/vtrgb
+sudo sed -i 's/^\(\s*\)PS1=.*/\1PS1='"'"'\${debian_chroot:\+(\$debian_chroot)}\\[\\e\[1;32m\\\]\\u\\\[\\033\[00m\\\]@\\\[\\e\[1;37;41m\\\]\\h\\\[\\033\[00m\\\]:\\\[\\033\[01;34m\\\]\\w\\\[\\033\[00m\\]\$ '"'"'/g' chroot/etc/bash.bashrc chroot/etc/skel/.bashrc
+sudo cp -v ./resources/etc/dialogrc ./chroot/etc/dialogrc
+sudo rm -f ./chroot/root/.bashrc ./chroot/user/.bashrc
+
 exit 0;
