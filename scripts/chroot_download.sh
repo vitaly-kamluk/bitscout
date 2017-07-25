@@ -49,6 +49,7 @@ then
      ;; 
     *)
       statusprint "Operation aborted. Build stopped."
+      exit 1;
      ;;
   esac
 else
