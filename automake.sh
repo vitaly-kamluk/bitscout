@@ -13,6 +13,9 @@
 #welcome and initial settings:
 scripts/welcome.sh &&
 
+#prepare tools (patch, configure, etc)
+scripts/prepare_tools.sh &&
+
 #prepare rootfs directory:
 scripts/chroot_download.sh &&
 scripts/chroot_postdownload_setup.sh &&

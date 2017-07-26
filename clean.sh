@@ -13,4 +13,4 @@
 . ./scripts/functions
 
 statusprint "Removing all temporary files, except configuration.."
-sudo rm -rf ./chroot ./image ./initrd ./recycle
+sudo rm -rf ./chroot ./image ./initrd ./recycle ./debootstrap.cache ./apt.cache

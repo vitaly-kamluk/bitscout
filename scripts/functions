@@ -77,6 +77,8 @@ chroot_exec()
     cd ../../
   fi
 
+  [ ! -d "./apt.cache" ] && mkdir ./apt.cache
+  sudo mount --bind $PWD/apt.cache ./chroot/var/cache/apt/archives
   statusprint "Executing command in chroot:"
   statusprint "$1"
     echo "#!/bin/bash
@@ -97,7 +99,7 @@ chroot_exec()
   
   chmod +x ./chroot/tmp/chroot_session.sh
   sudo chroot chroot /tmp/chroot_session.sh
-  sudo umount -lf "$PWD/chroot/dev/pts" "$PWD/chroot/sys" "$PWD/chroot/proc"
+  sudo umount -lf "$PWD/chroot/dev/pts" "$PWD/chroot/sys" "$PWD/chroot/proc" "./chroot/var/cache/apt/archives"
 
 }
 

@@ -8,14 +8,11 @@ RECYCLEDIR="./recycle"
 
 statusprint "Pre-build cleanup.."
 
-#statusprint "Removing GDM kbd_mode fix.."
-
 statusprint "Removing packages which are not essential anymore.."
 if [ ${GLOBAL_RELEASESIZE} -eq 1 ]
 then
   chroot_exec 'export DEBIAN_FRONTEND=noninteractive
-  apt-get --yes ca-certificates python3-requests ssh-import-id python3-chardet python3-pkg-resources python3-six python3-urllib3
-geoip-database krb5-locales libavahi-client3 libavahi-common3 libcups2 python-samba samba-common-bin samba-libs wget'
+  apt-get --yes purge ca-certificates python3-requests ssh-import-id python3-chardet python3-pkg-resources python3-six python3-urllib3 geoip-database krb5-locales libavahi-client3 libavahi-common3 libcups2 python-samba samba-common-bin samba-libs wget'
 fi
 
 chroot_exec 'export DEBIAN_FRONTEND=noninteractive
@@ -29,8 +26,7 @@ while true; do
         break
     fi
 done
-apt-get --yes purge deborphan
-apt-get --yes clean'
+apt-get --yes purge deborphan'
 
 statusprint "Removing .pyc files cache.."
 sudo find chroot/usr/share/python* chroot/usr/lib/python* -iname "*.pyc" 2>&- | while read f; do sudo rm "$f" 2>&-; done 

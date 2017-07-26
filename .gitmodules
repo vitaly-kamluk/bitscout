@@ -1,0 +1,3 @@
+[submodule "scripts/apt-fast"]
+	path = scripts/apt-fast
+	url = http://github.com/vitaly-kamluk/apt-fast
