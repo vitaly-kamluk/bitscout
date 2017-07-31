@@ -16,24 +16,30 @@ run_debootstrap_supervised_fast()
   statusprint "Downloading $BASERELEASE:$BASEARCHITECTURE.."
 
   BASEDIR="$PWD"
-  statusprint "Building debootstrap cache dir.."
+  statusprint "Building base root filesystem.."
   DEBDIR="debootstrap.cache/dists/$BASERELEASE/main/binary-$BASEARCHITECTURE"
   mkdir -p "$DEBDIR"
 
-  statusprint "Fetching list of deb files for local repository.."
-  DEBS=$(sudo debootstrap --include=aria2,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge --print-debs --foreign --arch=$BASEARCHITECTURE $BASERELEASE chroot)
+  statusprint "Fetching the list of essential packages.."
+  DEBS=$(sudo debootstrap --include=aria2,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge --print-debs --foreign --arch=$BASEARCHITECTURE $BASERELEASE chroot )
   install_required_package aria2
   APTFAST="scripts/apt-fast/apt-fast"
 
-  statusprint "Downloading files to debootstrap cache dir.."
-  ( cd "$DEBDIR" && "$BASEDIR/$APTFAST" download $DEBS )
+  #echo $DEBS; exit 1;
+  #apt-get --print-uris -o 'APT::Architecture="'$BASEARCHITECTURE'";' --yes download $DEBS; exit 1;
 
-  statusprint "Scanning downloaded packages.."
+  statusprint "Updating local index files for $BASEARCHITECTURE architecture.."
+  "$BASEDIR/$APTFAST" -o "APT::Architecture=$BASEARCHITECTURE" update
+
+  statusprint "Downloading deb files to local cache dir.."
+  ( cd "$DEBDIR" && "$BASEDIR/$APTFAST" download $DEBS );
+
+  statusprint "Scanning/indexing downloaded packages.."
   ( cd "./debootstrap.cache" && dpkg-scanpackages . /dev/null > "dists/$BASERELEASE/main/binary-$BASEARCHITECTURE/Packages" 2>/dev/null )
   sed -i 's/^Priority: optional.*/Priority: important/g' "$DEBDIR/Packages"
 
   PKGS_SIZE=$(stat -c %s ./debootstrap.cache/dists/$BASERELEASE/main/binary-$BASEARCHITECTURE/Packages)
-  statusprint "Building mirror requirements.."
+  statusprint "Building local mirror requirements.."
 
   echo "Origin: Ubuntu
 Label: Ubuntu
@@ -50,6 +56,7 @@ $(md5sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$BASEARCHITECT
 SHA256:
 $(sha256sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$BASEARCHITECTURE/Packages" > "./debootstrap.cache/dists/$BASERELEASE/Release"
 
+  statusprint "Building rootfs based on local deb cache.."
   sudo debootstrap --no-check-gpg --foreign --arch=$BASEARCHITECTURE $BASERELEASE chroot "file:///$BASEDIR/debootstrap.cache"
 
   statusprint "Fixing keyboard-configuration GDM compatibility bug (divert kbd_mode).."
