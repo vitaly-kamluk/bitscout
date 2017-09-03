@@ -4,4 +4,4 @@
 
 . ./scripts/functions
 
-chroot_exec "/bin/bash -i"
+chroot_exec chroot "/bin/bash -i"

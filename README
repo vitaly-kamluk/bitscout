@@ -15,7 +15,7 @@ Ubuntu from LiveCD. It works perfectly fine, but we suggest you to have at least
 2Gb+ RAM in this case. To download Ubuntu LiveCD, please go here:
 https://www.ubuntu.com/download/desktop
 
-Bitscout build demo from Ubuntu LiveCD:
+Bitscout build demo from Ubuntu LiveCD (older version of Bitscout):
 https://www.youtube.com/watch?v=knA0NS9tWsY
 
 Note: the automake.sh script may ask for super-user permission. This is essential 

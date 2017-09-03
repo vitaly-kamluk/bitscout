@@ -1,3 +1,7 @@
 [submodule "scripts/apt-fast"]
 	path = scripts/apt-fast
-	url = http://github.com/vitaly-kamluk/apt-fast
+	url = https://github.com/vitaly-kamluk/apt-fast
+
+[submodule "resources/kernel/writeblocker"]
+	path = resources/kernel/writeblocker
+	url = https://github.com/vitaly-kamluk/Linux-write-blocker

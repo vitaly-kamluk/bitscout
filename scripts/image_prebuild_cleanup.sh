@@ -11,22 +11,24 @@ statusprint "Pre-build cleanup.."
 statusprint "Removing packages which are not essential anymore.."
 if [ ${GLOBAL_RELEASESIZE} -eq 1 ]
 then
-  chroot_exec 'export DEBIAN_FRONTEND=noninteractive
-  apt-get --yes purge ca-certificates python3-requests ssh-import-id python3-chardet python3-pkg-resources python3-six python3-urllib3 geoip-database krb5-locales libavahi-client3 libavahi-common3 libcups2 python-samba samba-common-bin samba-libs wget'
+  chroot_exec chroot 'export DEBIAN_FRONTEND=noninteractive;
+aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;
+apt-fast --yes purge ca-certificates python3-requests ssh-import-id python3-chardet python3-pkg-resources python3-six python3-urllib3 geoip-database krb5-locales libavahi-client3 libavahi-common3 libcups2 python-samba samba-common-bin samba-libs wget'
 fi
 
-chroot_exec 'export DEBIAN_FRONTEND=noninteractive
-apt-get --yes purge plymouth python-samba samba-common samba-common-bin samba-libs cifs-utils
-apt-get --yes install deborphan
+chroot_exec chroot 'export DEBIAN_FRONTEND=noninteractive;
+aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;
+apt-fast --yes purge plymouth python-samba samba-common samba-common-bin samba-libs cifs-utils
+apt-fast --yes install deborphan
 while true; do
     if [[ $(deborphan --guess-all) ]]; then
-        apt-get --yes purge `deborphan --guess-all`
-        apt-get --yes autoremove --purge
+        apt-fast --yes purge `deborphan --guess-all`
+        apt-fast --yes autoremove --purge
     else
         break
     fi
 done
-apt-get --yes purge deborphan'
+apt-fast --yes purge deborphan'
 
 statusprint "Removing .pyc files cache.."
 sudo find chroot/usr/share/python* chroot/usr/lib/python* -iname "*.pyc" 2>&- | while read f; do sudo rm "$f" 2>&-; done 

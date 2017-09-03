@@ -1,3 +1,4 @@
+#!/bin/bash
 #Bitscout project
 #Copyright Kaspersky Lab
 
@@ -5,10 +6,12 @@ PROJECTNAME="bitscout"
 PROJECTCAPNAME="Bitscout"
 PROJECTSHORTNAME="scout"
 BASEARCHITECTURE="i386"
+#BASEARCHITECTURE="amd64"
 BASERELEASE="xenial"
 CONTAINERNAME="forensic"
 CONTAINERUSERNAME="user"
 CRYPTOKEYSIZE=2048
+LANG=en_US.UTF-8
 
 INITRDPATH=image/casper/initrd.gz
 RESERVEDIR=reserve
@@ -26,81 +29,59 @@ statusprint()
   fi
 }
 
-chrootscreen_exec()
+chroot_unmount_fs()
 {
-  #chrootscreen session is used for automation where user interaction is required.
-  #currently not used, preserved for future potential use. TO use it, run chrootscreen_start.sh
-  #first, then chrootscreen_exec "command" and to close interactive session, run
-  # chrootscreen_end.sh
-  
-  OPID="$RANDOM"
-
-  if [ ! -d "./chroot" ]
-  then
-   statusprint "ERROR: Couldn't find chroot directory. Aborting.."
-   exit 1
-  fi
-
-  #create pipe 
-  mkfifo chroot/tmp/pipe.$OPID && chmod o+rw chroot/tmp/pipe.$OPID
-
-  #prepare command file
-  echo "#!/bin/bash
-  echo -e '[>>>>>>>]: Running the followng script in screen session:\n[START]'
-  cat /tmp/cmd.$OPID | tail -n +5 | sed 's/^/       /g'
-  echo -e '[END]\n[<<<<<<<]'
-$1
-echo OK > /tmp/pipe.$OPID" > chroot/tmp/cmd.$OPID
-  chmod +x chroot/tmp/cmd.$OPID
-
-  #start screen switcher
-  ( cat chroot/tmp/pipe.$OPID && sudo screen -S $SCREENNAME -X detach ) &
-
-  #run command file
-  sudo screen -S $SCREENNAME -X stuff "\n/tmp/cmd.$OPID\n"
-  #attach to screen
-  sudo screen -r $SCREENNAME
-
-  #wait for empty pipe 
-  statusprint "Waiting for screen session to complete.."
-  #cat chroot/tmp/pipe.$OPID
-  rm chroot/tmp/{pipe,cmd}.$OPID
+  CHROOTPATH="$1"
+  statusprint "Unmounting active chroot filesystems inside \"$CHROOTPATH\".."
+  mount | grep -q "$CHROOTPATH/sys/kernel/security" && sudo umount -f "$CHROOTPATH/sys/kernel/security"
+  sudo umount -f "$CHROOTPATH/dev/pts" "$CHROOTPATH/sys" "$CHROOTPATH/proc" "$CHROOTPATH/var/cache/apt/archives" 2>&-
+  return 0
 }
+
+#decrease aria2c default verbosity
+aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c
 
 chroot_exec()
 {
-  if [ ! -d "chroot/dev" ]
+
+  DIR="$1"
+  CMD="$2"
+  if [ ! -d "$DIR/dev" ]
   then
-    sudo mkdir -p chroot/dev
-    cd chroot/dev
+    sudo mkdir -p "$DIR/dev"
+    cd "$DIR/dev"
     sudo MAKEDEV std
     cd ../../
   fi
 
   [ ! -d "./apt.cache" ] && mkdir ./apt.cache
-  sudo mount --bind $PWD/apt.cache ./chroot/var/cache/apt/archives
-  statusprint "Executing command in chroot:"
-  statusprint "$1"
-    echo "#!/bin/bash
-    mkdir -p /dev/pts 2>&-
-    mount -t devpts devpts /dev/pts
-    mount -t proc proc /proc
-    mount -t sysfs sysfs /sys
-    export HOME=/root
-    mkdir -p /var/lib/dbus 2>&-
-    dbus-uuidgen > /var/lib/dbus/machine-id 2>&-
-    dpkg-divert --local --rename --add /sbin/initctl >/dev/null
-    ln -s /bin/true /sbin/initctl 2>&-
-    rm /tmp/chroot_session.sh
-    $1
-    rm /var/lib/dbus/machine-id 2>&-
-    rm /sbin/initctl
-    dpkg-divert --rename --remove /sbin/initctl >/dev/null" > ./chroot/tmp/chroot_session.sh
-  
-  chmod +x ./chroot/tmp/chroot_session.sh
-  sudo chroot chroot /tmp/chroot_session.sh
-  sudo umount -lf "$PWD/chroot/dev/pts" "$PWD/chroot/sys" "$PWD/chroot/proc" "./chroot/var/cache/apt/archives"
+  sudo mount --bind $PWD/apt.cache $PWD/$DIR/var/cache/apt/archives
+  trap "chroot_unmount_fs \"$PWD/$DIR\"" SIGINT SIGKILL SIGTERM
 
+  sudo chmod o+rwX "$DIR/tmp"
+  statusprint "Executing command in chroot ($DIR):"
+  statusprint "$CMD"
+  echo "#!/bin/bash
+  export LANG=$LANG
+  mkdir -p /dev/pts 2>&-
+  mount -t devpts devpts /dev/pts
+  mount -t proc proc /proc
+  mount -t sysfs sysfs /sys
+  export HOME=/root
+  mkdir -p /var/lib/dbus 2>&-
+  dbus-uuidgen > /var/lib/dbus/machine-id 2>&-
+  dpkg-divert --local --rename --add /sbin/initctl >/dev/null
+  ln -s /bin/true /sbin/initctl 2>&-
+  rm /tmp/chroot_session.sh
+  $CMD
+  rm /var/lib/dbus/machine-id 2>&-
+  rm /sbin/initctl
+  dpkg-divert --rename --remove /sbin/initctl >/dev/null" > "./$DIR/tmp/chroot_session.sh"
+
+  chmod +x "./$DIR/tmp/chroot_session.sh"
+  sudo chroot "$DIR" "/tmp/chroot_session.sh" &&
+  chroot_unmount_fs "$PWD/$DIR" &&
+  return 0
 }
 
 unpackinitrd()

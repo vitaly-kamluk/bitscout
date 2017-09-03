@@ -91,7 +91,8 @@ then
 
         #prepare and mount historian compressed RAM filesystem for logs
         modprobe zram num_devices=1 
-        echo 256M > /sys/block/zram0/disksize # max ram usage = 256 Mbytes
+        sudo blockdev --setrw /dev/zram0
+        echo 128M > /sys/block/zram0/disksize # max RAM usage in MB
         mke2fs -q -m 0 -b 4096 -O sparse_super -L zram /dev/zram0
         mount -o relatime,noexec,nosuid /dev/zram0 "$CONTAINERDIR/history"
         mkdir -p "$CONTAINERDIR/history/log" 2>&-
@@ -132,6 +133,13 @@ then
 
     #bind host-guest devices to be accessible from chroot (used by mount-escalation)
     mount --bind "$DEVDIR" "$CONTAINERDIR/chroot/$CONTAINERHOSTDEV"
+
+    #Enable KVM for the expert's container if kvm is available
+    if [ -c /dev/kvm ] 
+    then 
+     chmod o+rw /dev/kvm
+     echo "lxc.mount.entry = /dev/kvm dev/kvm none bind,create=file 0 0" >> "/home/$CONTAINERUSER/.local/share/lxc/$CONTAINERNAME/config"
+    fi
 
     #start userland container after all
     sudo -H -u $CONTAINERUSER lxc-start -n "$CONTAINERNAME" -d
