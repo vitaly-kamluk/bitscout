@@ -88,7 +88,7 @@ then
       statusprint "To use ${PROJECTNAME} remotely you will need a VPN server."
       PRINTOPTIONS=n statusprint "Please enter your designated VPN server protocol (udp/tcp), host and port. You can change it later.\nExamples:\n udp://127.0.0.1:2222\n tcp://myvpnserver:8080\nYour input: "
       read vpnuri
-      mapfile -t VPNCFG < <( echo "$vpnuri" | sed 's#^\(udp\|tcp\)://\([a-zA-Z0-9_.-]*\):\([0-9]\{1,5\}\)$#\1\n\2\n\3#' )
+      mapfile -t VPNCFG < <( echo "$vpnuri" | sed 's#^\(udp\|tcp\)://\([a-zA-Z0-9_.-]*\):\([0-9]\{1,5\}\)$#\2\n\1\n\3#' )
       vpnhost="${VPNCFG[0]}"
       vpnprotocol="${VPNCFG[1]}"
       vpnport="${VPNCFG[2]}"
