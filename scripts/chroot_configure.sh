@@ -36,4 +36,7 @@ sudo sed -i 's/^\(\s*\)PS1=.*/\1PS1='"'"'\${debian_chroot:\+(\$debian_chroot)}\\
 sudo cp -v ./resources/etc/dialogrc ./chroot/etc/dialogrc
 sudo rm -f ./chroot/root/.bashrc ./chroot/user/.bashrc
 
+statusprint "Copying WiFi manager default configuration file.."
+sudo cp -v ./resources/etc/wicd/manager-settings.conf ./chroot/etc/wicd/manager-settings.conf
+
 exit 0;
