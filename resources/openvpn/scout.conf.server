@@ -8,7 +8,7 @@ daemon
 dev tap1
 
 user nobody
-group nobody
+group nogroup
 
 ifconfig 10.1.0.1 255.255.255.0
 

@@ -38,9 +38,8 @@ statusprint "Making the image recognized as Ubuntu disk.."
 touch image/ubuntu
 mkdir image/.disk
 cd image/.disk
-touch base_installable
-echo "full_cd/single" > cd_type
-echo "Ubuntu Remix 16.04" > info  # Update version number to match your OS version
+echo "live" > cd_type
+echo "Ubuntu Remix 16.04 \"$PROJECTCAPNAME\"" > info  # Update version number to match your OS version
 echo "A project by Vitaly Kamluk, Kaspersky Lab (www.kaspersky.com)." > release_notes_url
 cd ../../
 
