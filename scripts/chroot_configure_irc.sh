@@ -5,11 +5,18 @@
 . ./scripts/functions
 
 statusprint "Copying client irssi configuration.."
-sudo_file_template_copy "resources/irssi/irssi.conf.client" chroot/etc/irssi.conf
+if [ ! -f "config/irssi/irssi.conf" ]
+then
+ file_template_copy "resources/irssi/irssi.conf.client" config/irssi/irssi.conf
+fi
+sudo cp -v config/irssi/irssi.conf chroot/etc/irssi.conf
 
 statusprint "Copying server irssi configuration.."
 mkdir config/ngircd 2>&-
-file_template_copy "resources/etc/ngircd/ngircd.conf" config/ngircd/ngircd.conf
+if [ ! -f "config/ngircd/ngircd.conf" ]
+then
+ file_template_copy "resources/etc/ngircd/ngircd.conf" config/ngircd/ngircd.conf
+fi
 
 if ! grep -q "^GLOBAL_IRCOPPASS" "config/${PROJECTNAME}-build.conf"
 then
