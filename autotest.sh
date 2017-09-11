@@ -91,7 +91,7 @@ tmux split-window -v -t "$TMSESSION:$TMWINDOW" -p 80 "socat - ./${PROJECTNAME}.m
 sleep 0.1
 
 dprint "Attaching to serial port socket.." #pane .2
-tmux split-window -h -t "$TMSESSION:$TMWINDOW" -p 75 "./resources/autotest/basic.exp && tmux send-keys -t:$TMSESSION.1 \"quit\" && tmux send-keys -t:$TMSESSION.1 \"enter\""
+tmux split-window -h -t "$TMSESSION:$TMWINDOW" -p 75 "./resources/autotest/basic.exp; tmux send-keys -t:$TMSESSION.1 \"system_powerdown\" && tmux send-keys -t:$TMSESSION.1 \"enter\" && tmux send-keys -t:$TMSESSION.1 \"quit\" && tmux send-keys -t:$TMSESSION.1 \"enter\""
 sleep 0.1
 
 dprint "Initiating boot process.."
