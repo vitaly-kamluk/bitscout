@@ -15,6 +15,7 @@
 
 ISONAME="${PROJECTNAME}-16.04.iso"
 TESTLOG="./autotest.log"
+VISIBLE=0 #show tmux interface during testing
 
 install_required_package qemu-kvm
 install_required_package socat
@@ -77,7 +78,7 @@ then
 fi
 
 dprint "Creating new local tmux session.." #pane .0
-if ! tmux new-session -d -n $TMWINDOW -s $TMSESSION "qemu-system-x86_64 -enable-kvm -name ${PROJECTNAME}-qemu -cpu host -m 256 -cdrom "./$ISONAME" -boot order=c -spice port=2001,disable-ticketing -vga cirrus -serial unix:./${PROJECTNAME}.serial.sock,server -chardev socket,id=monitordev,server,path=./${PROJECTNAME}.monitor.sock -mon chardev=monitordev -S"
+if ! tmux new-session -d -n $TMWINDOW -s $TMSESSION "qemu-system-x86_64 -enable-kvm -name ${PROJECTNAME}-qemu -cpu host -m 256 -cdrom "./$ISONAME" -boot order=c -spice port=2001,disable-ticketing -vga cirrus -serial unix:./${PROJECTNAME}.serial.sock,server -chardev socket,id=monitordev,server,path=./${PROJECTNAME}.monitor.sock -mon chardev=monitordev -S; tmux wait-for -S $TMSESSION"
 then
   dprint "Failed to start qemu in tmux session. Aborting.."
   exit 1
@@ -106,8 +107,14 @@ echo -e "ctrl-x" | vm_keyboard_pushkeys
 
 dprint "Attaching to tmux session.."
 dprint "To view the VM console use command:\n$ remote-viewer spice://localhost:2001"
-sleep 2
-tmux attach -t $TMSESSION
+if [ $VISIBLE -eq 1 ]
+then
+ sleep 2
+ tmux attach -t $TMSESSION
+else
+ dprint "Waiting for autotest completion..\n(Hint: set VISIBLE=1 in $0 to see VM interaction)."
+ tmux wait-for $TMSESSION
+fi
 
 dprint "Autotest complete. Quick summary:"
 grep "^autotest: " ./autotest.log | sed 's/^autotest://g'
