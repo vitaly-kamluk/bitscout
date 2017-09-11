@@ -15,20 +15,9 @@ fi
 statusprint "Fixing casper find_livefs method.."
 if [ -f "initrd/scripts/casper" ]
 then
-  if ! grep -q "bitscoutfix_find_livefs()" initrd/scripts/casper
+  if ! grep -q "${PROJECTNAME}-${GLOBAL_BUILDID}" initrd/scripts/casper
   then
-    sed -i 's/^find_livefs() {/bitscoutfix_find_livefs() {/' initrd/scripts/casper
-    echo "
-find_livefs() {
-  srcdevice=\$(blkid -L \"${PROJECTNAME}-${GLOBAL_BUILDID}\")
-  if [ -z \"\$(blkid \$srcdevice)\" ] && blkid \${srcdevice%%?} | grep -q \"${PROJECTNAME}-${GLOBAL_BUILDID}\"
-  then
-    srcdevice=\"\${srcdevice%%?}\"
-  fi
-  mount -t \$(get_fstype \"\$srcdevice\") -o ro,noatime \"\$srcdevice\" \"\$mountpoint\"
-  echo \"\$mountpoint\"
-  return 0
-}" >> initrd/scripts/casper
+    sed -i 's/^\( *\)\(mount -t ${fstype} -o ro,noatime "${devname}" $mountpoint || continue\)/\1blkid "${devname}" | grep -q "'"${PROJECTNAME}-${GLOBAL_BUILDID}"'" || continue\n\1\2/' initrd/scripts/casper
   fi
 fi
 
