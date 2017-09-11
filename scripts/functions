@@ -162,6 +162,7 @@ file_template_copy()
   SRC="$1"
   DST="$2"
   statusprint "Copying template-based file: \"$1\" -> \"$2\""
+  [ ! -d "${DST%/*}" ] && $SUDO mkdir -p "${DST%/*}"
   sed "s/<PROJECTNAME>/${PROJECTNAME}/g;  s/<PROJECTCAPNAME>/${PROJECTCAPNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<CONTAINERNAME>/${CONTAINERNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g;" "$SRC" | $SUDO tee "$DST" >/dev/null
 }
 
