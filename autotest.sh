@@ -26,8 +26,7 @@ install_required_package expect
 
 dprint()
 {
-  echo -e "$*" >> "$TESTLOG"
-  echo -e "$*"
+  echo -e "$*" | tee -a "$TESTLOG"
 }
 
 DATE=`TZ=UTC date +%c`
@@ -116,5 +115,5 @@ else
  tmux wait-for $TMSESSION
 fi
 
-dprint "Autotest complete. Quick summary:"
+echo "Autotest complete. Quick summary:"
 grep "^autotest: " ./autotest.log | sed 's/^autotest://g'

@@ -7,16 +7,16 @@ spawn socat STDIO,echo=1 UNIX-CONNECT:./bitscout.serial.sock
 set socatpid [exp_pid]
 
 if { $socatpid > 0 } {
-  send_log "autotest: Bitscout serial port socket opened OK."
+  send_log "autotest: Bitscout serial port socket was opened. QEMU serial port: OK"
 } else {
-  send_log "\nautotest: CRITICAL, failed to connect to bitscout serial port socket."
+  send_log "\nautotest: CRITICAL, failed to connect to bitscout serial port socket. QEMU serial port: ERROR"
   exit
 }
 
 send_log "\nBooting the system..\n"
 expect { 
-  "bitscout-host login:" { send_log "\nautotest: Login prompt found. System booted OK.\n" }
-  timeout { send_log "\nautotest: Timeout expired while waiting for login prompt. Aborting..\n"; exit }
+  "bitscout-host login:" { send_log "\nautotest: Login prompt found. System boot: OK\n" }
+  timeout { send_log "\nautotest: Timeout expired while waiting for login prompt. System boot: ERROR\n"; exit }
 }
 send "user\n"
 expect "Password: "
@@ -27,9 +27,9 @@ sleep 1
 send_log "\nChecking if LXC container \"forensic\" is running..\n"
 send "lxc-ls --fancy\n"
 expect {
-  "forensic *STOPPED" { send_log "\nautotest: LXC container is DOWN.\n"; exit } 
-  "forensic *RUNNING" { expect "\n"; send_log "autotest: LXC container is OK.\n" }
-  timeout { send_log "autotest: CRITICAL, no container identified."; exit }
+  "forensic *STOPPED" { send_log "\nautotest: LXC container is down. LXC check: ERROR\n"; exit } 
+  "forensic *RUNNING" { expect "\n"; send_log "autotest: LXC container is up. LXC check: OK\n" }
+  timeout { send_log "autotest: CRITICAL, timeout waiting for container. LXC check: ERROR"; exit }
 }
 
 #2. Test services status: openvpn, ssh, privexecd, historian, ...
@@ -40,22 +40,22 @@ send "sudo -i\n\n"
 #check openvpn@scout.service
 send "systemctl --no-pager status openvpn@scout.service\n"
 expect {
-  "Active:*failed" { expect "\n"; send_log "\nautotest: Openvpn service is DOWN.\n" }
-  "Active:*active (running)" { expect "\n"; send_log "\nautotest: Openvpn service is OK.\n" }
+  "Active:*failed" { expect "\n"; send_log "\nautotest: OpenVPN service is not running. OpenVPN: ERROR\n" }
+  "Active:*active (running)" { expect "\n"; send_log "\nautotest: OpenVPN service is running. OpenVPN: OK\n" }
 }
 
 #check privexec.service
 send "systemctl --no-pager status privexec.service\n"
 expect {
-  "Active:*failed" { expect "\n"; send_log "\nautotest: Privexec service is DOWN.\n" }
-  "Active:*active (running)" { expect "\n"; send_log "\nautotest: Privexec service is OK.\n" }
+  "Active:*failed" { expect "\n"; send_log "\nautotest: PrivExec service is not running. PrivExec: ERROR\n" }
+  "Active:*active (running)" { expect "\n"; send_log "\nautotest: PrivExec service is running. PrivExec: OK\n" }
 }
 
 #check historian.service
 send "systemctl --no-pager status historian.service\n"
 expect {
-  "Active:*failed" { expect "\n"; send_log "\nautotest: Historian service is DOWN.\n" }
-  "Active:*active (running)" { expect "\n"; send_log "\nautotest: Historian service is OK.\n" }
+  "Active:*failed" { expect "\n"; send_log "\nautotest: Historian service is not running. Hostorian: ERROR\n" }
+  "Active:*active (running)" { expect "\n"; send_log "\nautotest: Historian service is running. Historian: OK\n" }
 }
 
 send_log "Leaving root user session..\n"
@@ -68,16 +68,16 @@ send_log "Checking guest system services status..\n"
 #entering the guest container
 send "lxc-attach -n forensic\n"
 expect { 
-  "root*bitscout*\$ " { send_log "\nautotest: Guest LXC container is OK.\n" }
-  timeout { send_log "\nautotest: CRITICAL, couldn't enter the guest LXC container.\n"; exit } 
+  "root*bitscout*\$ " { send_log "\nautotest: Guest LXC container shell is available. LXC shell: OK\n" }
+  timeout { send_log "\nautotest: CRITICAL, couldn't enter the container shell. LXC shell: ERROR\n"; exit } 
 }
 
 sleep 0.3
 #check ssh.service
 send "systemctl --no-pager status ssh.service\n"
 expect {
-  "Active:*failed" { expect "\n"; send_log "\nautotest: Container's ssh service is DOWN.\n" }
-  "Active:*active (running)" { expect "\n"; send_log "\nautotest: Container's ssh service is OK.\n" }
+  "Active:*failed" { expect "\n"; send_log "\nautotest: Container's ssh service is not running. LXC SSH: ERROR\n" }
+  "Active:*active (running)" { expect "\n"; send_log "\nautotest: Container's ssh service is running. LXC SSH: OK\n" }
 }
 
 #The following is optional, uncomment the next line if you want to do manual checks
@@ -89,3 +89,4 @@ sleep 0.3
 send "sudo -i\n\n"
 send "poweroff\n"
 
+send_log "autotest: Test graceful exit: OK"
