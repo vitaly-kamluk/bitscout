@@ -25,8 +25,8 @@ install_required_package expect
 
 dprint()
 {
-  echo $* >> "$TESTLOG"
-  echo $*
+  echo -e "$*" >> "$TESTLOG"
+  echo -e "$*"
 }
 
 DATE=`TZ=UTC date +%c`
@@ -79,8 +79,10 @@ fi
 dprint "Creating new local tmux session.." #pane .0
 if ! tmux new-session -d -n $TMWINDOW -s $TMSESSION "qemu-system-x86_64 -enable-kvm -name ${PROJECTNAME}-qemu -cpu host -m 256 -cdrom "./$ISONAME" -boot order=c -spice port=2001,disable-ticketing -vga cirrus -serial unix:./${PROJECTNAME}.serial.sock,server -chardev socket,id=monitordev,server,path=./${PROJECTNAME}.monitor.sock -mon chardev=monitordev -S"
 then
-  echo "Failed to start qemu in tmux session. Aborting.."
+  dprint "Failed to start qemu in tmux session. Aborting.."
   exit 1
+else
+  dprint "Started qemu in tmux session."
 fi
 sleep 0.3
 
@@ -89,7 +91,7 @@ tmux split-window -v -t "$TMSESSION:$TMWINDOW" -p 80 "socat - ./${PROJECTNAME}.m
 sleep 0.1
 
 dprint "Attaching to serial port socket.." #pane .2
-tmux split-window -h -t "$TMSESSION:$TMWINDOW" -p 75 "./resources/autotest/basic.exp"
+tmux split-window -h -t "$TMSESSION:$TMWINDOW" -p 75 "./resources/autotest/basic.exp && tmux send-keys -t:$TMSESSION.1 \"quit\" && tmux send-keys -t:$TMSESSION.1 \"enter\""
 sleep 0.1
 
 dprint "Initiating boot process.."
@@ -103,6 +105,8 @@ echo -n " console=tty0 console=ttyS0,115200" | vm_keyboard_typetext
 echo -e "ctrl-x" | vm_keyboard_pushkeys
 
 dprint "Attaching to tmux session.."
+dprint "To view the VM console use command:\n$ remote-viewer spice://localhost:2001"
+sleep 2
 tmux attach -t $TMSESSION
 
 dprint "Autotest complete. Quick summary:"
