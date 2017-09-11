@@ -17,6 +17,7 @@ ISONAME="${PROJECTNAME}-16.04.iso"
 TESTLOG="./autotest.log"
 
 install_required_package qemu-kvm
+install_required_package socat
 install_required_package tmux
 install_required_package expect
 
@@ -29,7 +30,7 @@ dprint()
 }
 
 DATE=`TZ=UTC date +%c`
-dprint "autotest: started new test on $DATE"
+dprint "autotest: Started new autotest on $DATE"
 
 TMSESSION="$PROJECTNAME"
 TMWINDOW="qemu"
@@ -76,7 +77,11 @@ then
 fi
 
 dprint "Creating new local tmux session.." #pane .0
-tmux new-session -d -n $TMWINDOW -s $TMSESSION "qemu-system-x86_64 -enable-kvm -name ${PROJECTNAME}-qemu -cpu host -m 256 -cdrom "./$ISONAME" -boot order=c -spice port=2001,disable-ticketing -vga cirrus -serial unix:./${PROJECTNAME}.serial.sock,server -chardev socket,id=monitordev,server,path=./${PROJECTNAME}.monitor.sock -mon chardev=monitordev -S"
+if ! tmux new-session -d -n $TMWINDOW -s $TMSESSION "qemu-system-x86_64 -enable-kvm -name ${PROJECTNAME}-qemu -cpu host -m 256 -cdrom "./$ISONAME" -boot order=c -spice port=2001,disable-ticketing -vga cirrus -serial unix:./${PROJECTNAME}.serial.sock,server -chardev socket,id=monitordev,server,path=./${PROJECTNAME}.monitor.sock -mon chardev=monitordev -S"
+then
+  echo "Failed to start qemu in tmux session. Aborting.."
+  exit 1
+fi
 sleep 0.3
 
 dprint "Attaching to monitor socket.." #pane .1
@@ -99,3 +104,6 @@ echo -e "ctrl-x" | vm_keyboard_pushkeys
 
 dprint "Attaching to tmux session.."
 tmux attach -t $TMSESSION
+
+dprint "Autotest complete. Quick summary:"
+
