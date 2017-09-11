@@ -106,4 +106,4 @@ dprint "Attaching to tmux session.."
 tmux attach -t $TMSESSION
 
 dprint "Autotest complete. Quick summary:"
-
+grep "^autotest: " ./autotest.log | sed 's/^autotest://g'

@@ -5,7 +5,7 @@ set timeout 60
 send_log "\nautotest: Connecting to bitscout serial socket..\n"
 spawn socat STDIO,echo=1 UNIX-CONNECT:./bitscout.serial.sock
 
-send_log "\nautotest: Logging into the system tty0..\n"
+send_log "\nautotest: Booting the system..\n"
 expect { 
   "bitscout-host login:" { send_log "\nautotest: Login prompt found. System was booted successfully.\n" }
   timeout { send_log "\nautotest: Timeout expired while waiting for login prompt. Aborting..\n"; exit }
