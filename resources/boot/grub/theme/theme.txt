@@ -1,0 +1,41 @@
+desktop-image: "background.jpg"
+title-text: "Boot Menu"
+
+terminal-box: "terminal_box_*.png"
+terminal-font: "DejaVu Sans 18"
+
++ boot_menu {
+  left = 25%
+  width = 50%
+  top = 25%
+  height = 50%	
+
+  item_font = "DejaVu Sans 18"
+  item_color = "#bbbbbb"
+  item_height = 48
+  item_icon_space = 8
+  item_spacing = 2
+
+  selected_item_font = "DejaVu Sans 18"
+  selected_item_color= "#ffffff"
+  selected_item_pixmap_style = "select_*.png"
+
+  icon_height = 48
+  icon_width = 48
+
+  scrollbar = true
+  scrollbar_width = 20
+  scrollbar_thumb = "slider_*.png"
+}
+
++ progress_bar {
+  id = "__timeout__"
+  left = 25%
+  top = 85%
+  height = 10
+  width = 50%
+  fg_color = "#ffffff"
+  bg_color = "#203030"
+  border_color = "#ffffff"
+}
+

@@ -1,0 +1,32 @@
+remote <SERVER_IP> # set server's external IP here!
+port <SERVER_PORT> #set server's listening port here!
+proto <SERVER_PROTOCOL> #set comms protocol: tcp-client or udp. udp is recommended as the fastest option.
+dev tap0
+
+client
+resolv-retry infinite
+mute-replay-warnings
+verb 3
+persist-tun
+persist-key
+tun-mtu 1500
+
+ns-cert-type server
+
+cipher AES-256-CBC
+
+tls-client
+dh "/etc/openvpn/<PROJECTSHORTNAME>/dh<CRYPTOKEYSIZE>.pem"
+tls-auth "/etc/openvpn/<PROJECTSHORTNAME>/ta.key" 1
+ca "/etc/openvpn/<PROJECTSHORTNAME>/ca.crt"
+cert "/etc/openvpn/<PROJECTSHORTNAME>/<PROJECTSHORTNAME>.crt"
+key "/etc/openvpn/<PROJECTSHORTNAME>/<PROJECTSHORTNAME>.key"
+comp-lzo
+
+log-append "/var/log/openvpn.<PROJECTSHORTNAME>.log"
+status "/var/run/openvpn.<PROJECTSHORTNAME>.status" 1
+
+tls-timeout 40
+
+pull
+

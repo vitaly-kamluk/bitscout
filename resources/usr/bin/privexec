@@ -1,0 +1,10 @@
+#!/bin/bash
+PRIVLOCK=/var/host/ipc/privexec.lock
+PRIVPIPE=/var/host/ipc/privexec.pipe
+(
+ flock 9
+ S="$# $0"
+ for arg in "$@"; do S="$S \"$arg\""; done;
+ echo "$S" > "$PRIVPIPE"
+ cat "$PRIVPIPE"
+) 9> "$PRIVLOCK"

@@ -1,0 +1,6 @@
+[submodule "resources/kernel/writeblocker"]
+	path = resources/kernel/writeblocker
+	url = git://github.com/vitaly-kamluk/Linux-write-blocker
+[submodule "resources/apt-fast"]
+	path = resources/apt-fast
+	url = git://github.com/vitaly-kamluk/apt-fast

@@ -1,0 +1,7 @@
+#!/bin/sh
+clear;
+echo "Starting integrity check script.."
+cd "$1"
+md5sum -c "$2" && echo "Integrity check result: GOOD" || echo "Integrity check result: BAD (some files are broken)."
+echo "The system will restart automatically in 30 seconds.."
+sleep 30

@@ -1,0 +1,4 @@
+deb-src http://archive.ubuntu.com/ubuntu/ <BASERELEASE> main restricted universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ <BASERELEASE>-updates main restricted universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ <BASERELEASE>-security main restricted universe multiverse
+deb-src http://archive.ubuntu.com/ubuntu/ <BASERELEASE>-backports main restricted universe multiverse

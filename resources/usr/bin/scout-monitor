@@ -1,0 +1,63 @@
+#!/bin/bash
+DELAY=10
+
+COLS=`tput cols`
+LINES=`tput lines`
+
+hr() {
+  local start=$'\e(0' end=$'\e(B' line='q'
+  local cols=${COLUMNS:-$(tput cols)}
+  while ((${#line} < cols)); do line+="$line"; done
+  printf '%s%s%s\n' "$start" "${line:0:cols}" "$end"
+}
+
+align_center() {
+  local msglen=`echo "$1"|wc -c` spaces=""
+  spacecount=$[($COLS-$msglen)/2]
+  for ((i=0;i<$spacecount;i++)); do spaces+=" "; done
+  printf "$spaces$1$spaces\n"
+}
+
+monitor_new_sessions() {
+  HISTORIANDIR=/opt/container/history
+  TRACKLIST=/var/run/scout-monitor.$$.tracklist
+  ls -1 "$HISTORIANDIR"/log/*.log 2>/dev/null |
+  while read f; 
+  do
+    LOGID="${f/*\//}"; LOGID=${LOGID%%.log};
+    if ! ( grep -q "$LOGID" "$TRACKLIST" 2>/dev/null || tmux list-windows -t "status:main" 2>&- | grep -q "$LOGID" )
+    then
+      tmux new-window -a -t "status:main" -n "$LOGID" -d "tail -n80 -f \"$f\"" 2>&-
+      echo "$LOGID" >> "$TRACKLIST"
+    fi
+  done
+}
+
+
+while true
+do
+  clear;
+  hr
+  align_center "SIMPLE STATUS MONITOR"
+  hr
+  echo -e "This is lightweight status monitor script.\nTo close current status monitor window, please press Ctrl+C. If you see multiple tabs/windows in the bottom green line it means there is a live session monitoring available. To switch to another tab and monitor live session, please press Ctrl+b and then press the key with respective tab number (digits from 0 to 9). To close all tabs press Ctrl+b and then press 'd'."
+  hr
+  echo "Hostname: "`hostname`
+  echo "System uptime: "`uptime`
+  cat /proc/meminfo | awk '/MemTotal/ {print "Memory Total: " $2/1024" MB"}; /MemAvailable/ {print "Memory Avail: " $2/1024" MB"};'
+  hr 
+  echo "Network interfaces and their routing tables:"
+  ip -o addr show| grep 'inet ' | awk '{print $2" "$4}' | while read iface ip;
+  do
+    echo " $iface $ip"
+    ip route show dev "$iface" | sed 's/^/    /g'
+  done
+  hr  
+  echo "Latest kernel messages:"
+  dmesg | tail -n10 |cut -c -$COLS
+  hr
+  echo "Latest OpenVPN messages:"
+  tail -n10 /var/log/openvpn.scout.log
+  monitor_new_sessions
+  sleep $DELAY
+done

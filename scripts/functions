@@ -1,0 +1,227 @@
+#!/bin/bash
+#Bitscout project
+#Copyright Kaspersky Lab
+
+PROJECTNAME="bitscout"
+PROJECTCAPNAME="Bitscout"
+PROJECTSHORTNAME="scout"
+BASEARCHITECTURE="i386"
+#BASEARCHITECTURE="amd64"
+BASERELEASE="xenial"
+CONTAINERNAME="forensic"
+CONTAINERUSERNAME="user"
+CRYPTOKEYSIZE=2048
+LANG=en_US.UTF-8
+
+INITRDPATH=image/casper/initrd.gz
+RESERVEDIR=reserve
+SCREENNAME=${PROJECTNAME}_chroot #creates a screen session for interactive configuration. see scripts/chroot_enter.sh and scripts/chroot_leave.sh
+
+[ -f "config/$PROJECTNAME-build.conf" ] && . "config/$PROJECTNAME-build.conf"
+
+statusprint()
+{
+  if [ "$QUIET" == "true" ]
+  then
+    return 0
+  else
+    echo -e$PRINTOPTIONS "$1"
+  fi
+}
+
+create_dir_safe()
+{
+  [ ! -d "$1" ] && sudo mkdir -p "$1" 2>&-
+  return 0
+}
+
+chroot_mount_cache()
+{
+  CHROOTPATH="$1"
+  if [ -z "$CHROOTPATH" ]
+  then
+    statusprint "Failed to mount cache dirs: chroot path cannot be empty!" &&
+    return 1
+  fi
+  statusprint "Mounting chroot cache directories into \"$CHROOTPATH\".." &&
+ 
+  statusprint "Mounting ./cache/apt.cache.." &&
+  create_dir_safe ./cache/apt.cache &&
+  create_dir_safe $CHROOTPATH/var/cache/apt/archives &&
+  sudo mount --bind $PWD/cache/apt.cache $CHROOTPATH/var/cache/apt/archives &&
+
+  statusprint "Mounting ./cache/apt.lists.." &&
+  create_dir_safe ./cache/apt.lists &&
+  create_dir_safe $CHROOTPATH/var/lib/apt/lists &&
+  sudo mount --bind $PWD/cache/apt.lists $CHROOTPATH/var/lib/apt/lists && return 0 || return 1
+
+}
+
+chroot_unmount_cache()
+{
+  CHROOTPATH="$1"
+  if [ -z "$CHROOTPATH" ]
+  then
+    statusprint "Failed to unmount cache dirs: chroot path cannot be empty!" &&
+    return 1
+  fi
+
+  statusprint "Unmounting chroot cache directories inside \"$CHROOTPATH\".."
+  sudo umount -f "$CHROOTPATH/var/cache/apt/archives" "$CHROOTPATH/var/lib/apt/lists" 2>&-
+  return 0
+}
+
+chroot_unmount_fs()
+{
+  CHROOTPATH="$1"
+  statusprint "Unmounting active chroot filesystems inside \"$CHROOTPATH\".."
+  mount | grep -q "$CHROOTPATH/sys/kernel/security" && sudo umount -f "$CHROOTPATH/sys/kernel/security"
+  sudo umount -f "$CHROOTPATH/dev/pts" "$CHROOTPATH/sys" "$CHROOTPATH/proc" 2>&-
+  chroot_unmount_cache "$1"
+  return 0
+}
+
+#decrease aria2c default verbosity
+aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c
+
+chroot_exec()
+{
+
+  DIR="$1"
+  CMD="$2"
+  if [ ! -d "$DIR/dev" ]
+  then
+    sudo mkdir -p "$DIR/dev" &&
+    cd "$DIR/dev" &&
+    sudo MAKEDEV std &&
+    cd ../../ 
+  fi
+
+  chroot_mount_cache "$PWD/$DIR" &&
+  trap "chroot_unmount_fs \"$PWD/$DIR\"" SIGINT SIGKILL SIGTERM &&
+
+  sudo chmod o+rwX "$DIR/tmp" &&
+  statusprint "Executing command in chroot ($DIR):" &&
+  statusprint "$CMD" &&
+  echo "#!/bin/bash
+  export LANG=$LANG
+  mkdir -p /dev/pts 2>&-
+  mount -t devpts devpts /dev/pts
+  mount -t proc proc /proc
+  mount -t sysfs sysfs /sys
+  export HOME=/root
+  mkdir -p /var/lib/dbus 2>&-
+  dbus-uuidgen > /var/lib/dbus/machine-id 2>&-
+  dpkg-divert --local --rename --add /sbin/initctl >/dev/null
+  ln -s /bin/true /sbin/initctl 2>&-
+  rm /tmp/chroot_session.sh
+  aria2c(){ /usr/bin/aria2c --console-log-level=warn \"\$@\";}; export -f aria2c
+  $CMD
+  CMDRETURN=\$?
+  rm /var/lib/dbus/machine-id 2>&-
+  rm /sbin/initctl
+  dpkg-divert --rename --remove /sbin/initctl >/dev/null
+  exit \$CMDRETURN " > "./$DIR/tmp/chroot_session.sh" &&
+
+  chmod +x "./$DIR/tmp/chroot_session.sh" &&
+  if sudo chroot "$DIR" "/tmp/chroot_session.sh"
+  then
+      statusprint "Info: command in chroot succeeded."
+    chroot_unmount_fs "$PWD/$DIR" && return 0
+  else
+    statusprint "Warning: command in chroot failed."
+    chroot_unmount_fs "$PWD/$DIR" && return 1
+  fi &&
+
+  return 0
+}
+
+unpackinitrd()
+{
+  statusprint "Unpacking initrd image from $INITRDPATH.."
+  rm -rf ./initrd
+  mkdir ./initrd
+  cd ./initrd
+  if [ -f "../$INITRDPATH" ]
+  then
+    gzip -dc "../$INITRDPATH" | cpio -id
+  else
+    echo "[ERROR]: initrd image not found in $INITRDPATH."
+  fi
+  cd ..
+}
+
+packinitrd()
+{
+  statusprint "Packing initrd image into $INITRDPATH.."
+  if [ -d "./initrd" ]
+  then
+    cd ./initrd
+    find . | cpio -o -H newc | gzip -7 -c | sudo tee "../$INITRDPATH" >/dev/null
+    cd ..
+  else
+    echo "[ERROR]: initrd directory not found. Aborting."
+  fi
+}
+
+install_required_package()
+{
+  PKGNAME="$1"
+  if ! dpkg-query --show --showformat='${db:Status-Status}\n' $PKGNAME | grep -q "^installed$"
+  then
+    statusprint "$PKGNAME was not found your system. It is required to continue.\nPlease authorize installing $PKGNAME.."
+    if ! apt-cache search "$PKGNAME" | grep -q "$PKGNAME"
+    then
+      #let's check that universe repository is enabled. required for some packages, i.e. easy-rsa 
+      REPOSITORY="universe"
+      if ! apt-cache policy | grep -q "$REPOSITORY"
+      then
+        statusprint "Enabling additional repository ($REPOSITORY) for your system.."
+        OSCODENAME=`lsb_release -c| awk '{print $2}'`
+        sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu/ $OSCODENAME $REPOSITORY"
+
+        statusprint "Updating host system repository index.." 
+        sudo apt -y update
+      fi
+    fi;
+    if ! sudo apt -y install "$PKGNAME"; 
+    then
+      statusprint "Updating host system repository index.." 
+      sudo apt -y update
+      if ! sudo apt -y install "$PKGNAME"; 
+      then 
+        statusprint "ERROR: Couldn't install/find $PKGNAME. Aborting.."
+        exit 1;
+      fi;
+    fi;
+  fi
+}
+
+filelist_exists()
+{
+  statusprint "Checking if file (filelist) exists.."
+  for i in $@
+  do
+    if [ ! -f "$i" ]; then
+      statusprint "File is NOT FOUND: $i"
+      return 1;
+    else
+      statusprint "File exists: $i"
+    fi;
+  done;
+  return 0;
+}
+
+file_template_copy()
+{
+  SRC="$1"
+  DST="$2"
+  statusprint "Copying template-based file: \"$1\" -> \"$2\""
+  [ ! -d "${DST%/*}" ] && $SUDO mkdir -p "${DST%/*}"
+  sed "s/<PROJECTNAME>/${PROJECTNAME}/g;  s/<PROJECTCAPNAME>/${PROJECTCAPNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<CONTAINERNAME>/${CONTAINERNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g; s/<BASERELEASE>/${BASERELEASE}/" "$SRC" | $SUDO tee "$DST" >/dev/null
+}
+
+sudo_file_template_copy()
+{
+  SUDO="sudo" file_template_copy "$1" "$2"
+}

@@ -1,0 +1,7 @@
+#!/bin/sh
+export HOME=/root
+[ -f "$HOME/.profile" ] && . $HOME/.profile
+
+sleep 1
+chvt 2
+/usr/bin/<PROJECTSHORTNAME>-manage
