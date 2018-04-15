@@ -23,6 +23,7 @@ scripts/chroot_install_base.sh &&
 scripts/chroot_install_kernel.sh &&
 scripts/chroot_install_forensics.sh &&
 scripts/chroot_install_remoteaccess.sh &&
+scripts/chroot_install_userchoice.sh &&
 
 #configure target system:
 scripts/chroot_create_user.sh &&
