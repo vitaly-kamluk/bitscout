@@ -26,6 +26,9 @@ fi
 
 if [ "$1" == "start" ]
 then
+  #set opened files ulimit
+  ulimit -n 200000
+
   if ! mount | grep -q "$CONTAINERDIR/tmp"
   then
     #making and mounting tmpfs for overlayfs work dirs
@@ -149,9 +152,6 @@ then
      chmod o+rw /dev/kvm
      echo "lxc.mount.entry = /dev/kvm dev/kvm none bind,create=file 0 0" >> "/home/$CONTAINERUSER/.local/share/lxc/$CONTAINERNAME/config"
     fi
-
-    #set opened files ulimit
-    ulimit -n 60000
 
     #start userland container after all
     sudo -H -u $CONTAINERUSER lxc-start -n "$CONTAINERNAME" -d
