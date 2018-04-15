@@ -9,7 +9,7 @@ PRIVLOCK="$IPCDIR/privexec.lock"
 PRIVLOG=/opt/container/history/log/privexecd.log
 
 CMD_WHITELIST=( "/bin/mount" "/bin/umount" )
-FS_WHITELIST=( "ntfs" "ntfs-3g" "vfat" "exfat" "ext" "ext2" "ext3" "ext4" "iso9660" "udf" "xfs" "resiserfs" "hfs" "hfsplus"  )
+FS_WHITELIST=( "ntfs" "ntfs-3g" "vfat" "exfat" "ext" "ext2" "ext3" "ext4" "iso9660" "udf" "xfs" "reiserfs" "hfs" "hfsplus"  )
 declare -a LINE
 
 log_add()
@@ -44,12 +44,12 @@ privileged_bin_mount()
     return 1; 
   fi;
 
-  SRC=${LINE[$ARGLEN]}
-  DST=${LINE[$ARGLEN+1]}
+  SRC="/opt/container/chroot${LINE[$ARGLEN]}"
+  DST="/opt/container/chroot${LINE[$ARGLEN+1]}"
   if is_valid_path "$SRC" && is_valid_path "$DST" && is_valid_option "$MOUNTOPT" && is_valid_option "$FSTYPE"
   then
-    log_add "Running: chroot \"/opt/container/chroot\" mount -t \"$FSTYPE\" -o \"$MOUNTOPT\" --source \"$SRC\" --target \"$DST\" 2>&1"
-    chroot "/opt/container/chroot" mount -v -t "$FSTYPE" -o "$MOUNTOPT" --source "$SRC" --target "$DST" 2>&1 >"$PRIVPIPE"
+    log_add "Running: mount -t \"$FSTYPE\" -o \"$MOUNTOPT\" --source \"$SRC\" --target \"$DST\" 2>&1"
+    mount -v -t "$FSTYPE" -o "$MOUNTOPT" --source "$SRC" --target "$DST" 2>&1 >"$PRIVPIPE"
     return 0;
   else
     return 1;
@@ -58,8 +58,15 @@ privileged_bin_mount()
 
 privileged_bin_umount()
 {
-  log_add "Running: chroot \"/opt/container/chroot\" umount \"${LINE[2]}\" 2>&1"
-  chroot "/opt/container/chroot" umount "${LINE[2]}" 2>&1 >"$PRIVPIPE"
+  SRC="/opt/container/chroot${LINE[2]}"
+  if is_valid_path "$SRC"
+  then
+    log_add "Running: umount \"${SRC}\" 2>&1"
+    umount "${SRC}" 2>&1 >"$PRIVPIPE"
+    return 0
+  else
+    return 1
+  fi
 }
 
 is_fs_authorized()
@@ -74,7 +81,11 @@ is_cmd_authorized()
 
 is_valid_path()
 {
- echo "$1" | grep -q "^[/a-zA-Z0-9_. ()=+-]\{2,256\}$" && return 0
+ if echo "$1" | grep -q "^[/a-zA-Z0-9_. ()=+-]\{2,256\}$"
+ then
+  RP=`realpath "$1"`
+  echo $RP | grep -q "^/opt/container/chroot/" && return 0
+ fi
  log_add "Path validation failed: $1"
  return 1
 }
@@ -101,14 +112,18 @@ do
   fi
 
   CMDPATH=${LINE[1]}; CMDPATH=${CMDPATH%%.priv}
-  if is_valid_path "$CMDPATH" && is_cmd_authorized "$CMDPATH"
+  if is_cmd_authorized "$CMDPATH"
   then
     log_add "Request to run privileged $CMDPATH"
     PROCNAME=${CMDPATH////_}
-    if ! eval "privileged$PROCNAME"; then log_add "Failed to run privileged$PROCNAME"; fi;
+    if ! eval "privileged$PROCNAME"
+    then 
+      log_add "Failed to run privileged$PROCNAME"
+      echo -e "Failed to run privileged command.\n Hints:\n  1. Use \"-o ro\" option when mounting\n  2. Make sure src and destination paths exist." > "$PRIVPIPE"
+    fi
   else
     log_add "Denied running $CMDPATH"
-    echo "Couldn't process your request due to input validation."
+    echo "Couldn't process your request due to input validation." > "$PRIVPIPE"
   fi
   #declare -p LINE
 done

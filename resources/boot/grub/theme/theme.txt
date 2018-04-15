@@ -11,7 +11,7 @@ terminal-font: "DejaVu Sans 18"
   height = 50%	
 
   item_font = "DejaVu Sans 18"
-  item_color = "#bbbbbb"
+  item_color = "#3dd04a"
   item_height = 48
   item_icon_space = 8
   item_spacing = 2

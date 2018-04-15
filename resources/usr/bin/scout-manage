@@ -9,6 +9,8 @@ BOXHEIGHT2=$[$BOXHEIGHT-5]
 HISTORIANDIR=/opt/container/history
 PRIVMODECONTROLFILE=/var/run/privexec.enabled
 PRIVMODELOG=/opt/container/history/log/privexecd.log
+SUPERVISEDBYPASS=/var/run/supervised/bypass
+SUPERVISEDAUTHPIPE=/var/run/supervised/auth.pipe
 
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
 
@@ -27,6 +29,7 @@ MAINMENU+=("INTRODUCTION:What is Bitscout and how to use it.")
 MAINMENU+=("NETWORK:Connect to WiFi, setup static IP or proxy.")
 MAINMENU+=("DISK:Manage attached disks (i.e. let expert work on it).")
 MAINMENU+=("STATUS:System status, and expert sessions monitoring.")
+MAINMENU+=("SUPERVISE:Supervise or enable elevated commands from the container.")
 MAINMENU+=("CHAT:Enter IRC chat with the expert.")
 MAINMENU+=("CONTAINER-SHELL:Start a root shell inside guest container.")
 MAINMENU+=("SHELL:Start a root local shell.")
@@ -40,6 +43,8 @@ NETWORKMENUTEXT="The following menu should help you change network configuration
 and connect to the Internet:"
 declare -a NETWORKMENU;
 NETWORKMENU+=("WIFI SETTINGS:Setup WiFi network connection.")
+NETWORKMENU+=("ENABLE HOST CONTROL:Let the expert control LiveCD host directly.")
+NETWORKMENU+=("ENABLE ACCESS FROM LAN:Enable LAN access to LiveCD.")
 NETWORKMENU+=("STATIC IP:Setup static IP for LAN interface.")
 NETWORKMENU+=("HTTP PROXY:Configure internet access via HTTP proxy.")
 NETWORKMENU+=("SOCKS PROXY:Configure internet access via SOCKS proxy.")
@@ -65,6 +70,15 @@ PRIVMODEMENU+=("ENABLE:Enable privileged mount mode..")
 PRIVMODEMENU+=("DISABLE:Disable privileged mount mode.")
 PRIVMODEMENU+=("LOG:View log of privileged mode commands.")
 PRIVMODEMENU+=("BACK:Return to previous menu.")
+
+SUPERVISEDBYPASSSTATUS=`test -f $SUPERVISEDBYPASS && echo "ENABLED" || echo "DISABLED"`
+SUPERVISEMENUTEXT="The expert may need to run commands on the host, with highest privileges. This menu is allows supervision of commands or permanent authorization for such commands.\n\nCurrent status of supervised commands approval bypass: $SUPERVISEDBYPASSSTATUS"
+declare -a SUPERVISEMENU
+SUPERVISEMENU+=("SUPERVISE COMMAND:Review and approve/reject a command from the expert.")
+SUPERVISEMENU+=("ENABLE APPROVAL BYPASS:Use this in case of full trust to the expert.")
+SUPERVISEMENU+=("DISABLE APPROVAL BYPASS:Disable automatic approval of all commands.")
+SUPERVISEMENU+=("BACK:Return to previous menu.")
+
 
 function dialog_menu()
 {
@@ -104,6 +118,33 @@ do
 		wicd-curses
 		continue
 		;;
+	      "ENABLE HOST CONTROL")
+                dialog --title "ENABLE HOST CONTROL" --yesno "This will provide remote expert with full control over the host system. Generally this is bad practice and shall be used only under exceptional case and full trust to the expert.\n\nAre you sure you want to enable full access to the host?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
+                case $RETCODE in
+                  $DIALOG_YES)
+                      rm /etc/ssh/sshd_not_to_be_run
+                      sed -i 's/Port 22/Port 23/' /etc/ssh/sshd_config
+                      systemctl start ssh.service
+                     ;;
+                   $DIALOG_NO)
+                     continue;
+                     ;;
+                esac
+		continue
+		;;
+              "ENABLE ACCESS FROM LAN")
+                 dialog --title "ENABLE ACCESS FROM LAN" --yesno "This will enable access to SSH and other port(s) of this Bitscout instance from LAN. It's good for testing or if you want to enable local expert connect to the instance directly other than using VPN.\n\nAre you sure you want to do this?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
+                case $RETCODE in
+                  $DIALOG_YES)
+                       /sbin/host-iptables enable-access-from-lan
+                     ;;
+                   $DIALOG_NO)
+                     continue;
+                     ;;
+                esac
+                 
+                continue
+                ;;
 	      "BACK")
                 break;
                 ;;
@@ -421,9 +462,66 @@ Privileged mount mode is currently $PMSTATE.";
          fi
          continue;
          ;;
-     *)
-         feature_not_implemented
-         ;;
+
+    "SUPERVISE")
+	while true
+	do
+	  read SUPERVISECHOICE <<< $(dialog_menu "SUPERVISE" "$SUPERVISEMENUTEXT" "$(declare -p SUPERVISEMENU)")
+      
+	  case "$SUPERVISECHOICE" in
+	      "SUPERVISE COMMAND")
+                CMD=`timeout 1 cat $SUPERVISEDAUTHPIPE`
+                if [ -n "$CMD" ]
+                then
+                  dialog --yes-label "ALLOW" --no-label "REJECT" --title "PRIVILEGED COMMAND SUPERVISION" --yesno "The following command was requested to be executred as root on host. It may be a good idea to take a photo or write it down before approval:\n\n$CMD" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
+                  case $RETCODE in
+                    $DIALOG_YES)
+                       echo "0" > $SUPERVISEDAUTHPIPE
+                       ;;
+                     $DIALOG_NO)
+                       echo "1" > $SUPERVISEDAUTHPIPE
+                       ;;
+                  esac
+                else
+                  dialog --title "PRIVILEGED COMMAND SUPERVISION" --msgbox "No command awaiting approval yet." $BOXHEIGHT $BOXWIDTH   
+                fi
+		;;
+	      "ENABLE APPROVAL BYPASS")
+                dialog --title "ENABLE APPROVAL BYPASS" --yesno "This will provide remote expert with full control over the host system. Generally this is bad practice and shall be used only under exceptional case and full trust to the expert.\n\nAre you sure you want to enable automatic privileged commands approval?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
+                case $RETCODE in
+                  $DIALOG_YES)
+                     touch $SUPERVISEDBYPASS
+                     SUPERVISEDBYPASSSTATUS=`test -f $SUPERVISEDBYPASS && echo "ENABLED" || echo "DISABLED"`
+                     SUPERVISEMENUTEXT="The expert may need to run commands on the host, with highest privileges. This menu is allows supervision of commands or permanent authorization for such commands.\n\nCurrent status of supervised commands approval bypass: $SUPERVISEDBYPASSSTATUS"
+                     ;;
+                   $DIALOG_NO)
+                     continue;
+                     ;;
+                esac
+		continue
+		;;
+              "DISABLE APPROVAL BYPASS")
+                 dialog --title "DISABLE APPROVAL BYPASS" --yesno "This disables approval bypass and restores one-by-one manual privileged commands approval.\n\nContinue?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
+                case $RETCODE in
+                  $DIALOG_YES)
+                     rm $SUPERVISEDBYPASS
+                     SUPERVISEDBYPASSSTATUS=`test -f $SUPERVISEDBYPASS && echo "ENABLED" || echo "DISABLED"`
+                     SUPERVISEMENUTEXT="The expert may need to run commands on the host, with highest privileges. This menu is allows supervision of commands or permanent authorization for such commands.\n\nCurrent status of supervised commands approval bypass: $SUPERVISEDBYPASSSTATUS"
+                     ;;
+                   $DIALOG_NO)
+                     continue;
+                     ;;
+                esac
+                 
+                continue
+                ;;
+                "BACK")
+                break;
+                ;;
+                *)
+                feature_not_implemented
+                ;;
+         esac
+       done
   esac
 done
- 

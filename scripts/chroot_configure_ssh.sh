@@ -17,8 +17,15 @@ else
   statusprint "Found existing SSH-keys. Using existing keys, new keys generation skipped."
 fi
 
-statusprint "Adding SSH-key to the authorized keys in chroot.."
+statusprint "Adding SSH-key to the authorized keys in chroot for normal user.."
 sudo mkdir -p chroot/home/user/.ssh/
 sudo cp "config/ssh/${PROJECTSHORTNAME}.pub" chroot/home/user/.ssh/authorized_keys
+
+statusprint "Adding SSH-key to the authorized keys in chroot for root.."
+sudo mkdir -p chroot/root/.ssh/
+sudo cp "config/ssh/${PROJECTSHORTNAME}.pub" chroot/root/.ssh/authorized_keys
+
+statusprint "Disabling password authentication for SSH.."
+sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' ./chroot/etc/ssh/sshd_config
 
 exit 0;

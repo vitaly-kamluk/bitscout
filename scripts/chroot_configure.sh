@@ -39,4 +39,7 @@ sudo rm -f ./chroot/root/.bashrc ./chroot/user/.bashrc
 statusprint "Copying WiFi manager default configuration file.."
 sudo cp -v ./resources/etc/wicd/manager-settings.conf ./chroot/etc/wicd/manager-settings.conf
 
+statusprint "Setting ulimit values.."
+sudo cp -v ./resources/etc/security/limits.conf ./chroot/etc/security/limits.conf
+
 exit 0;

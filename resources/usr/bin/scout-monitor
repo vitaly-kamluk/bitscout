@@ -40,11 +40,10 @@ do
   hr
   align_center "SIMPLE STATUS MONITOR"
   hr
-  echo -e "This is lightweight status monitor script.\nTo close current status monitor window, please press Ctrl+C. If you see multiple tabs/windows in the bottom green line it means there is a live session monitoring available. To switch to another tab and monitor live session, please press Ctrl+b and then press the key with respective tab number (digits from 0 to 9). To close all tabs press Ctrl+b and then press 'd'."
+  echo -e "This is lightweight status monitor script.\nTo close current status monitor window, please press Ctrl+C. If you see multiple tabs/windows in the bottom line some live session monitoring is available. To switch to another tab and monitor live session, please press Ctrl+b and then press the key with respective tab number (digits from 0 to 9). To open higher number, press Ctrl-B and ' and enter tab index. To detach from all tabs press Ctrl+b and 'd'."
   hr
-  echo "Hostname: "`hostname`
-  echo "System uptime: "`uptime`
-  cat /proc/meminfo | awk '/MemTotal/ {print "Memory Total: " $2/1024" MB"}; /MemAvailable/ {print "Memory Avail: " $2/1024" MB"};'
+  echo "Hostname: "`hostname`"  Uptime: "`uptime`
+  cat /proc/meminfo | awk '/MemTotal/ {print "Memory Total: " $2/1024" MB  |  "}; /MemAvailable/ {print "Memory Avail: " $2/1024" MB"};'| xargs echo 
   hr 
   echo "Network interfaces and their routing tables:"
   ip -o addr show| grep 'inet ' | awk '{print $2" "$4}' | while read iface ip;

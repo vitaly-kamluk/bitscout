@@ -85,6 +85,12 @@ then
         rm "$CONTAINERDIR/chroot/sbin/privexecd.sh"
         rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/privexec.service"
 
+        #remove supervised service from the guest
+        rm "$CONTAINERDIR/chroot/lib/systemd/system/supervise.service"
+        rm "$CONTAINERDIR/chroot/sbin/supervised.sh"
+        rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/supervise.service"
+
+
         #prepare guest-host communication directory (guest-host IPC)
         mkdir -p "$CONTAINERDIR/ipc" 2>&-
         mkdir -p "$CONTAINERDIR/chroot/var/host/ipc" 2>&-
@@ -92,7 +98,7 @@ then
         #prepare and mount historian compressed RAM filesystem for logs
         modprobe zram num_devices=1 
         sudo blockdev --setrw /dev/zram0
-        echo 128M > /sys/block/zram0/disksize # max RAM usage in MB
+        echo 2048M > /sys/block/zram0/disksize # max RAM usage in MB
         mke2fs -q -m 0 -b 4096 -O sparse_super -L zram /dev/zram0
         mount -o relatime,noexec,nosuid /dev/zram0 "$CONTAINERDIR/history"
         mkdir -p "$CONTAINERDIR/history/log" 2>&-
@@ -111,9 +117,6 @@ then
     #remove privexec client from the host
     rm /usr/bin/privexec
 
-    #remove authorized ssh-keys from the host (shall be preserved in the container)
-    rm /home/$CONTAINERUSER/.ssh/authorized_keys
-
     #create set of virtual mapping device for container:
     DEVDIR="/dev/container"
     mkdir -p "$DEVDIR"
@@ -131,6 +134,12 @@ then
       mknod /dev/loop$[18+$i] b 7 $[18+$i]
     done 
 
+    #load nbd kernel module and copy 3 of them to the container
+    modprobe nbd
+    cp /dev/nbd{0,1,2} /dev/container/
+    chown :user /dev/container/*
+    chmod o+rw /dev/container/nbd*
+
     #bind host-guest devices to be accessible from chroot (used by mount-escalation)
     mount --bind "$DEVDIR" "$CONTAINERDIR/chroot/$CONTAINERHOSTDEV"
 
@@ -140,6 +149,9 @@ then
      chmod o+rw /dev/kvm
      echo "lxc.mount.entry = /dev/kvm dev/kvm none bind,create=file 0 0" >> "/home/$CONTAINERUSER/.local/share/lxc/$CONTAINERNAME/config"
     fi
+
+    #set opened files ulimit
+    ulimit -n 60000
 
     #start userland container after all
     sudo -H -u $CONTAINERUSER lxc-start -n "$CONTAINERNAME" -d

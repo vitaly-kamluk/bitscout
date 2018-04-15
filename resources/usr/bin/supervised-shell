@@ -1,0 +1,20 @@
+#!/bin/bash
+COMMLOCK=/var/host/ipc/supervised.lock
+COMMPIPE_IN=/var/host/ipc/supervised_in.pipe
+COMMPIPE_OUT=/var/host/ipc/supervised_out.pipe
+(
+ flock 9
+ while true
+ do 
+   echo -n "supervised> "
+   read CMD
+   if [ -z "$CMD" ]
+   then
+     break
+   else
+     echo "$CMD" > $COMMPIPE_IN
+     cat $COMMPIPE_OUT
+     #( tail -f $COMMPIPE_OUT ) | awk '{if($0=="supervised.eof"){exit;}else{print $0;}}'
+   fi
+ done
+) 9> "$COMMLOCK"

@@ -64,5 +64,11 @@ sudo ln -s /lib/systemd/system/privexec.service chroot/etc/systemd/system/multi-
 sudo cp resources/usr/bin/privexec chroot/usr/bin/privexec
 sudo chmod +x chroot/sbin/privexecd.sh chroot/usr/bin/privexec
 
+statusprint "Adding supervised execution service and client.."
+sudo cp resources/sbin/supervised.sh chroot/sbin/supervised.sh
+sudo cp resources/systemd/supervise.service chroot/lib/systemd/system/supervise.service
+sudo ln -s /lib/systemd/system/supervise.service chroot/etc/systemd/system/multi-user.target.wants/supervise.service 2>/dev/null
+sudo cp resources/usr/bin/supervised-shell chroot/usr/bin/supervised-shell
+sudo chmod +x chroot/sbin/supervised.sh chroot/usr/bin/supervised-shell
 
 exit 0;
