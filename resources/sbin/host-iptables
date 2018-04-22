@@ -1,7 +1,7 @@
 #!/bin/bash
 
 IPT="/sbin/iptables"
-INET_IFACE=eth0
+INET_IFACES=( eth0 wlan0 )
 LXC_IFACE=lxcbr0
 VPN_IFACE=tap0
 
@@ -75,13 +75,15 @@ then  #default for no parameters. executed during system boot.
   $IPT -A INPUT -i $LXC_IFACE -p UDP --destination-port 67 -j ACCEPT
   
   $IPT -A INPUT -i $VPN_IFACE -j HOST_INCOMING
-  
-  
-  
+
+   
   #Enable NAT (lxc->inet)
-  $IPT -A FORWARD -i $LXC_IFACE -o $INET_IFACE -d 0.0.0.0/0 -j ACCEPT
-  $IPT -A FORWARD -o $LXC_IFACE -i $INET_IFACE -s 0.0.0.0/0 -j ACCEPT
-  
+  #TODO: Recheck default isolation
+  for INET_IFACE in ${INET_IFACES[*]}:
+  do
+    $IPT -A FORWARD -i $LXC_IFACE -o $INET_IFACE -d 0.0.0.0/0 -j ACCEPT
+    $IPT -A FORWARD -o $LXC_IFACE -i $INET_IFACE -s 0.0.0.0/0 -j ACCEPT
+  done
   
   
   #Setup LXC_DNAT table for port forwadring
