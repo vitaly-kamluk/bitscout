@@ -18,7 +18,7 @@ sudo_file_template_copy resources/usr/share/${PROJECTNAME}/introduction chroot/u
 
 statusprint "Adding autostart of ${PROJECTSHORTNAME}-manage tool on tty.."
 echo "[Unit]
-Description=scount-manage on tty2
+Description=${PROJECTSHORTNAME}-manage on tty2
 After=getty.target networking.service host-system.service
 Conflicts=getty@tty2.service
 

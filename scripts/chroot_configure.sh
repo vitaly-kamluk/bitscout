@@ -5,7 +5,7 @@
 . ./scripts/functions
 
 statusprint "Setting network interface autoconfiguration timeout.."
-#sudo sed -i 's/^TimeoutStartSec=[0-9a-z]*$/TimeoutStartSec=1min/' chroot/lib/systemd/system/networking.service 
+sudo sed -i 's/^TimeoutStartSec=[0-9a-z]*$/TimeoutStartSec=1min/' chroot/lib/systemd/system/networking.service 
 sudo sed -i 's/^TimeoutStartSec=[0-9a-z]*$/TimeoutStartSec=10sec/' chroot/lib/systemd/system/networking.service 
 
 statusprint "Disabling intel_rapl module.."
@@ -15,7 +15,7 @@ then
 fi
 
 statusprint "Setting release name.."
-sudo sed -i "s,Ubuntu 16.04.2 LTS,${PROJECTNAME}," chroot/etc/issue.net chroot/etc/lsb-release chroot/etc/os-release
+sudo sed -i "s#Ubuntu 18.04[^ ]\{0,3\} LTS#${PROJECTNAME}#" chroot/etc/issue.net chroot/etc/lsb-release chroot/etc/os-release
 echo "${PROJECTNAME} (\m) \d \t \l" | sudo tee chroot/etc/issue >/dev/null
 
 statusprint "Removing extra banners and motd.."
@@ -37,9 +37,20 @@ sudo cp -v ./resources/etc/dialogrc ./chroot/etc/dialogrc
 sudo rm -f ./chroot/root/.bashrc ./chroot/user/.bashrc
 
 statusprint "Copying WiFi manager default configuration file.."
+sudo mkdir -p ./chroot/etc/wicd/ &&
 sudo cp -v ./resources/etc/wicd/manager-settings.conf ./chroot/etc/wicd/manager-settings.conf
 
 statusprint "Setting ulimit values.."
 sudo cp -v ./resources/etc/security/limits.conf ./chroot/etc/security/limits.conf
+
+statusprint "Setting up shell aliases.."
+if ! grep -q '^#some shell aliases$' chroot/etc/bash.bashrc
+then
+ echo "
+#some shell aliases
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'" | sudo tee -a chroot/etc/bash.bashrc >/dev/null
+fi
 
 exit 0;

@@ -54,7 +54,7 @@ validate_releasesize()
 if ! [ -f "$BUILDCONFPATH" ]
 then
   statusprint "It seems that you are at fresh build environment.\nWe need to populate the config with some essential data.\nPlease answer the following questions or put your existing build config to config/$PROJECTNAME-build.conf."
-  PRINTOPTIONS=n statusprint "Proceed with interactive settings? [Y/n]: "
+  PRINTOPTIONS=n statusprint "Proceed to interactive settings? [Y/n]: "
   read choice
   if [ ! -z "$choice" -a ! "${choice^}" == "Y" ] 
   then
@@ -111,7 +111,10 @@ GLOBAL_VPNSERVER=\"$vpnhost\"
 GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
 GLOBAL_VPNPORT=\"$vpnport\"
 GLOBAL_BUILDID=\"$buildid\"
-GLOBAL_CUSTOMKERNEL=\"$customkernel\" " > "$BUILDCONFPATH"
+GLOBAL_CUSTOMKERNEL=\"$customkernel\" 
+GLOBAL_BASEARCH=\"amd64\"
+#GLOBAL_BASEARCH=\"i386\"
+CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
   fi
 fi
 

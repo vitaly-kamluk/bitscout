@@ -1,5 +1,5 @@
 #!/bin/bash
-CONTAINERNAME=forensic
+CONTAINERNAME=expert
 CONTAINERUSER=user
 CONTAINERROOT=/opt/container/chroot
 CONTROLFILE=/var/run/privexec.enabled

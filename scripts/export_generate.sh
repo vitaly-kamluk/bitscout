@@ -22,6 +22,6 @@ mkdir -p "$EXPEXPERT/etc/"{ssh,irc}
 cp -v "./config/openvpn/${PROJECTSHORTNAME}.conf.expert" "$EXPEXPERT/etc/openvpn/${PROJECTSHORTNAME}.conf"
 cp -v "./config/openvpn/easy-rsa/keys/"{ta.key,dh${CRYPTOKEYSIZE}.pem,expert.key,expert.crt,ca.crt} "$EXPEXPERT/etc/openvpn/${PROJECTSHORTNAME}/"
 cp -v "./config/ssh/"{${PROJECTSHORTNAME},${PROJECTSHORTNAME}.pub} "$EXPEXPERT/etc/ssh"
-sed 's/owner/expert/g;' "./config/irssi/irssi.conf.client" > "$EXPEXPERT/etc/irc/irssi.conf"
+sed 's/owner/expert/g;' "./config/irssi/irssi.conf" > "$EXPEXPERT/etc/irc/irssi.conf"
 
 exit 0;

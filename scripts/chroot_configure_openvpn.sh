@@ -51,6 +51,10 @@ else
   statusprint "Patching easy-rsa tools to enable non-interactive mode by default."
   find "$VPNCFGDIR/easy-rsa/" -maxdepth 1 -type f | grep -v "pkitool" | while read f; do sed -i 's/--interact/--batch/g' "$f"; done
 
+  #TODO: Update this when there will be openvpn/easy-rsa/openssl-1.1.0.cnf
+  statusprint "Symlinking openssl.cnf file to openssl-1.0.0.cnf"
+  sudo ln -fs "openssl-1.0.0.cnf" "$VPNCFGDIR/easy-rsa/openssl.cnf"
+
   statusprint "Creating certificate authority and server+client certificates.."
   mkdir -p "$VPNCFGDIR/easy-rsa/keys"
   cd "$VPNCFGDIR/easy-rsa/"

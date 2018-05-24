@@ -14,9 +14,9 @@ export SHELL=/bin/bash
 
 . ./scripts/functions
 
-ISONAME="${PROJECTNAME}-16.04.iso"
+ISONAME="${PROJECTNAME}-18.04.iso"
 TESTLOG="./autotest.log"
-VISIBLE=0 #show tmux interface during testing. This should be set to 0 by default for better unattended auto-testing compatibility.
+VISIBLE=1 #show tmux interface during testing. This should be set to 0 by default for better unattended auto-testing compatibility.
 
 if [ ! -f "./$ISONAME" ]
 then
@@ -102,13 +102,26 @@ fi
 [ -S "./${PROJECTNAME}.monitor.sock" ] && dprint "Removing existing monitor socket.."  && rm "./${PROJECTNAME}.monitor.sock"
 [ -S "./${PROJECTNAME}.serial.sock" ] && dprint "Removing existing serial socket.." && rm "./${PROJECTNAME}.serial.sock"
 
-dprint "Creating new local tmux session.." #pane .0
-if ! tmux new-session -d -n $TMWINDOW -s $TMSESSION "qemu-system-x86_64 -enable-kvm -name ${PROJECTNAME}-qemu -cpu host -m 256 -cdrom "./$ISONAME" -boot order=c -spice port=2001,disable-ticketing -serial unix:./${PROJECTNAME}.serial.sock,server -chardev socket,id=monitordev,server,path=./${PROJECTNAME}.monitor.sock -mon chardev=monitordev -S; tmux wait-for -S $TMSESSION"
+dprint "Creating new local tmux session and starting qemu.." #pane .0
+if [ -w /dev/kvm ]
 then
-  dprint "Failed to start qemu in tmux session. Aborting.."
-  exit 1
+  dprint "Using hardware virtualization support.."
+  if ! tmux new-session -d -n $TMWINDOW -s $TMSESSION "qemu-system-x86_64 -enable-kvm -name ${PROJECTNAME}-qemu -cpu host -m 256 -cdrom "./$ISONAME" -boot order=c -spice port=2001,disable-ticketing -serial unix:./${PROJECTNAME}.serial.sock,server -chardev socket,id=monitordev,server,path=./${PROJECTNAME}.monitor.sock -mon chardev=monitordev -S; tmux wait-for -S $TMSESSION"
+  then
+    dprint "Failed to start qemu in tmux session. Aborting.."
+    exit 1
+  else
+    dprint "Started qemu in tmux session."
+  fi
 else
-  dprint "Started qemu in tmux session."
+  dprint "No hardware virtualization support found. Going for software emulation.."
+  if ! tmux new-session -d -n $TMWINDOW -s $TMSESSION "qemu-system-x86_64 -name ${PROJECTNAME}-qemu -cpu qemu64 -m 256 -cdrom "./$ISONAME" -boot order=c -spice port=2001,disable-ticketing -serial unix:./${PROJECTNAME}.serial.sock,server -chardev socket,id=monitordev,server,path=./${PROJECTNAME}.monitor.sock -mon chardev=monitordev -S; tmux wait-for -S $TMSESSION"
+  then
+    dprint "Failed to start qemu in tmux session. Aborting.."
+    exit 1
+  else
+    dprint "Started qemu in tmux session."
+  fi
 fi
 
 dprint "Waiting for qemu monitor socket.."

@@ -1,5 +1,5 @@
 #!/bin/bash
-DELAY=10
+DELAY=5
 
 COLS=`tput cols`
 LINES=`tput lines`
@@ -34,21 +34,42 @@ monitor_new_sessions() {
 }
 
 
+HOME=$(tput cup 0 0)
+ED=$(tput ed)
+EL=$(tput el)
+
+COL_RED="\x1b[01;31m"
+COL_GREEN="\x1b[01;32m"
+COL_YELLOW="\x1b[01;33m"
+COL_BLUE="\x1b[01;34m"
+COL_PURPLE="\x1b[01;35m"
+COL_CYAN="\x1b[01;36m"
+COL_WHITE="\x1b[01;37m"
+
+COL_STOP="\x1b[00m"
+
 while true
 do
-  clear;
+  printf '%s%s' "$ED" "$HOME"
+
+  (
   hr
   align_center "SIMPLE STATUS MONITOR"
   hr
   echo -e "This is lightweight status monitor script.\nTo close current status monitor window, please press Ctrl+C. If you see multiple tabs/windows in the bottom line some live session monitoring is available. To switch to another tab and monitor live session, please press Ctrl+b and then press the key with respective tab number (digits from 0 to 9). To open higher number, press Ctrl-B and ' and enter tab index. To detach from all tabs press Ctrl+b and 'd'."
   hr
   echo "Hostname: "`hostname`"  Uptime: "`uptime`
-  cat /proc/meminfo | awk '/MemTotal/ {print "Memory Total: " $2/1024" MB  |  "}; /MemAvailable/ {print "Memory Avail: " $2/1024" MB"};'| xargs echo 
+  cat /proc/meminfo | awk '/MemTotal/ {print "Memory Total: '"$COL_GREEN"'" $2/1024" MB'"$COL_STOP"'  |  "}; /MemAvailable/ {print "Memory Avail: '"$COL_GREEN"'" $2/1024" MB'"$COL_STOP"'"};'| xargs echo -e
   hr 
   echo "Network interfaces and their routing tables:"
   ip -o addr show| grep 'inet ' | awk '{print $2" "$4}' | while read iface ip;
   do
-    echo " $iface $ip"
+    if echo "$iface" | grep -q "^eth"
+    then
+      echo -e " ${iface} ${COL_BLUE}${ip}${COL_STOP}"
+    else
+      echo " ${iface} ${ip}"
+    fi
     ip route show dev "$iface" | sed 's/^/    /g'
   done
   hr  
@@ -56,7 +77,10 @@ do
   dmesg | tail -n10 |cut -c -$COLS
   hr
   echo "Latest OpenVPN messages:"
-  tail -n10 /var/log/openvpn.scout.log
+  tail -n10 /var/log/openvpn.scout.log ) | awk '{printf("%s",$0); for(i=0;i<'$COLS'-length($0);i++){printf(" ");} printf("\n");}'
+
+  #clear; echo "$frame";
+
   monitor_new_sessions
   sleep $DELAY
 done

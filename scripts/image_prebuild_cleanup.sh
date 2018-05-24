@@ -16,10 +16,17 @@ aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;
 apt-fast --yes purge ca-certificates python3-requests ssh-import-id python3-chardet python3-pkg-resources python3-six python3-urllib3 geoip-database krb5-locales libavahi-client3 libavahi-common3 libcups2 python-samba samba-common-bin samba-libs wget'
 fi
 
+if [ ${GLOBAL_RELEASESIZE} -le 2 ]
+then
 chroot_exec chroot 'export DEBIAN_FRONTEND=noninteractive;
 aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;
-apt-fast --yes purge plymouth python-samba samba-common samba-common-bin samba-libs cifs-utils
+apt-fast --yes purge plymouth python-samba samba-common samba-common-bin samba-libs'
+fi
+
+chroot_exec chroot 'export DEBIAN_FRONTEND=noninteractive;
+aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;
 apt-fast --yes install deborphan
+deborphan --add-keep python-fusepy
 while true; do
     if [[ $(deborphan --guess-all) ]]; then
         apt-fast --yes purge `deborphan --guess-all`
@@ -52,7 +59,7 @@ then
   sudo mv "$SDIR/media" "$SDIR/gpu"  "$DDIR/" 2>&-
 
 
-  statusprint "Moving (arguably) ambiguous files to recyle dir.."
+  statusprint "Moving (arguably) ambiguous files to recycle dir.."
   #DDIR="$RECYCLEDIR/var/lib/dpkg/info"; mkdir -p "$DDIR" 2>&-;
   #sudo mv chroot/var/lib/dpkg/info/* "$DDIR/" 2>&-
 

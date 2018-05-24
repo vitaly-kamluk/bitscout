@@ -47,15 +47,15 @@ apt_update()
   sudo mkdir -p chroot/usr/share/keyrings/ &&
   sudo cp chroot/etc/apt/trusted.gpg  chroot/usr/share/keyrings/ubuntu-archive-keyring.gpg &&
 
-  statusprint "Updating $BASERELEASE:$BASEARCHITECTURE indexes for chroot.." &&
-  sudo apt-get -y -o "Dir=$PWD/chroot" -o "APT::Architecture=$BASEARCHITECTURE" -o "Acquire::Languages=$LANG" update
+  statusprint "Updating $BASERELEASE:$GLOBAL_BASEARCH indexes for chroot.." &&
+  sudo apt-get -y -o "Dir=$PWD/chroot" -o "APT::Architecture=$GLOBAL_BASEARCH" -o "Acquire::Languages=$LANG" update
 }
 
 apt_fast_download()
 {
   DLLIST="$PROJECTROOT/aria2c.task" &&
   statusprint "Fetching URLs of packages to download.." &&
-  apt-get -y -o "Dir=$PROJECTROOT/chroot" -o "APT::Architecture=$BASEARCHITECTURE" -o "Acquire::Languages=$LANG" --print-uris download $* | awk "/^'/,//" | awk '{gsub("^'"'"'|'"'"'$","",$1); sub("MD5Sum:","md5=",$4); sub("SHA256:","sha-256=",$4); print $1"\n checksum="$4" \n out="$2}' > "$DLLIST" &&
+  apt-get -y -o "Dir=$PROJECTROOT/chroot" -o "APT::Architecture=$GLOBAL_BASEARCH" -o "Acquire::Languages=$LANG" --print-uris download $* | awk "/^'/,//" | awk '{gsub("^'"'"'|'"'"'$","",$1); sub("MD5Sum:","md5=",$4); sub("SHA256:","sha-256=",$4); print $1"\n checksum="$4" \n out="$2}' > "$DLLIST" &&
 
   _MAXNUM=8 &&
   _MAXCONPERSRV=10 &&
@@ -68,19 +68,19 @@ apt_fast_download()
 
 run_debootstrap_supervised_fast()
 {
-  statusprint "Downloading $BASERELEASE:$BASEARCHITECTURE.. " &&
+  statusprint "Downloading $BASERELEASE:$GLOBAL_BASEARCH.. " &&
  
   BASEDIR="$PWD" &&
   statusprint "Building base root filesystem.." &&
-  DEBDIR="cache/debootstrap.cache/dists/$BASERELEASE/main/binary-$BASEARCHITECTURE" &&
+  DEBDIR="cache/debootstrap.cache/dists/$BASERELEASE/main/binary-$GLOBAL_BASEARCH" &&
   mkdir -p "$DEBDIR" &&
 
   statusprint "Fetching the list of essential packages.." &&
-  DEBS=$(sudo debootstrap --include=aria2,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge --print-debs --foreign --arch=$BASEARCHITECTURE $BASERELEASE chroot ) || exit 1 &&
+  DEBS=$(sudo debootstrap --include=aria2,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge --print-debs --foreign --arch=$GLOBAL_BASEARCH $BASERELEASE chroot ) || exit 1 &&
   install_required_package aria2  &&
  
   chroot_mount_cache "$PWD/chroot" &&
-  trap "chroot_unmount_fs \"$PWD/$DIR\"" SIGINT SIGKILL SIGTERM &&
+  trap "chroot_unmount_cache \"$PWD/chroot\"" SIGINT SIGKILL SIGTERM &&
   apt_make_dirs &&
   apt_update &&
    
@@ -89,29 +89,28 @@ run_debootstrap_supervised_fast()
 
   statusprint "Scanning/indexing downloaded packages.." &&
   install_required_package dpkg-dev &&
-  ( cd "./cache/debootstrap.cache" && dpkg-scanpackages . /dev/null > "dists/$BASERELEASE/main/binary-$BASEARCHITECTURE/Packages" 2>/dev/null ) &&
+  ( cd "./cache/debootstrap.cache" && dpkg-scanpackages . /dev/null > "dists/$BASERELEASE/main/binary-$GLOBAL_BASEARCH/Packages" 2>/dev/null ) &&
   sed -i 's/^Priority: optional.*/Priority: important/g' "$DEBDIR/Packages" &&
 
-  PKGS_SIZE=$(stat -c %s ./cache/debootstrap.cache/dists/$BASERELEASE/main/binary-$BASEARCHITECTURE/Packages) &&
+  PKGS_SIZE=$(stat -c %s ./cache/debootstrap.cache/dists/$BASERELEASE/main/binary-$GLOBAL_BASEARCH/Packages) &&
   statusprint "Building local mirror requirements.." &&
 
   echo "Origin: Ubuntu
 Label: Ubuntu
 Suite: $BASERELEASE
-Version: 16.04
+Version: 18.04
 Codename: $BASERELEASE
-Date: Thu, 21 Apr 2016 23:23:46 UTC
-Architectures: $BASEARCHITECTURE
+Architectures: $GLOBAL_BASEARCH
 Components: main restricted universe multiverse
-Description: Ubuntu Xenial 16.04
+Description: Ubuntu Bionic 18.04
 
 MD5Sum:
-$(md5sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$BASEARCHITECTURE/Packages
+$(md5sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$GLOBAL_BASEARCH/Packages
 SHA256:
-$(sha256sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$BASEARCHITECTURE/Packages" > "./cache/debootstrap.cache/dists/$BASERELEASE/Release" &&
+$(sha256sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$GLOBAL_BASEARCH/Packages" > "./cache/debootstrap.cache/dists/$BASERELEASE/Release" &&
 
   statusprint "Building rootfs based on local deb cache.." &&
-  sudo debootstrap --no-check-gpg --foreign --arch=$BASEARCHITECTURE $BASERELEASE chroot "file:///$BASEDIR/cache/debootstrap.cache" &&
+  sudo debootstrap --no-check-gpg --foreign --arch=$GLOBAL_BASEARCH $BASERELEASE chroot "file:///$BASEDIR/cache/debootstrap.cache" &&
 
   statusprint "Fixing keyboard-configuration GDM compatibility bug (divert kbd_mode).." &&
   TARGETDEB="./chroot$(grep "^kbd " chroot/debootstrap/debpaths | cut -d' ' -f2)" &&
@@ -119,6 +118,8 @@ $(sha256sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$BASEARCHIT
   then
     statusprint "Failed to locate kbd package to patch. Aborting.."
     exit 1
+  else
+    statusprint "Located kbd package in $TARGETDEB"
   fi &&
   sudo ./scripts/deb_unpack.sh "$TARGETDEB" &&
   sudo cp -v "${TARGETDEB}.unp/data/bin/kbd_mode" ./chroot/bin/kbd_mode.dist &&

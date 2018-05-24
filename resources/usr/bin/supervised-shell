@@ -6,7 +6,7 @@ COMMPIPE_OUT=/var/host/ipc/supervised_out.pipe
  flock 9
  while true
  do 
-   echo -n "supervised> "
+   echo -en "\e[1;37;41msupervised>\033[00m "
    read CMD
    if [ -z "$CMD" ]
    then

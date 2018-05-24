@@ -6,7 +6,7 @@ cd "$1.unp/" &&
 ar x "../$DEB" &&
 mkdir data control &&
 cd data &&
-tar xf ../data.tar.xz &&
+tar xf ../data.tar.?z &&
 cd ../control &&
-tar xf ../control.tar.gz
+tar xf ../control.tar.?z
 popd >/dev/null

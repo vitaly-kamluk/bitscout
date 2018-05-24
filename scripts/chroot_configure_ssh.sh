@@ -28,4 +28,7 @@ sudo cp "config/ssh/${PROJECTSHORTNAME}.pub" chroot/root/.ssh/authorized_keys
 statusprint "Disabling password authentication for SSH.."
 sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' ./chroot/etc/ssh/sshd_config
 
+statusprint "Uncommenting port option for SSH.."
+sudo sed -i 's/^#Port /Port /g' chroot/etc/ssh/sshd_config
+
 exit 0;

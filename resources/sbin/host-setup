@@ -12,12 +12,21 @@ else
  exit
 fi
 
+PROJECTNAME="<PROJECTNAME>"
 CONTAINERDIR="/opt/container"
 CONTAINERHOSTDEV="/dev/host"
 CONTAINERNAME="<CONTAINERNAME>"
-CONTAINERUSER=<CONTAINERUSERNAME>
+CONTAINERUSER="<CONTAINERUSERNAME>"
+CONTAINERNET_NAME="<CONTAINERNET_NAME>"
+CONTAINERNET_HOST_IP_CIDR="<CONTAINERNET_HOST_IP_CIDR>"
+CONTAINERNET_GUEST_IP="<CONTAINERNET_GUEST_IP>"
+CONTAINERNET_GUEST_DNS="<CONTAINERNET_GUEST_DNS>"
+HISTORIAN_ZRAM_SIZE=<HISTORIAN_ZRAM_SIZE>
+
 USERSUBUID=100000
 USERSUBGID=100000
+
+LOCALUSER=user
 
 if [ $# -eq 0 ]
 then
@@ -26,101 +35,128 @@ fi
 
 if [ "$1" == "start" ]
 then
-  #set opened files ulimit
+  #set opened files ulimit, required for bindfs operation
+  echo "Setting opened files ulimit value.."
   ulimit -n 200000
 
-  if ! mount | grep -q "$CONTAINERDIR/tmp"
+  echo "Adding local user \"$LOCALUSER\" to \"lxd\" group to enable lxd interaction.."
+  usermod -a -G lxd $LOCALUSER
+
+  if ! mount | grep -q "$CONTAINERDIR/reflection"
   then
-    #making and mounting tmpfs for overlayfs work dirs
-    mkdir -p "$CONTAINERDIR/"{tmp,chroot,chroot.user,history}
-    mount tmpfs -t tmpfs "$CONTAINERDIR/tmp"
-    mkdir -p "$CONTAINERDIR/tmp/"{upper,work}
+    echo "Making and mounting tmpfs for reflective overlayfs"
+    mkdir -p "$CONTAINERDIR/"{reflection,chroot,chroot.user,history}
+    mount tmpfs -t tmpfs "$CONTAINERDIR/reflection"
+    mkdir -p "$CONTAINERDIR/reflection/"{upper,work}
     
-    #mount /rofs (squashfs) to the chroot via overlayfs 
-    mount /rofs -t overlay -o "rw,relatime,lowerdir=/rofs,upperdir=$CONTAINERDIR/tmp/upper,workdir=$CONTAINERDIR/tmp/work" "$CONTAINERDIR/chroot"
+    echo "Mounting /rofs (squashfs) to the chroot via overlayfs"
+    mount /rofs -t overlay -o "rw,relatime,lowerdir=/rofs,upperdir=$CONTAINERDIR/reflection/upper,workdir=$CONTAINERDIR/reflection/work" "$CONTAINERDIR/chroot"
     
     #the following is required to run userland container (mapping host uid/gid to container's uid/gid)
+    echo "Starting bindfs to allow unprivileged user access the reflected root"
     #bindfs -u $USERSUBUID -g $USERSUBGID -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
     IDMAP=`( cat /etc/passwd | cut -d: -f3 | awk '{print $1"/"($1+100000)}'; cat /etc/group | cut -d: -f3 | awk '{print "@"$1"/@"($1+100000)}' ) | tr $'\n' ':'| sed 's/:$//'`
     bindfs --map=$IDMAP -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
 
-    #bind container's devices to chroot dev subdir. THis is used further by privexecd.sh
-    mkdir -p "$CONTAINERDIR/chroot/dev/host" 2>&-
-    mount --bind /dev/container "$CONTAINERDIR/chroot/dev/host"
-    mount --bind "$CONTAINERDIR/ipc" "$CONTAINERDIR/chroot/var/host/ipc"
-
     #do necessary changes TO THE CONTAINER'S (GUEST) rootfs
-        #disable lxcbr0 creation within container
-        echo "USE_LXC_BRIDGE=\"false\"" >  "$CONTAINERDIR/chroot/etc/default/lxc-net"
-
         #enable lo/eth0 auto-configuration
+        echo "Container chroot: enable lo/eth0 auto-configuration"
         echo -e "auto lo\niface lo inet loopback\nauto eth0\niface eth0 inet dhcp" >> "$CONTAINERDIR/chroot/etc/network/interfaces"
 
-        #set default DNS servers (supersede for dhclient)
-        if ! grep -q "supersede domain-name-servers 8.8.8.8, 8.8.4.4;" "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf"
+        #set default DNS servers (overrides dhclient settings)
+        echo "Container chroot: set default DNS servers (supersede for dhclient)" 
+        if ! grep -q "supersede domain-name-servers $CONTAINERNET_GUEST_DNS;" "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf"
         then
-          echo "supersede domain-name-servers 8.8.8.8, 8.8.4.4;" | sudo tee -a "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf" > /dev/null
+          echo "supersede domain-name-servers $CONTAINERNET_GUEST_DNS;" | sudo tee -a "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf" > /dev/null
         fi
 
         #disable openvpn auto-start
+        echo "Container chroot: disable openvpn auto-start"
         sed -i '/^AUTOSTART="[^"]*"$/d' "$CONTAINERDIR/chroot/etc/default/openvpn"
         echo "AUTOSTART=\"none\"" >> "$CONTAINERDIR/chroot/etc/default/openvpn"
 
         #re-enable ssh service
+        echo "Container chroot: enable SSH service"
         rm "$CONTAINERDIR/chroot/etc/ssh/sshd_not_to_be_run"
 
         #remove host iptables setup script
+        echo "Container chroot: remove host-iptables script"
         rm "$CONTAINERDIR/chroot/etc/network/if-pre-up.d/firewall"
         rm "$CONTAINERDIR/chroot/sbin/host-iptables"
 
+        #remove host setup script
+        echo "Container chroot: remove host-setup script"
+        rm "$CONTAINERDIR/chroot/sbin/host-setup"
+
         #remove <PROJECTSHORTNAME>-manage startup
+        echo "Container chroot: remove management tool"
         rm "$CONTAINERDIR/chroot/lib/systemd/system/<PROJECTSHORTNAME>-manage.service"
         rm "$CONTAINERDIR/chroot/usr/share/<PROJECTNAME>/<PROJECTSHORTNAME>-manage.service"
-        rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/<PROJECTSHORTNAME>-manage.service"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/<PROJECTSHORTNAME>-manage.service"
 
         #remove the historian service from the guest
+        echo "Container chroot: remove historian daemon"
         rm "$CONTAINERDIR/chroot/lib/systemd/system/historian.service"
         rm "$CONTAINERDIR/chroot/sbin/historian.sh"
-        rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/historian.service"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/historian.service"
 
         #remove privexec service from the guest
+        echo "Container chroot: remove privexec daemon"
         rm "$CONTAINERDIR/chroot/lib/systemd/system/privexec.service"
         rm "$CONTAINERDIR/chroot/sbin/privexecd.sh"
-        rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/privexec.service"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/privexec.service"
 
         #remove supervised service from the guest
+        echo "Container chroot: remove supervised daemon"
         rm "$CONTAINERDIR/chroot/lib/systemd/system/supervise.service"
         rm "$CONTAINERDIR/chroot/sbin/supervised.sh"
-        rm "$CONTAINERDIR/etc/systemd/system/multi-user.target.wants/supervise.service"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/supervise.service"
 
+        #remove wpa_supplicant links to prevent it from start on the container
+        echo "Container chroot: disable wpa_supplicant autostart"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/dbus-fi.w1.wpa_supplicant1.service"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/wpa_supplicant.service"
 
         #prepare guest-host communication directory (guest-host IPC)
+        echo "Container chroot: make IPC directory"
         mkdir -p "$CONTAINERDIR/ipc" 2>&-
         mkdir -p "$CONTAINERDIR/chroot/var/host/ipc" 2>&-
 
+        #prepare shared mounts directory (useful for some loopback mounts via supervised commands)
+        echo "Prepare shared mount directory."
+        mkdir -p "/mnt/container" 2>&-
+        mkdir -p "$CONTAINERDIR/chroot/mnt/host" 2>&-
+
         #prepare and mount historian compressed RAM filesystem for logs
+        echo "Container chroot: make zram device, format and mount to historian dir"
         modprobe zram num_devices=1 
         sudo blockdev --setrw /dev/zram0
-        echo 2048M > /sys/block/zram0/disksize # max RAM usage in MB
+        echo $HISTORIAN_ZRAM_SIZE > /sys/block/zram0/disksize # max RAM usage
         mke2fs -q -m 0 -b 4096 -O sparse_super -L zram /dev/zram0
         mount -o relatime,noexec,nosuid /dev/zram0 "$CONTAINERDIR/history"
         mkdir -p "$CONTAINERDIR/history/log" 2>&-
 
         #create system-wide overriding profile for container to enable historian feature
+        echo "Container chroot: create default user profile to enable historian in the container"
         cat "$CONTAINERDIR/chroot/etc/profile" "/usr/share/<PROJECTNAME>/etc/historian.profile" > "$CONTAINERDIR/history/.profile"
 
         #Add mount.priv and umount.priv tools for privileged disk operations
+        echo "Container chroot: add privileged mount commands"
         ln -s /usr/bin/privexec "$CONTAINERDIR/chroot/bin/mount.priv"
         ln -s /usr/bin/privexec "$CONTAINERDIR/chroot/bin/umount.priv"
 
         #Create guest prompt color script
+        echo "Container chroot: change user shell prompt"
         sed -i 's,\\\[\\e\[1;37;41m\\\]\\h,\\[\\e[1;37;44m\\]\\h,g' "$CONTAINERDIR/chroot/etc/bash.bashrc" "$CONTAINERDIR/chroot/etc/skel/.bashrc"
 
 
     #remove privexec client from the host
+    echo "Remove provexec client" 
     rm /usr/bin/privexec
 
+
     #create set of virtual mapping device for container:
+    echo "Create evidence and storage loop block devices"
     DEVDIR="/dev/container"
     mkdir -p "$DEVDIR"
     for((i=0;i<10;i++)) #this set of devices is suggested for readonly use
@@ -138,35 +174,83 @@ then
     done 
 
     #load nbd kernel module and copy 3 of them to the container
+    echo "Create few nbd devices"
     modprobe nbd
     cp /dev/nbd{0,1,2} /dev/container/
     chown :user /dev/container/*
     chmod o+rw /dev/container/nbd*
 
-    #bind host-guest devices to be accessible from chroot (used by mount-escalation)
-    mount --bind "$DEVDIR" "$CONTAINERDIR/chroot/$CONTAINERHOSTDEV"
+    #initializing lxd
+    echo "Initialize lxd"
+    lxd init --auto
+    #Let's wait for lxd to be fully up
+    lxd waitready
+    while ! systemctl status --quiet --no-pager lxd.service >/dev/null 2>/dev/null; do sleep 0.2; done
+    while ! systemctl status --quiet --no-pager lxd-containers.service >/dev/null 2>/dev/null; do sleep 0.2; done
 
-    #Enable KVM for the expert's container if kvm is available
-    if [ -c /dev/kvm ] 
-    then 
-     chmod o+rw /dev/kvm
-     echo "lxc.mount.entry = /dev/kvm dev/kvm none bind,create=file 0 0" >> "/home/$CONTAINERUSER/.local/share/lxc/$CONTAINERNAME/config"
+    #creating dnsmasq config files
+    echo "Create dnsmasq config files"
+    echo "dhcp-hostsfile=/etc/dnsmasq-$CONTAINERNET_NAME.hosts
+dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
+    echo "$PROJECTNAME,$CONTAINERNET_GUEST_IP" > "/etc/dnsmasq-$CONTAINERNET_NAME.hosts"
+
+    #creating container network
+    echo "Create container network"
+    lxc network create $CONTAINERNET_NAME ipv4.address=$CONTAINERNET_HOST_IP_CIDR ipv4.routing=false ipv4.nat=false ipv4.firewall=false ipv6.nat=false ipv6.address=none raw.dnsmasq=conf-file=/etc/dnsmasq-$CONTAINERNET_NAME.conf
+
+    #creating empty container, using low-level LXC API to do that (seems that lxc client tool can't create empty containers)
+    echo "Create new empty container"
+    LXD_RESULT=`curl -s --unix-socket /var/lib/lxd/unix.socket -X POST -d "{\"name\": \"$CONTAINERNAME\", \"source\": {\"type\": \"none\"}}" a/1.0/containers`
+    LXD_OPERATION=`echo "$LXDRESULT" | sed 's/.*"operation":"\([^"]*\)".*/\1/'`
+    if [ -n "LXD_OPERATION" ]
+    then
+      #waiting until container is setup 
+      curl -s --unix-socket /var/lib/lxd/unix.socket $LXD_OPERATION/wait
+      while ! lxc info $CONTAINERNAME; do sleep 0.2; done;
     fi
 
-    #start userland container after all
-    sudo -H -u $CONTAINERUSER lxc-start -n "$CONTAINERNAME" -d
+    #attaching network to container
+    echo "Attach network to the container"
+    lxc network attach $CONTAINERNET_NAME $CONTAINERNAME
+
+    #attaching the shared directories
+    echo "Attach shared directories to the container"
+    lxc config device add $CONTAINERNAME shareddisk disk source=/dev/container path=/dev/host
+    lxc config device add $CONTAINERNAME ipc disk source="$CONTAINERDIR/ipc" path=/var/host/ipc
+    lxc config device add $CONTAINERNAME sharedmnt disk source="/mnt/container" path=/mnt/host
+    
+    #set apparamor profile to unconfined to be able to run on squashfs
+    echo "Disable AppArmor in container"
+    lxc config set $CONTAINERNAME raw.lxc "lxc.apparmor.profile=unconfined"
+
+    #attach rootfs to the chroot.user
+    echo "Create symlink (based on chroot dir) for the container rootfs"
+    mkdir -p /var/lib/lxd/storage-pools/default/containers/$CONTAINERNAME &&
+    ln -s /opt/container/chroot.user /var/lib/lxd/storage-pools/default/containers/$CONTAINERNAME/rootfs
+
+   
+    #Attach kvm device to the expert container if kvm is available
+    if [ -c /dev/kvm ] 
+    then 
+      echo "Attaching /dev/kvm device to the container"
+      chmod o+rw /dev/kvm
+      lxc config device add $CONTAINERNAME kvm unix-char source=/dev/kvm path=/dev/kvm
+    fi
+
+    #start the container after all
+    lxc start $CONTAINERNAME
   fi
 fi
 
 if [ "$1" == "stop" ]
 then
-  if mount | grep -q "$CONTAINERDIR/tmp"
+  echo "Stopping the container"
+  if mount | grep -q "$CONTAINERDIR/reflection"
   then
     sudo -H -u $CONTAINERUSER lxc-stop -k -n "$CONTAINERNAME"
     umount "$CONTAINERDIR/chroot.user"
     umount "$CONTAINERDIR/chroot"
-    umount "$CONTAINERDIR/tmp"
-    umount "$CONTAINERDIR/chroot/$CONTAINERHOSTDEV"
+    umount "$CONTAINERDIR/reflection"
     if [ "$CONTAINERDIR" != "/" -a -n "$CONTAINERDIR" ]
     then
       rm -rf "$CONTAINERDIR"

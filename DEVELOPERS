@@ -4,7 +4,7 @@ Author: Vitaly Kamluk // bitscout[at]kaspersky.com
 This file briefly describes the structure of the project for developers.
 
 Base system
-Current base system is Ubuntu 16.04 LTS.
+Current base system is Ubuntu 18.04 LTS.
 
 Virtualization
 Bitscout relies on LXC 1.0 for virtualization. One option was to use full VM, but

@@ -24,22 +24,28 @@ done
 
 
 statusprint "Setting disk properties.."
-echo "#define DISKNAME  Ubuntu Remix
+( echo "#define DISKNAME  Ubuntu Remix
 #define TYPE  binary
 #define TYPEbinary  1
-#define ARCH  i386
-#define ARCHi386  1
-#define DISKNUM  1
+#define ARCH  $GLOBAL_BASEARCH";
+if [ "$GLOBAL_BASEARCH" == "i386" ]
+then
+ echo "#define ARCHi386  1"
+else
+ echo "#define ARCHi386 0"
+fi
+
+echo "#define DISKNUM  1
 #define DISKNUM1  1
 #define TOTALNUM  0
-#define TOTALNUM0  1" > image/README.diskdefines
+#define TOTALNUM0  1" ) > image/README.diskdefines
 
 statusprint "Making the image recognized as Ubuntu disk.."
 touch image/ubuntu
 mkdir image/.disk
 cd image/.disk
 echo "live" > cd_type
-echo "Ubuntu Remix 16.04 \"$PROJECTCAPNAME\"" > info  # Update version number to match your OS version
+echo "Ubuntu Remix 18.04 \"$PROJECTCAPNAME\"" > info  # Update version number to match your OS version
 echo "A project by Vitaly Kamluk, Kaspersky Lab (www.kaspersky.com)." > release_notes_url
 cd ../../
 
