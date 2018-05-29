@@ -4,7 +4,7 @@ log_file ./autotest.log
 set timeout 120
 send_log "\nConnecting to bitscout serial socket..\n"
 
-send "Please wait while system starts booting (up to 120 sec)..\n// "
+send "Please let the system boot (timeout 120 sec)..\n// "
 spawn socat STDIO,echo=1 UNIX-CONNECT:./bitscout.serial.sock
 set socatpid [exp_pid]
 
@@ -24,8 +24,11 @@ send "user\n"
 expect "Password: "
 send "\n"
 
+send_log "Elevating to root user..\n"
+send "sudo -i\n"
+expect "root*bitscout-host*\$ "
+
 #1. Test LXC container status
-expect "user*bitscout-host*\$ "
 send_log "\nChecking if LXC container \"expert\" is running..\n"
 send "lxc list\n"
 expect {
@@ -36,10 +39,6 @@ expect {
 
 #2. Test services status: openvpn, ssh, privexecd, historian, ...
 send_log "Checking host system services status..\n"
-send_log "Elevating to root user..\n"
-send "sudo -i\n\n"
-expect "root*bitscout-host*\$ "
-
 #check openvpn@scout.service
 send "systemctl --no-pager status openvpn@scout.service | tr -cd '\\11\\12\\15\\40-\\176' \n"
 expect {
@@ -64,15 +63,11 @@ expect {
 }
 expect "root*bitscout-host*\$ "
 
-send_log "Leaving root user session..\n"
-send "exit\n"
-expect "user*bitscout*\$ "
-
 #check guest services
 send_log "Checking guest system services status..\n"
 
 #entering the guest container
-send "lxc-attach -n expert\n"
+send "lxc exec expert -- bash\n"
 expect { 
   "root*bitscout*\$ " { send_log "\nautotest: Guest LXC container shell is available. LXC shell: OK\n"; }
   timeout { send_log "\nautotest: CRITICAL, couldn't enter the container shell. LXC shell: ERROR\n"; exit; } 
@@ -93,11 +88,11 @@ expect "root*bitscout*\$ "
 
 #exiting and shutting down the system
 send "exit\n"
-expect "user*@*bitscout*\$ "
-send "sudo poweroff\n\n"
+expect "root*@*bitscout*\$ "
+send "poweroff -f\n\n"
 
 expect {
-  "Starting Power-Off..." { send_log "\nautotest: Test graceful exit: OK\n" }
+  "Powering off." { send_log "\nautotest: Test graceful exit: OK\n" }
   timeout { send_log "\nautotest: Test graceful exit: ERROR\n" }
 }
 
