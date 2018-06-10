@@ -5,6 +5,7 @@
 . ./scripts/functions
 
 BUILDCONFPATH="config/${PROJECTNAME}-build.conf"
+CONFIGNAME={"GLOBAL_RELEASESIZE"}
 
 statusprint "Welcome to $PROJECTNAME builder!"
 HOSTUNAME=$(uname -a)
@@ -51,6 +52,19 @@ validate_releasesize()
   fi
 }
 
+validate_buildarch()
+{
+    if [ "$1" == "amd64" ] || [ "$1" == "i386" ]
+    then
+        return $?
+    else
+        return 1
+
+    fi 
+}
+
+msg_new_config_opt="\nThe following option is not found in your config file, please answer the following question\nand it will be appended to your existing config file located in config/$PROJECTNAME-build.conf."
+
 if ! [ -f "$BUILDCONFPATH" ]
 then
   statusprint "It seems that you are at fresh build environment.\nWe need to populate the config with some essential data.\nPlease answer the following questions or put your existing build config to config/$PROJECTNAME-build.conf."
@@ -62,7 +76,12 @@ then
     exit 1
   else
     mkdir config 2>&-
+  fi
+fi
 
+if [ -z "$GLOBAL_RELEASESIZE" ]
+then
+    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
     releasesize=""
     while ! validate_releasesize "$releasesize"
     do
@@ -73,7 +92,11 @@ then
         statusprint "Invalid input data format. Please try again.."
       fi
     done
+fi
 
+if [ -z "$GLOBAL_CUSTOMKERNEL" ] 
+then
+    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
     customkernel="0"
     PRINTOPTIONS=n statusprint "If you are going to deal with badly unmounted filesystems, software RAID or LVM, it is recommended to apply kernel write-blocker patch for extra care of the evidence. However, please note that it may take 3-4 hours to rebuild the kernel on a single core CPU.\nWould you like to build and use kernel with write-blocker? [Y/n]: "
     read choice
@@ -84,6 +107,11 @@ then
       customkernel="0"
     fi
 
+fi
+
+if [ -z "$GLOBAL_VPNSERVER" ] || [ -z "$GLOBAL_VPNPROTOCOL" ] || [ -z "$GLOBAL_VPNPORT" ]
+then
+    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
     vpnhost=""
     vpnprotocol=""
     vpnport=""
@@ -102,9 +130,63 @@ then
         statusprint "Invalid input data format. Please try again.."
       fi
     done
+    if ( [ -n "$GLOBAL_VPNSERVER" ] || [ -n "$GLOBAL_VPNPROTOCOL" ] || [ -n "$GLOBAL_VPNPORT" ] ) &&  [ -f "$BUILDCONFPATH" ]
+    then
+       echo "GLOBAL_VPNSERVER=\"$vpnhost\"
+GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
+GLOBAL_VPNPORT=\"$vpnport\"" >> "$BUILDCONFPATH"
 
+    fi
+fi
+
+if [ -z "$GLOBAL_BUILDID" ]
+then    
+    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
     buildid=`dd if=/dev/urandom bs=1 count=4 2>&- | xxd -pos`
+    if [ -n "$GLOBAL_BUILDID" ] &&  [ -f "$BUILDCONFPATH" ]; then
+        echo "GLOBAL_BUILDID=\"$buildid\"" >> "$BUILDCONFPATH"
+    fi
+fi
+
+if [ -z "$CRYPTOKEYSIZE" ] && [ -f "$BUILDCONFPATH" ]
+then
+    echo "CRYPTOKEYSIZE=2048" >> "$BUILDCONFPATH"
+fi
+
+if [ -z "$GLOBAL_BASEARCH" ] 
+then
+    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
+    buildarch=""
+    while ! validate_buildarch "$buildarch"
+    do
+        echo "$buildarch"
+        PRINTOPTIONS=n statusprint "You have an option to build this image in the following architecture\n1. 64-bit architecture (amd64)\n2. 32-bit architecture (i386)\nPlease make your choice [1 or 2]: "
+        read choice
+        
+        if [ "$choice" == "1" ]
+        then
+            buildarch="amd64"
+        elif [ "$choice" == "2" ]
+        then
+            buildarch="i386"
+        fi
     
+        if ! validate_buildarch "$buildarch"
+        then
+            statusprint "Invalid input choice. Please try again.."
+        fi
+    done
+    
+    if [ -z "$GLOBAL_BASEARCH" ] && [ -f "$BUILDCONFPATH" ]
+    then
+        echo "GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)"  >> "$BUILDCONFPATH"
+    fi
+
+fi
+
+
+if ! [ -f "$BUILDCONFPATH" ]
+then
     statusprint "Saving configuration.."
     echo "GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_VPNSERVER=\"$vpnhost\"
@@ -112,10 +194,9 @@ GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
 GLOBAL_VPNPORT=\"$vpnport\"
 GLOBAL_BUILDID=\"$buildid\"
 GLOBAL_CUSTOMKERNEL=\"$customkernel\" 
-GLOBAL_BASEARCH=\"amd64\"
-#GLOBAL_BASEARCH=\"i386\"
+GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
 CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
-  fi
+
 fi
 
 exit 0;
