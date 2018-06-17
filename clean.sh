@@ -18,8 +18,8 @@ statusprint "Removing all temporary files for each architecture, except iso file
 #sudo rm -rf ./chroot ./chroot.devel ./tmp ./image ./initrd ./recycle ./cache ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock
 
 if [ ${#builddirs[@]} = 1 ]; then
-    echo "Removing ./build.${builddirs[0]} ..."
-    sudo rm -rf ./build.${builddirs[0]};
+    echo "Removing: ./build.${builddirs[0]} ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock ..."
+    sudo rm -rf ./build.${builddirs[0]} ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock
 
 elif [ ${#builddirs[@]} -gt 1 ]; then
     
@@ -35,10 +35,11 @@ elif [ ${#builddirs[@]} -gt 1 ]; then
     done
     
     if [ "$choice" -ne "0" ]; then
-        echo "Removing ./build.${builddirs[$(($i-1))]} ..."
-        sudo rm -rf ./build.${builddirs[$(($i-1))]};
+        echo "Removing: ./build.${builddirs[$(($i-1))]} ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock ..."
+        sudo rm -rf ./build.${builddirs[$(($i-1))]} ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock
     else
-        echo "Removing ALL Architectures ..."
+        echo "Removing ALL Architectures + ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock ..."
+        sudo rm -rf  ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock
         for (( i=0;i<${#builddirs[@]}; i++ )); do
             echo "Removing ./build.${builddirs[$(($i))]} ..."
             sudo rm -rf ./build.${builddirs[$(($i))]}
