@@ -5,7 +5,7 @@
 . ./scripts/functions
 
 UNPACKED_INITRD=0
-if [ ! -d "initrd" ]
+if [ ! -d "./build.$GLOBAL_BASEARCH/initrd" ]
 then
   statusprint "Unpacking initrd.."
   scripts/initrd_unpack.sh
@@ -13,11 +13,11 @@ then
 fi
 
 statusprint "Fixing casper find_livefs method.."
-if [ -f "initrd/scripts/casper" ]
+if [ -f "./build.$GLOBAL_BASEARCH/initrd/scripts/casper" ]
 then
-  if ! grep -q "${PROJECTNAME}-${GLOBAL_BUILDID}" initrd/scripts/casper
+  if ! grep -q "${PROJECTNAME}-${GLOBAL_BUILDID}" ./build.$GLOBAL_BASEARCH/initrd/scripts/casper
   then
-    sed -i 's/^\( *\)\(mount -t ${fstype} -o ro,noatime "${devname}" $mountpoint || continue\)/\1blkid "${devname}" | grep -q "'"${PROJECTNAME}-${GLOBAL_BUILDID}"'" || continue\n\1\2/' initrd/scripts/casper
+    sed -i 's/^\( *\)\(mount -t ${fstype} -o ro,noatime "${devname}" $mountpoint || continue\)/\1blkid "${devname}" | grep -q "'"${PROJECTNAME}-${GLOBAL_BUILDID}"'" || continue\n\1\2/' ./build.$GLOBAL_BASEARCH/initrd/scripts/casper
   fi
 fi
 

@@ -5,7 +5,7 @@
 . ./scripts/functions
 
 statusprint "Disabling SSH server from automatic start on the host system.."
-sudo touch chroot/etc/ssh/sshd_not_to_be_run
+sudo touch ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_not_to_be_run
 
 statusprint "Generating SSH-keys.."
 if ! filelist_exists "config/ssh/"{${PROJECTSHORTNAME},${PROJECTSHORTNAME}.pub}
@@ -18,17 +18,17 @@ else
 fi
 
 statusprint "Adding SSH-key to the authorized keys in chroot for normal user.."
-sudo mkdir -p chroot/home/user/.ssh/
-sudo cp "config/ssh/${PROJECTSHORTNAME}.pub" chroot/home/user/.ssh/authorized_keys
+sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/home/user/.ssh/
+sudo cp "config/ssh/${PROJECTSHORTNAME}.pub" ./build.$GLOBAL_BASEARCH/chroot/home/user/.ssh/authorized_keys
 
 statusprint "Adding SSH-key to the authorized keys in chroot for root.."
-sudo mkdir -p chroot/root/.ssh/
-sudo cp "config/ssh/${PROJECTSHORTNAME}.pub" chroot/root/.ssh/authorized_keys
+sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/root/.ssh/
+sudo cp "config/ssh/${PROJECTSHORTNAME}.pub" ./build.$GLOBAL_BASEARCH/chroot/root/.ssh/authorized_keys
 
 statusprint "Disabling password authentication for SSH.."
-sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' ./chroot/etc/ssh/sshd_config
+sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config
 
 statusprint "Uncommenting port option for SSH.."
-sudo sed -i 's/^#Port /Port /g' chroot/etc/ssh/sshd_config
+sudo sed -i 's/^#Port /Port /g' ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config
 
 exit 0;

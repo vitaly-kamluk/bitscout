@@ -9,7 +9,7 @@ if [ ! -f "config/irssi/irssi.conf" ]
 then
  file_template_copy "resources/irssi/irssi.conf.client" config/irssi/irssi.conf
 fi
-sudo cp -v config/irssi/irssi.conf chroot/etc/irssi.conf
+sudo cp -v config/irssi/irssi.conf ./build.$GLOBAL_BASEARCH/chroot/etc/irssi.conf
 
 statusprint "Copying server irssi configuration.."
 mkdir config/ngircd 2>&-

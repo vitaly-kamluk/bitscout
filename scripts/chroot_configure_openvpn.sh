@@ -73,17 +73,17 @@ fi
 
 if ! [ -f "$VPNCFGDIR/${PROJECTSHORTNAME}.conf" ]
 then
-  statusprint "Copying VPN client config to chroot.. Feel free to edit it in chroot/etc/openvpn/${PROJECTSHORTNAME}.conf!"
-  sudo cp -v "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" "chroot/etc/openvpn/${PROJECTSHORTNAME}.conf"
+  statusprint "Copying VPN client config to chroot.. Feel free to edit it in ./build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}.conf!"
+  sudo cp -v "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}.conf"
 fi
 
 statusprint "Copying essential files: certificates,keys.."
-sudo mkdir -p "chroot/etc/openvpn/${PROJECTSHORTNAME}"
-sudo cp -v "$VPNCFGDIR/easy-rsa/keys/"{${PROJECTSHORTNAME}.crt,${PROJECTSHORTNAME}.key,ca.crt,dh${CRYPTOKEYSIZE}.pem,ta.key} "chroot/etc/openvpn/${PROJECTSHORTNAME}/"
+sudo mkdir -p "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}"
+sudo cp -v "$VPNCFGDIR/easy-rsa/keys/"{${PROJECTSHORTNAME}.crt,${PROJECTSHORTNAME}.key,ca.crt,dh${CRYPTOKEYSIZE}.pem,ta.key} "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}/"
 
 statusprint "Enabling VPN client start on system boot.."
-sudo sed -i '/^AUTOSTART="[^"]*"$/d' ./chroot/etc/default/openvpn
-echo "AUTOSTART=\"${PROJECTSHORTNAME}\"" | sudo tee -a ./chroot/etc/default/openvpn >/dev/null
+sudo sed -i '/^AUTOSTART="[^"]*"$/d' ./build.$GLOBAL_BASEARCH/chroot/etc/default/openvpn
+echo "AUTOSTART=\"${PROJECTSHORTNAME}\"" | sudo tee -a ./build.$GLOBAL_BASEARCH/chroot/etc/default/openvpn >/dev/null
 
 
 exit 0;

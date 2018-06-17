@@ -4,4 +4,4 @@
 
 . ./scripts/functions
 
-chroot_exec chroot "/bin/bash -i"
+chroot_exec build.$GLOBAL_BASEARCH/chroot "/bin/bash -i"

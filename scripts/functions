@@ -16,11 +16,11 @@ CONTAINERUSERNAME="user"
 LANG=en_US.UTF-8
 HISTORIAN_ZRAM_SIZE=2048M
 
-INITRDPATH=image/casper/initrd.gz
-RESERVEDIR=reserve
-SCREENNAME=${PROJECTNAME}_chroot #creates a screen session for interactive configuration. see scripts/chroot_enter.sh and scripts/chroot_leave.sh
-
 [ -f "config/$PROJECTNAME-build.conf" ] && . "config/$PROJECTNAME-build.conf"
+
+INITRDPATH=build.$GLOBAL_BASEARCH/image/casper/initrd.gz
+RESERVEDIR=reserve
+SCREENNAME=${PROJECTNAME}_${GLOBAL_BASEARCH}_chroot #creates a screen session for interactive configuration. see scripts/chroot_enter.sh and scripts/chroot_leave.sh
 
 statusprint()
 {
@@ -48,15 +48,15 @@ chroot_mount_cache()
   fi
   statusprint "Mounting chroot cache directories into \"$CHROOTPATH\".." &&
  
-  statusprint "Mounting ./cache/apt.cache.." &&
-  create_dir_safe ./cache/apt.cache &&
+  statusprint "Mounting ./build.$GLOBAL_BASEARCH/cache/apt.cache.." &&
+  create_dir_safe ./build.$GLOBAL_BASEARCH/cache/apt.cache &&
   create_dir_safe $CHROOTPATH/var/cache/apt/archives &&
-  sudo mount --bind $PWD/cache/apt.cache $CHROOTPATH/var/cache/apt/archives &&
+  sudo mount --bind $PWD/build.$GLOBAL_BASEARCH/cache/apt.cache $CHROOTPATH/var/cache/apt/archives &&
 
-  statusprint "Mounting ./cache/apt.lists.." &&
-  create_dir_safe ./cache/apt.lists &&
+  statusprint "Mounting ./build.$GLOBAL_BASEARCH/cache/apt.lists.." &&
+  create_dir_safe ./build.$GLOBAL_BASEARCH/cache/apt.lists &&
   create_dir_safe $CHROOTPATH/var/lib/apt/lists &&
-  sudo mount --bind $PWD/cache/apt.lists $CHROOTPATH/var/lib/apt/lists && return 0 || return 1
+  sudo mount --bind $PWD/build.$GLOBAL_BASEARCH/cache/apt.lists $CHROOTPATH/var/lib/apt/lists && return 0 || return 1
 
 }
 
@@ -142,12 +142,12 @@ chroot_exec()
 unpackinitrd()
 {
   statusprint "Unpacking initrd image from $INITRDPATH.."
-  rm -rf ./initrd
-  mkdir ./initrd
-  cd ./initrd
-  if [ -f "../$INITRDPATH" ]
+  rm -rf ./build.$GLOBAL_BASEARCH/initrd
+  mkdir ./build.$GLOBAL_BASEARCH/initrd
+  cd ./build.$GLOBAL_BASEARCH/initrd
+  if [ -f "../../$INITRDPATH" ]
   then
-    gzip -dc "../$INITRDPATH" | cpio -id
+    gzip -dc "../../$INITRDPATH" | cpio -id
   else
     echo "[ERROR]: initrd image not found in $INITRDPATH."
   fi
@@ -157,10 +157,10 @@ unpackinitrd()
 packinitrd()
 {
   statusprint "Packing initrd image into $INITRDPATH.."
-  if [ -d "./initrd" ]
+  if [ -d "./build.$GLOBAL_BASEARCH/initrd" ]
   then
-    cd ./initrd
-    find . | cpio -o -H newc | gzip -7 -c | sudo tee "../$INITRDPATH" >/dev/null
+    cd ./build.$GLOBAL_BASEARCH/initrd
+    find . | cpio -o -H newc | gzip -7 -c | sudo tee "../../$INITRDPATH" >/dev/null
     cd ..
   else
     echo "[ERROR]: initrd directory not found. Aborting."
