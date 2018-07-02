@@ -2,6 +2,9 @@
 #Bitscout project
 #Copyright Kaspersky Lab
 
+FORCED_KERNEL_VERSION=linux-image-4.15.0-20-generic
+FORCED_KERNEL_SOURCE_VERSION=4.15.0-20.21
+
 . ./scripts/functions
 
 verlte()
@@ -21,29 +24,29 @@ chrootdevel_mount()
 
 if [ "$GLOBAL_CUSTOMKERNEL" == "1" ]
 then 
-  statusprint "Building own custom kernel with forensic patches applied.."
-  statusprint "Setting up kernel build environment.."
+  statusprint "Building own custom kernel with forensic patches applied.." &&
+  statusprint "Setting up kernel build environment.." &&
   #[ -d "./build.$GLOBAL_BASEARCH/chroot.devel" ] && sudo rm -rf ./build.$GLOBAL_BASEARCH/chroot.devel/ ./build.$GLOBAL_BASEARCH/tmp/chroot.devel/
-  mkdir ./build.$GLOBAL_BASEARCH/chroot.devel 2>&-; mkdir -p ./build.$GLOBAL_BASEARCH/tmp/chroot.devel/{upper,work} 2>&-
-  chrootdevel_mount
-  trap "chrootdevel_unmount" SIGINT SIGKILL SIGTERM
+  mkdir ./build.$GLOBAL_BASEARCH/chroot.devel 2>&-;  mkdir -p ./build.$GLOBAL_BASEARCH/tmp/chroot.devel/{upper,work} 2>&-;
+  chrootdevel_mount &&
+  trap "chrootdevel_unmount" SIGINT SIGKILL SIGTERM &&
 
-  statusprint "Creating development rootfs.."  
-  statusprint "Installing build tools and downloading kernel source.."
+  statusprint "Creating development rootfs.." &&
+  statusprint "Installing build tools and downloading kernel source.." &&
   chroot_exec build.$GLOBAL_BASEARCH/chroot.devel "export DEBIAN_FRONTEND=noninteractive
-  KERNELPKG=\$(apt-cache show --no-all-versions linux-image-generic| grep '^Depends:' | sed 's/^Depends: \\([^, ]*\\)[, ].*/\\1/')
-  apt-fast --yes install build-essential git bsdtar &&
-  mkdir /opt/kernel 2>&-; chmod o+w /opt/kernel && cd /opt/kernel;
-  mv -v /bin/tar /bin/tar.distrib && ln -fs /usr/bin/bsdtar /bin/tar &&
-  apt-get --yes source \"\$KERNELPKG\" &&
-  mv -v /bin/tar.distrib /bin/tar && 
-  apt-fast --yes build-dep \"\$KERNELPKG\"
-  KERNELVER=\$(echo \"\$KERNELPKG\"| cut -d\"-\" -f1,3 | tee /opt/kernel/kernel.version )
+  KERNELPKG=\$(apt-cache show --no-all-versions linux-image-generic| grep '^Depends:' | sed 's/^Depends: \\([^, ]*\\)[, ].*/\\1/') &&
+  KERNELPKG=\"$FORCED_KERNEL_VERSION\" &&
+  KERNELUNSIGNEDPKG=\${KERNELPKG/linux-image/linux-image-unsigned} &&
+  apt-fast --yes install build-essential git bsdtar bc libssl-dev;
+  mkdir -p /opt/kernel 2>&-; chmod o+w /opt/kernel; cd /opt/kernel;
+  KERNELVER=\$(echo \"\$KERNELPKG\"| cut -d\"-\" -f1,3 | tee /opt/kernel/kernel.version ) &&
+  apt-fast --yes build-dep \"\$KERNELUNSIGNEDPKG\"
+  apt-get --yes source linux=$FORCED_KERNEL_SOURCE_VERSION
   KERNELDIR=\"/opt/kernel/\$KERNELVER\"
-  cd \"\$KERNELDIR\" && [ ! -f debian_rules.cleaned ] && fakeroot debian/rules clean && touch debian_rules.cleaned"
+  cd \"\$KERNELDIR\" && [ ! -f debian_rules.cleaned ] && fakeroot debian/rules clean && touch debian_rules.cleaned" || ( chrootdevel_unmount; exit 1 )  &&
 
-  statusprint "Patching kernel with write-blocker patch.."
-  KERNELVER=$(cat ./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/kernel.version)
+  statusprint "Patching kernel with write-blocker patch.." &&
+  KERNELVER=$(cat ./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/kernel.version) &&
   PATCHFILE=$( ls -1 ./resources/kernel/writeblocker/kernel/*.patch | sed 's,^.*/,,'| sort -r | while read t
   do
     PKVER=$(echo "$t" | cut -d'-' -f1,2)
@@ -52,37 +55,43 @@ then
       echo "$t"
       break;
     fi
-  done )
+  done ) &&
 
   if [ -z "$PATCHFILE" ]
   then
     statusprint "No patch file selected. Aborting."
     exit 1
-  fi
-  sudo patch --forward --batch -b -d "./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/$KERNELVER" -p1 < "./resources/kernel/writeblocker/kernel/$PATCHFILE"
+  else
+    statusprint "Using the latest kernel patch file for current kernel: $PATCHFILE"
+  fi &&
+  sudo patch --forward --batch -b -d "./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/$KERNELVER" -p1 < "./resources/kernel/writeblocker/kernel/$PATCHFILE" &&
 
-  statusprint "Building kernel.."
-  chroot_exec build.$GLOBAL_BASEARCH/chroot.devel "cd \"/opt/kernel/$KERNELVER\" && fakeroot debian/rules binary-headers binary-generic binary-perarch"
+  statusprint "Building kernel.." &&
+  chroot_exec build.$GLOBAL_BASEARCH/chroot.devel "cd \"/opt/kernel/$KERNELVER\" && fakeroot debian/rules binary-headers binary-generic binary-perarch" &&
 
-  statusprint "Installing kernel.."
-  sudo cp -rv ./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/linux-image-* "./build.$GLOBAL_BASEARCH/chroot/tmp/"
-  sudo umount ./build.$GLOBAL_BASEARCH/chroot.devel
+  statusprint "Installing kernel.." &&
+  sudo cp -rv ./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/linux-{image,modules}-* "./build.$GLOBAL_BASEARCH/chroot/tmp/" &&
+  sudo umount ./build.$GLOBAL_BASEARCH/chroot.devel &&
   chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive
   apt-fast -y install linux-firmware
-  dpkg -i /tmp/linux-image-*
+  dpkg -i /tmp/linux-{image,modules}*
   apt-fast --yes -f install
-  rm /tmp/linux-image-*"
+  rm /tmp/linux-image-*" &&
 
-  statusprint "Copying write-blocker management tools.."
-  sudo cp -v ./resources/kernel/writeblocker/userspace/tools/{wrtblk,wrtblk-ioerr,wrtblk-disable} ./build.$GLOBAL_BASEARCH/chroot/usr/sbin/
+  statusprint "Copying write-blocker management tools.." &&
+  sudo cp -v ./resources/kernel/writeblocker/userspace/tools/{wrtblk,wrtblk-ioerr,wrtblk-disable} ./build.$GLOBAL_BASEARCH/chroot/usr/sbin/ &&
 
-  statusprint "Copying write-blocker udev rules.."
+  statusprint "Copying write-blocker udev rules.." &&
   sudo cp -v ./resources/kernel/writeblocker/userspace/udev/01-forensic-readonly.rules ./build.$GLOBAL_BASEARCH/chroot/lib/udev/rules.d/
 
 else
-  statusprint "Installing stock kernel version."
-  #chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install linux-image-generic"
-  chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install linux-image-4.15.0-22-generic"
+  statusprint "Installing stock kernel version." &&
+  if [ -n "$FORCED_KERNEL_VERSION" ]
+  then
+    chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install $FORCED_KERNEL_VERSION"
+  else
+    chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install linux-image-generic"
+  fi
 fi
 
 

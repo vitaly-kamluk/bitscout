@@ -82,7 +82,7 @@ run_debootstrap_supervised_fast()
   chroot_mount_cache "$PWD/build.$GLOBAL_BASEARCH/chroot" &&
   trap "chroot_unmount_cache \"$PWD/build.$GLOBAL_BASEARCH/chroot\"" SIGINT SIGKILL SIGTERM &&
   apt_make_dirs &&
-  apt_update &&
+  apt_update || ( chroot_unmount_cache "$PWD/build.$GLOBAL_BASEARCH/chroot"; exit 1 ) &&
    
   statusprint "Downloading deb files to local cache dir.." &&
   ( ( cd "$DEBDIR" && apt_fast_download $DEBS ) || echo "Failed to download deb files" ) &&
