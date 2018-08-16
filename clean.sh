@@ -35,8 +35,8 @@ elif [ ${#builddirs[@]} -gt 1 ]; then
     done
     
     if [ "$choice" -ne "0" ]; then
-        echo "Removing: ./build.${builddirs[$(($i-1))]} ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock ..."
-        sudo rm -rf ./build.${builddirs[$(($i-1))]} ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock
+        echo "Removing: ./build.${builddirs[$(($choice-1))]} ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock ..."
+        sudo rm -rf ./build.${builddirs[$(($choice-1))]} ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock
     else
         echo "Removing ALL Architectures + ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock ..."
         sudo rm -rf  ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock
