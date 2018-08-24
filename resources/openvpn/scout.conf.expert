@@ -21,7 +21,6 @@ tls-auth "/etc/openvpn/<PROJECTSHORTNAME>/ta.key" 1
 ca "/etc/openvpn/<PROJECTSHORTNAME>/ca.crt"
 cert "/etc/openvpn/<PROJECTSHORTNAME>/expert.crt"
 key "/etc/openvpn/<PROJECTSHORTNAME>/expert.key"
-comp-lzo
 
 log-append "/var/log/openvpn.<PROJECTSHORTNAME>.log"
 status "/var/run/openvpn.<PROJECTSHORTNAME>.status" 1

@@ -30,7 +30,6 @@ persist-tun
 
 log-append /var/log/openvpn.<PROJECTSHORTNAME>.log
 
-comp-lzo
 keepalive 60 180
 client-to-client
 max-clients 10
