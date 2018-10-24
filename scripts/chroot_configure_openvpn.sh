@@ -65,8 +65,8 @@ else
   ./build-ca
   ./build-dh
   ./build-key-server ${PROJECTSHORTNAME}server
-  ./build-key $PROJECTSHORTNAME
-  ./build-key expert
+  ./build-key --batch $PROJECTSHORTNAME
+  ./build-key --batch expert
   cd "$PROJDIR"
 
 fi
