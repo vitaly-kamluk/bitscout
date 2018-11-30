@@ -88,9 +88,9 @@ else
   statusprint "Installing stock kernel version." &&
   if [ -n "$FORCED_KERNEL_VERSION" ]
   then
-    chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install $FORCED_KERNEL_VERSION"
+    chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install $FORCED_KERNEL_VERSION linux-firmware"
   else
-    chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install linux-image-generic"
+    chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install linux-image-generic linux-firmware"
   fi
 fi
 

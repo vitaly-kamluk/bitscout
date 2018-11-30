@@ -13,7 +13,7 @@ then
  sudo rm -f "$SQUASHFSIMG"
 fi
 
-printf $(sudo du -sx --block-size=1 chroot | cut -f1) | sudo tee ./build.$GLOBAL_BASEARCH/image/casper/filesystem.size >/dev/null
+printf $(sudo du -sx --block-size=1 "build.$GLOBAL_BASEARCH" | cut -f1) | sudo tee ./build.$GLOBAL_BASEARCH/image/casper/filesystem.size >/dev/null
 
 statusprint "Making squashfs image.."
 sudo mksquashfs ./build.$GLOBAL_BASEARCH/chroot "$SQUASHFSIMG" -e boot 
