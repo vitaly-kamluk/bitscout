@@ -22,7 +22,7 @@ expect {
 }
 send "user\n"
 expect "Password: "
-send "\n"
+expect "user*bitscout-host*\$ "
 
 send_log "Elevating to root user..\n"
 send "sudo -i\n"
@@ -30,11 +30,14 @@ expect "root*bitscout-host*\$ "
 
 #1. Test LXC container status
 send_log "\nChecking if LXC container \"expert\" is running..\n"
-send "lxc list\n"
-expect {
-  "expert *STOPPED" { send_log "\nautotest: LXC container is down. LXC check: ERROR\n"; exit } 
-  "expert *RUNNING" { expect "\n"; send_log "autotest: LXC container is up. LXC check: OK\n"; }
-  timeout { send_log "autotest: CRITICAL, timeout waiting for container. LXC check: ERROR"; exit }
+set lxdstarted 0
+while { $lxdstarted == 0 } {
+ send "lxc list --format csv\n"
+ expect {
+   "expert,RUNNING,10." { expect "\n"; send_log "autotest: LXC container is up. LXC check: OK\n"; set lxdstarted 1; break }
+   "root*bitscout-host*\$ " { send_log "\nautotest: LXD has not started yet. Sleeping before trying again..\n"; sleep 3 }
+   timeout { send_log "autotest: CRITICAL, timeout waiting for container. LXC check: ERROR"; exit }
+ }
 }
 
 #2. Test services status: openvpn, ssh, privexecd, historian, ...
