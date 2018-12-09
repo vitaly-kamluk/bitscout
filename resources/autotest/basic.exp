@@ -16,12 +16,14 @@ if { $socatpid > 0 } {
 }
 
 send_log "\nBooting the system..\n"
-expect { 
+expect {
   "bitscout-host login:" { send_log "\nautotest: Login prompt found. System boot: OK\n"; }
   timeout { send_log "\nautotest: Timeout expired while waiting for login prompt. System boot: ERROR\n"; exit }
 }
+set timeout 120
 send "user\n"
 expect "Password: "
+send "\n"
 expect "user*bitscout-host*\$ "
 
 send_log "Elevating to root user..\n"
