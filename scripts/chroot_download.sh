@@ -68,6 +68,7 @@ apt_fast_download()
 
 run_debootstrap_supervised_fast()
 {
+  #trap "chroot_unmount_cache \"$PWD/build.$GLOBAL_BASEARCH/chroot\"" SIGINT SIGKILL SIGTERM
   statusprint "Downloading $BASERELEASE:$GLOBAL_BASEARCH.. " &&
  
   BASEDIR="$PWD" &&
@@ -80,7 +81,6 @@ run_debootstrap_supervised_fast()
   install_required_package aria2  &&
  
   chroot_mount_cache "$PWD/build.$GLOBAL_BASEARCH/chroot" &&
-  trap "chroot_unmount_cache \"$PWD/build.$GLOBAL_BASEARCH/chroot\"" SIGINT SIGKILL SIGTERM &&
   apt_make_dirs &&
   apt_update || ( chroot_unmount_cache "$PWD/build.$GLOBAL_BASEARCH/chroot"; exit 1 ) &&
    

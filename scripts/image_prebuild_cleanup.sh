@@ -26,10 +26,10 @@ fi
 chroot_exec build.$GLOBAL_BASEARCH/chroot 'export DEBIAN_FRONTEND=noninteractive;
 aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;
 apt-fast --yes install deborphan
-deborphan --add-keep python-fusepy
 while true; do
-    if [[ $(deborphan --guess-all) ]]; then
-        apt-fast --yes purge `deborphan --guess-all`
+    ORPHANLIST=$(deborphan --guess-all | grep -vE "linux-modules-extra-.*|python-fusepy" ) 
+    if [ -n "$ORPHANLIST" ]; then
+        apt-fast --yes purge $ORPHANLIST
         apt-fast --yes autoremove --purge
     else
         break

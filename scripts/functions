@@ -40,6 +40,7 @@ create_dir_safe()
 
 chroot_mount_cache()
 {
+  trap "chroot_unmount_cache \"$CHROOTPATH\"" SIGINT SIGKILL SIGTERM
   CHROOTPATH="$1"
   if [ -z "$CHROOTPATH" ]
   then

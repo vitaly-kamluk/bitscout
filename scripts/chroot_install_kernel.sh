@@ -2,8 +2,11 @@
 #Bitscout project
 #Copyright Kaspersky Lab
 
-FORCED_KERNEL_VERSION=linux-image-4.15.0-20-generic
-FORCED_KERNEL_SOURCE_VERSION=4.15.0-20.21
+#FORCED_KERNEL_VERSION=linux-image-4.15.0-20-generic
+#FORCED_KERNEL_SOURCE_VERSION=4.15.0-20.21
+
+FORCED_KERNEL_VERSION=4.15.0-42-generic
+FORCED_KERNEL_SOURCE_VERSION=4.15.0-42.45
 
 . ./scripts/functions
 
@@ -35,7 +38,7 @@ then
   statusprint "Installing build tools and downloading kernel source.." &&
   chroot_exec build.$GLOBAL_BASEARCH/chroot.devel "export DEBIAN_FRONTEND=noninteractive
   KERNELPKG=\$(apt-cache show --no-all-versions linux-image-generic| grep '^Depends:' | sed 's/^Depends: \\([^, ]*\\)[, ].*/\\1/') &&
-  KERNELPKG=\"$FORCED_KERNEL_VERSION\" &&
+  KERNELPKG=\"linux-image-$FORCED_KERNEL_VERSION\" &&
   KERNELUNSIGNEDPKG=\${KERNELPKG/linux-image/linux-image-unsigned} &&
   apt-fast --yes install build-essential git bsdtar bc libssl-dev;
   mkdir -p /opt/kernel 2>&-; chmod o+w /opt/kernel; cd /opt/kernel;
@@ -88,7 +91,7 @@ else
   statusprint "Installing stock kernel version." &&
   if [ -n "$FORCED_KERNEL_VERSION" ]
   then
-    chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install $FORCED_KERNEL_VERSION linux-firmware"
+    chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install linux-image-$FORCED_KERNEL_VERSION linux-modules-$FORCED_KERNEL_VERSION linux-modules-extra-$FORCED_KERNEL_VERSION linux-firmware; apt-mark manual linux-modules-extra-$FORCED_KERNEL_VERSION"
   else
     chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install linux-image-generic linux-firmware"
   fi
