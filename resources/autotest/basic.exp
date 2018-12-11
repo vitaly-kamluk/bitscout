@@ -36,7 +36,7 @@ set lxdstarted 0
 while { $lxdstarted == 0 } {
  send "lxc list --format csv\n"
  expect {
-   "expert,RUNNING,10." { expect "\n"; send_log "autotest: LXC container is up. LXC check: OK\n"; set lxdstarted 1; break }
+   "expert,RUNNING,10.3.0.2" { expect "\n"; send_log "autotest: LXC container is up. LXC check: OK\n"; set lxdstarted 1; break }
    "root*bitscout-host*\$ " { send_log "\nautotest: LXD has not started yet. Sleeping before trying again..\n"; sleep 3 }
    timeout { send_log "autotest: CRITICAL, timeout waiting for container. LXC check: ERROR"; exit }
  }

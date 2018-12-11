@@ -194,6 +194,11 @@ then
 dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
     echo "$PROJECTNAME,$CONTAINERNET_GUEST_IP" > "/etc/dnsmasq-$CONTAINERNET_NAME.hosts"
 
+    #Let's remove default network lxdbr0 (eth0 in default profile)
+    echo "Removing default lxd network lxdbr0"
+    lxc profile device remove default eth0
+    lxc network delete lxdbr0
+
     #creating container network
     echo "Create container network"
     lxc network create $CONTAINERNET_NAME ipv4.address=$CONTAINERNET_HOST_IP_CIDR ipv4.routing=false ipv4.nat=false ipv4.firewall=false ipv6.nat=false ipv6.address=none raw.dnsmasq=conf-file=/etc/dnsmasq-$CONTAINERNET_NAME.conf
