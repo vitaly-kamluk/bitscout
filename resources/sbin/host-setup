@@ -21,6 +21,8 @@ CONTAINERNET_NAME="<CONTAINERNET_NAME>"
 CONTAINERNET_HOST_IP_CIDR="<CONTAINERNET_HOST_IP_CIDR>"
 CONTAINERNET_GUEST_IP="<CONTAINERNET_GUEST_IP>"
 CONTAINERNET_GUEST_DNS="<CONTAINERNET_GUEST_DNS>"
+HOSTSSH_ENABLED=<HOSTSSH_ENABLED>
+LANACCESS_ENABLED=<LANACCESS_ENABLED>
 HISTORIAN_ZRAM_SIZE=<HISTORIAN_ZRAM_SIZE>
 
 USERSUBUID=100000
@@ -39,7 +41,22 @@ then
   echo "Setting opened files ulimit value.."
   ulimit -n 200000
 
+  if [ $LANACCESS_ENABLED -eq 1 ]
+  then
+    echo "Enabling direct access from LAN.."
+    /sbin/host-iptables enable-access-from-lan
+  fi
+
+  if [ $HOSTSSH_ENABLED -eq 1 ]
+  then
+    echo "Enabling SSH access to the host system (using port 23).."
+    rm /etc/ssh/sshd_not_to_be_run
+    sed -i 's/Port 22/Port 23/' /etc/ssh/sshd_config
+    systemctl start ssh.service
+  fi
+
   echo "Adding local user \"$LOCALUSER\" to \"lxd\" group to enable lxd interaction.."
+
   usermod -a -G lxd $LOCALUSER
 
   if ! mount | grep -q "$CONTAINERDIR/reflection"

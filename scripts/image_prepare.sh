@@ -9,9 +9,10 @@ rm -rf ./build.$GLOBAL_BASEARCH/image/ 2>&-
 mkdir -p ./build.$GLOBAL_BASEARCH/image/{casper,boot}
 
 statusprint "Copying bootloader files.."
-sudo cp ./build.$GLOBAL_BASEARCH/chroot/boot/vmlinuz-*-generic ./build.$GLOBAL_BASEARCH/image/casper/vmlinuz
-sudo cp ./build.$GLOBAL_BASEARCH/chroot/boot/initrd.img-*-generic ./build.$GLOBAL_BASEARCH/image/casper/initrd.gz
-sudo cp /boot/memtest86+.bin ./build.$GLOBAL_BASEARCH/image/casper/memtest
+sudo cp ./build.$GLOBAL_BASEARCH/chroot/boot/vmlinuz-*-generic ./build.$GLOBAL_BASEARCH/image/casper/vmlinuz &&
+sudo cp ./build.$GLOBAL_BASEARCH/chroot/boot/initrd.img-*-generic ./build.$GLOBAL_BASEARCH/image/casper/initrd.gz &&
+install_required_package memtest86+ && 
+sudo cp /boot/memtest86+.bin ./build.$GLOBAL_BASEARCH/image/casper/memtest 
 
 statusprint "Creating manifest.."
 sudo chroot ./build.$GLOBAL_BASEARCH/chroot dpkg-query -W --showformat='${Package} ${Version}\n' | sudo tee ./build.$GLOBAL_BASEARCH/image/casper/filesystem.manifest >/dev/null

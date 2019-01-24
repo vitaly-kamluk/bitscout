@@ -189,6 +189,8 @@ if ! [ -f "$BUILDCONFPATH" ]
 then
     statusprint "Saving configuration.."
     echo "GLOBAL_RELEASESIZE=\"$releasesize\"
+GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)
+GLOBAL_LANACCESS_ENABLED=0 #set to 1 to enable access from LAN after boot
 GLOBAL_VPNSERVER=\"$vpnhost\"
 GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
 GLOBAL_VPNPORT=\"$vpnport\"
@@ -197,6 +199,15 @@ GLOBAL_CUSTOMKERNEL=\"$customkernel\"
 GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
 CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
 
-fi
+    PRINTOPTIONS=n statusprint "Configuration saved. Continue? [Y/n]: "
+    read choice
+    if [ -z "$choice" -o "${choice^}" == "Y" ]
+    then
+      exit 0;
+    else
+      exit 1;
+    fi
 
+
+fi
 exit 0;

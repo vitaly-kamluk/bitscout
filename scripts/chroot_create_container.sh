@@ -43,7 +43,7 @@ sudo cp resources/sbin/privexecd.sh ./build.$GLOBAL_BASEARCH/chroot/sbin/privexe
 sudo cp resources/systemd/privexec.service ./build.$GLOBAL_BASEARCH/chroot/lib/systemd/system/privexec.service
 sudo ln -s /lib/systemd/system/privexec.service ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/multi-user.target.wants/privexec.service 2>/dev/null
 sudo cp resources/usr/bin/privexec ./build.$GLOBAL_BASEARCH/chroot/usr/bin/privexec
-sudo chmod +x chroot/sbin/privexecd.sh ./build.$GLOBAL_BASEARCH/chroot/usr/bin/privexec
+sudo chmod +x ./build.$GLOBAL_BASEARCH/chroot/sbin/privexecd.sh ./build.$GLOBAL_BASEARCH/chroot/usr/bin/privexec
 
 statusprint "Adding supervised execution service and client.."
 sudo cp resources/sbin/supervised.sh ./build.$GLOBAL_BASEARCH/chroot/sbin/supervised.sh
