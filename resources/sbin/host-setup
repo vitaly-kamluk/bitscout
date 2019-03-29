@@ -197,6 +197,9 @@ then
     chown :user /dev/container/*
     chmod o+rw /dev/container/nbd*
 
+    #duplicate created block devices to /opt/container/chroot/dev to allow mount.priv to use them
+    cp -rv /dev/container /opt/container/chroot/dev/host
+
     #initializing lxd
     echo "Initialize lxd"
     lxd init --auto
