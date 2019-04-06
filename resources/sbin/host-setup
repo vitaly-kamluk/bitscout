@@ -193,7 +193,10 @@ then
     #load nbd kernel module and copy 3 of them to the container
     echo "Create few nbd devices"
     modprobe nbd
-    cp /dev/nbd{0,1,2} /dev/container/
+    for((i=0;i<3;i++))
+    do
+      stat -c "%t %T" /dev/nbd$i | awk '{print "0x"$1" 0x"$2}' | xargs mknod /dev/container/nbd$i b
+    done
     chown :user /dev/container/*
     chmod o+rw /dev/container/nbd*
 

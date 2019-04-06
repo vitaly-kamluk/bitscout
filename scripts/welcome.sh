@@ -85,7 +85,7 @@ then
     releasesize=""
     while ! validate_releasesize "$releasesize"
     do
-      PRINTOPTIONS=n statusprint "${PROJECTNAME} may be built to be compact or normal.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers. <300Mb\n 2. normal - includes most common forensic tools,drivers,etc. <400Mb\n 3. maximal - includes maximum of forensic tools and frameworks. <750Mb\n Your choice (1|2|3): "
+      PRINTOPTIONS=n statusprint "${PROJECTNAME} may be built to be compact or normal.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers.\n 2. normal - includes most common forensic tools, drivers, etc.\n 3. maximal - includes maximum of forensic tools and frameworks.\n Your choice (1|2|3): "
       read releasesize
       if ! validate_releasesize "$releasesize"
       then
