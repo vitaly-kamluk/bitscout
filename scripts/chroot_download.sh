@@ -35,19 +35,19 @@ apt_make_dirs()
 
 apt_update()
 {
-  statusprint "Downloading PGP keys.." &&
+  statusprint "Preparing repository PGP key(s).." &&
   KEYS=( 40976EAF437D05B5 3B4FE6ACC0B21F32 ) &&
   sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/apt &&
   for KEY in ${KEYS[*]} 
   do
-    sudo apt-key --keyring ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg adv --recv-keys --keyserver keyserver.ubuntu.com $KEY
+    sudo apt-key --keyring ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg add ./resources/gpg/$KEY.asc
   done &&
 
-  statusprint "Saving PGP key to system-wide keyring.." &&
+  statusprint "Saving PGP key(s) to chroot system-wide keyring.." &&
   sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ &&
   sudo cp ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg  ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ubuntu-archive-keyring.gpg &&
 
-  statusprint "Updating $BASERELEASE:$GLOBAL_BASEARCH indexes for chroot.." &&
+  statusprint "Updating $BASERELEASE:$GLOBAL_BASEARCH indices for chroot.." &&
   sudo apt-get -y -o "Dir=$PWD/build.$GLOBAL_BASEARCH/chroot" -o "APT::Architecture=$GLOBAL_BASEARCH" -o "Acquire::Languages=$LANG" update
 }
 
