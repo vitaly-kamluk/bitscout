@@ -77,7 +77,7 @@ run_debootstrap_supervised_fast()
   mkdir -p "$DEBDIR" &&
 
   statusprint "Fetching the list of essential packages.." &&
-  DEBS=$(sudo debootstrap --include=aria2,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge,python3-netifaces --print-debs --foreign --arch=$GLOBAL_BASEARCH $BASERELEASE chroot ) || exit 1 &&
+  DEBS=$(sudo debootstrap --include=aria2,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge,python3-netifaces --print-debs --arch=$GLOBAL_BASEARCH $BASERELEASE chroot http://archive.ubuntu.com/ubuntu ) || exit 1 &&
   install_required_package aria2  &&
  
   chroot_mount_cache "$PWD/build.$GLOBAL_BASEARCH/chroot" &&
