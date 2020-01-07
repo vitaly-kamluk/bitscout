@@ -32,6 +32,7 @@ scripts/chroot_configure.sh &&
 scripts/chroot_configure_openvpn.sh &&
 scripts/chroot_configure_ssh.sh &&
 scripts/chroot_configure_irc.sh &&
+scripts/chroot_configure_syslog.sh &&
 
 #customize with own tools:
 scripts/chroot_add_managementtool.sh &&
