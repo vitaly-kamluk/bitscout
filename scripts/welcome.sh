@@ -139,6 +139,31 @@ GLOBAL_VPNPORT=\"$vpnport\"" >> "$BUILDCONFPATH"
     fi
 fi
 
+if [ -z "$GLOBAL_SYSLOGSERVER" ]
+then
+    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
+    sysloghost=""
+    while ! validate_vpnhostname "$sysloghost"
+    do
+        statusprint "It is recommended to configure a remote Syslog server (can be the VPN server) to log all activity."
+        PRINTOPTIONS=n statusprint "Please enter your Syslog server. You can change it later.\nJust press enter to not configure remote logging.\nYour input: "
+        read sysloghost
+        if [ "$sysloghost" == "" ]
+        then
+            statusprint "Remote Syslog disabled.."
+            break
+        fi
+        if ! validate_vpnhostname "$sysloghost"
+        then
+            statusprint "Invalid input data format. Please try again.."
+        fi
+    done
+    if [ -n "$GLOBAL_SYSLOGSERVER" ] && [ "$sysloghost" != "" ] && [ -f "$BUILDCONFPATH" ]
+    then
+        echo "GLOBAL_SYSLOGSERVER=\"$sysloghost\"" >> "$BUILDCONFPATH"
+    fi
+fi
+
 if [ -z "$GLOBAL_BUILDID" ]
 then    
     if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
@@ -194,6 +219,7 @@ GLOBAL_LANACCESS_ENABLED=0 #set to 1 to enable access from LAN after boot
 GLOBAL_VPNSERVER=\"$vpnhost\"
 GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
 GLOBAL_VPNPORT=\"$vpnport\"
+GLOBAL_SYSLOGSERVER=\"$sysloghost\"
 GLOBAL_BUILDID=\"$buildid\"
 GLOBAL_CUSTOMKERNEL=\"$customkernel\" 
 GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
