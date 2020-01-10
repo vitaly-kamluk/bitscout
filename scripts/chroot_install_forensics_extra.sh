@@ -58,6 +58,22 @@ case $GLOBAL_RELEASESIZE in
    else
        statusprint "bulk_extractor already installed.."
    fi
+
+   # ------------
+   # Install Loki
+   # ------------
+   statusprint "Installing Loki.."
+   if [ ! -d "build.$GLOBAL_BASEARCH/chroot/opt/loki" ]
+   then
+       cd $BASEDIRECTORY
+       mkdir -p build.$GLOBAL_BASEARCH/chroot/opt
+       git clone https://github.com/Neo23x0/Loki.git build.$GLOBAL_BASEARCH/chroot/opt/loki
+       chroot_exec build.$GLOBAL_BASEARCH/chroot 'apt-get -y install python-pip'
+       chroot_exec build.$GLOBAL_BASEARCH/chroot 'cd /opt/loki && pip install -r requirements.txt'
+   else
+       statusprint "Loki already installed.."
+   fi
+
    ;;
 esac
 
