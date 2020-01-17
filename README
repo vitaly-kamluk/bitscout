@@ -70,9 +70,10 @@ Bitscout relies on at least three components in the process of remote forensics:
 
 3. Expert's server
    The expert's server shall be accessible from the network of target system.
-   It shall run an instance of OpenVPN server, and recommended to have an IRC
-   chat server for communication. Suggested server configuration files can be 
-   found in the ./exports directory after successfull build of ISO file.
+   It shall run an instance of OpenVPN server, and recommended to have a Syslog
+   server for logging an IRC chat server for communication. Suggested server
+   configuration files can be found in the ./exports directory after successfull
+   build of ISO file.
 
 Bitscout Features:
 1. Transparency
