@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Enable remote syslog support and compile bash with Syslog support
+# Enable remote syslog support and compile bash with syslog support
 # Xavier Mertens <xavier@rootshell.be>
 
 . ./scripts/functions
@@ -11,38 +11,53 @@ err_report() {
 	exit 1
 }
 
+BASHVER="5.0"
+SRCARCHIVE="bash-$BASHVER.tar.gz"
+SRCURL="https://ftp.gnu.org/gnu/bash/$SRCARCHIVE"
+
 trap 'err_report $LINENO' ERR
 
-# Create remote logging confguration if a syslog server is enabled
-if [ "${GLOBAL_SYSLOGSERVER}" != "" ]
+statusprint "Enabling syslog setup for Bitscout remote activity logging.."
+
+# Create remote logging configuration if the syslog server is enabled
+if [ -n "${GLOBAL_SYSLOGSERVER}" -a "${GLOBAL_SYSLOGSERVER}" != "none" ]
 then
-	statusprint "Configuring RSyslog.."
-	cat <<__END__ >./build.$GLOBAL_BASEARCH/chroot/etc/rsyslog.d/40-remote.conf
+	statusprint "Configuring local rsyslog.."
+	cat <<__END__ | sudo tee ./build.$GLOBAL_BASEARCH/chroot/etc/rsyslog.d/40-remote.conf >/dev/null
 *.*	@${GLOBAL_SYSLOGSERVER}:514
 __END__
+  [ ! -d "build.$GLOBAL_BASEARCH/tmp" ] &&  mkdir build.$GLOBAL_BASEARCH/tmp
 
-	if [ ! -x build.amd64/tmp/bash-5.0/bash ]
+	if [ ! -x build.$GLOBAL_BASEARCH/tmp/bash-5.0/bash ]
 	then
-		statusprint "Compiling bash with Syslog support.."
+		statusprint "Compiling bash with syslog support.."
 		BASEDIR=`pwd`
-		cd build.amd64/tmp
-		curl -o bash-5.0.tar.gz http://ftp.gnu.org/gnu/bash/bash-5.0.tar.gz
-		if [ -r bash-5.0.tar.gz ]
+		cd build.$GLOBAL_BASEARCH/tmp
+    if [ ! -r "$SRCARCHIVE" ]
+    then
+      statusprint "Downloading bash sourcecode from $SRCURL.."
+  		curl -o "$SRCARCHIVE" "$SRCURL"
+    fi
+
+		if [ -r "$SRCARCHIVE" ]
 		then
-			tar xzf bash-5.0.tar.gz
-			cd bash-5.0
+		  statusprint "Compiling bash with syslog support.."
+			tar xzf $SRCARCHIVE
+			cd bash-$BASHVER
 			export CFLAGS="-DSYSLOG_SHOPT -DSYSLOG_HISTORY"
 			./configure --prefix=/
 			make
-			cp bash $BASEDIR/build.$GLOBAL_BASEARCH/chroot/bin
+      cd "$BASEDIR"
 		else
-			statusprint "Cannot download bash source code.."
+			statusprint "Couldn't find bash source code. Expected in build.$GLOBAL_BASEARCH/tmp/$SRCARCHIVE"
 			exit 1;
-		fi
+	  fi
 	else
-		statusprint "Replacing bash with Syslog support.."
-		cp build.amd64/tmp/bash-5.0/bash ./build.$GLOBAL_BASEARCH/chroot/bin
-	fi
+    statusprint "Bash binary has already been compiled."
+  fi
+
+  statusprint "Replacing standard bash with syslog-enabled variant.."
+	sudo cp -v build.amd64/tmp/bash-$BASHVER/bash ./build.$GLOBAL_BASEARCH/chroot/bin/
 fi
 
 exit 0;

@@ -41,12 +41,12 @@ scripts/chroot_add_managementtool.sh &&
 #prepare ISO files:
 scripts/image_prepare.sh &&
 
-#apply initrd/casper fixes:
-scripts/initrd_unpack.sh &&
-scripts/casper_findlivefs_fix.sh &&
-scripts/casper_integritycheck_fix.sh &&
-scripts/casper_writeblocker.sh &&
-scripts/initrd_pack.sh &&
+#apply initrd/casper fixes: #initrd format has changed, requires new unpacking/packing routine
+#scripts/initrd_unpack.sh &&
+#scripts/casper_findlivefs_fix.sh &&
+#scripts/casper_integritycheck_fix.sh &&
+#scripts/casper_writeblocker.sh &&
+#scripts/initrd_pack.sh &&
 
 #reduce size of rootfs and build ISO:
 scripts/image_prebuild_cleanup.sh &&

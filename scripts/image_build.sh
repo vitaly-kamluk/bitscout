@@ -6,6 +6,9 @@
 
 install_required_package squashfs-tools
 
+statusprint "Making sure package cache is detached.."
+chroot_unmount_cache "./build.$GLOBAL_BASEARCH/chroot"
+
 statusprint "Compressing chroot.."
 SQUASHFSIMG="./build.$GLOBAL_BASEARCH/image/casper/filesystem.squashfs"
 if [ -f "$SQUASHFSIMG" ]
