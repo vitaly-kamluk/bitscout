@@ -143,16 +143,15 @@ chroot_exec()
 unpackinitrd()
 {
   statusprint "Unpacking initrd image from $INITRDPATH.."
-  rm -rf ./build.$GLOBAL_BASEARCH/initrd
-  mkdir ./build.$GLOBAL_BASEARCH/initrd
-  cd ./build.$GLOBAL_BASEARCH/initrd
-  if [ -f "../../$INITRDPATH" ]
+  if [ -f "./$INITRDPATH" ]
   then
-    gzip -dc "../../$INITRDPATH" | cpio -id
+    install_required_package initramfs-tools-core || statusprint "Couldn't find red enitramfs-tools-core package."
+    [ -d ./build.$GLOBAL_BASEARCH/initrd ] && rm -rf ./build.$GLOBAL_BASEARCH/initrd
+    mkdir ./build.$GLOBAL_BASEARCH/initrd &&
+    unmkinitramfs "./$INITRDPATH" ./build.$GLOBAL_BASEARCH/initrd
   else
-    echo "[ERROR]: initrd image not found in $INITRDPATH."
+    echo "[ERROR]: initrd image not found in ./$INITRDPATH."
   fi
-  cd ..
 }
 
 packinitrd()
@@ -161,8 +160,9 @@ packinitrd()
   if [ -d "./build.$GLOBAL_BASEARCH/initrd" ]
   then
     cd ./build.$GLOBAL_BASEARCH/initrd
-    find . | cpio -o -H newc | gzip -7 -c | sudo tee "../../$INITRDPATH" >/dev/null
-    cd ..
+    (cd ./early; find . | cpio -o -H newc ) | sudo tee ../../${INITRDPATH}.test >/dev/null
+    (cd ./main; find . | cpio -o -H newc ) | gzip -7 -c | sudo tee -a "../../${INITRDPATH}.test" >/dev/null
+    cd ../../
   else
     echo "[ERROR]: initrd directory not found. Aborting."
   fi

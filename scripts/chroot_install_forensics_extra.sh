@@ -55,7 +55,7 @@ case $GLOBAL_RELEASESIZE in
        cd /opt/bulk_extractor; 
        source bootstrap.sh;
        ./configure --prefix=/usr/local --disable-BEViewer &&
-       make -j$((`nproc`+1)) install &&
+       make -j'$((`nproc`+1))' install &&
        cd /opt && rm -rf /opt/bulk_extractor'
    else
        statusprint "bulk_extractor already installed.."

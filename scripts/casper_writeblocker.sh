@@ -15,7 +15,7 @@ fi
 if [ "$GLOBAL_CUSTOMKERNEL" == "1" ]
 then
   statusprint "Installing write-blocker for casper.."
-  cp -v ./resources/kernel/writeblocker/userspace/initramfs/01wrtblk_all ./build.$GLOBAL_BASEARCH/initrd/scripts/casper-bottom/
+  cp -v ./resources/kernel/writeblocker/userspace/initramfs/01wrtblk_all ./build.$GLOBAL_BASEARCH/initrd/main/scripts/casper-bottom/
 fi
 
 if [ $UNPACKED_INITRD -eq 1 ]
