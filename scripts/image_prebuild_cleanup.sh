@@ -8,12 +8,14 @@ RECYCLEDIR="./build.$GLOBAL_BASEARCH/recycle"
 
 statusprint "Pre-build cleanup.."
 
+statusprint "Removing temporary setup files.."
+sudo rm ./build.$GLOBAL_BASEARCH/chroot/{chroot_exec.retcode,container_spawn.sh,chroot_exec.sh} 2>/dev/null
+
 statusprint "Removing packages which are not essential anymore.."
 if [ ${GLOBAL_RELEASESIZE} -le 1 ]
 then
   chroot_exec build.$GLOBAL_BASEARCH/chroot 'export DEBIAN_FRONTEND=noninteractive;
-aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;
-apt-fast --yes purge ca-certificates python3-requests ssh-import-id python3-chardet python3-pkg-resources python3-six python3-urllib3 geoip-database krb5-locales libavahi-client3 libavahi-common3 libcups2 python-samba samba-common-bin samba-libs wget'
+aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;'
 fi
 
 if [ ${GLOBAL_RELEASESIZE} -le 2 ]
@@ -30,7 +32,6 @@ while true; do
     ORPHANLIST=$(deborphan --guess-all | grep -vE "linux-modules-extra-.*|python-fusepy" ) 
     if [ -n "$ORPHANLIST" ]; then
         apt-fast --yes purge $ORPHANLIST
-        apt-fast --yes autoremove --purge
     else
         break
     fi
@@ -77,7 +78,9 @@ then
 
 fi
 
+statusprint "Removing chroot /tmp files.."
 sudo rm -rf ./build.$GLOBAL_BASEARCH/chroot/tmp/*
+
 sudo rm -f ./build.$GLOBAL_BASEARCH/chroot/root/.bashrc ./build.$GLOBAL_BASEARCH/chroot/home/user/.bashrc
 
 exit 0;

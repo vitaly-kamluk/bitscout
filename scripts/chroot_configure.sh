@@ -15,7 +15,7 @@ then
 fi
 
 statusprint "Setting release name.."
-sudo sed -i "s#Ubuntu 18.04[^ ]\{0,3\} LTS#${PROJECTNAME}#" ./build.$GLOBAL_BASEARCH/chroot/etc/issue.net ./build.$GLOBAL_BASEARCH/chroot/etc/lsb-release ./build.$GLOBAL_BASEARCH/chroot/etc/os-release
+sudo sed -i "s#Ubuntu 20.04[^ ]\{0,3\} LTS#${PROJECTNAME}#" ./build.$GLOBAL_BASEARCH/chroot/etc/issue.net ./build.$GLOBAL_BASEARCH/chroot/etc/lsb-release ./build.$GLOBAL_BASEARCH/chroot/etc/os-release
 echo "${PROJECTNAME} (\m) \d \t \l" | sudo tee ./build.$GLOBAL_BASEARCH/chroot/etc/issue >/dev/null
 
 statusprint "Removing extra banners and motd.."
@@ -36,12 +36,14 @@ sudo sed -i 's/^\(\s*\)PS1=.*/\1PS1='"'"'\${debian_chroot:\+(\$debian_chroot)}\\
 sudo cp -v ./resources/etc/dialogrc ./build.$GLOBAL_BASEARCH/chroot/etc/dialogrc
 sudo rm -f ./build.$GLOBAL_BASEARCH/chroot/root/.bashrc ./build.$GLOBAL_BASEARCH/chroot/user/.bashrc
 
-statusprint "Copying WiFi manager default configuration file.."
-sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/wicd/ &&
-sudo cp -v ./resources/etc/wicd/manager-settings.conf ./build.$GLOBAL_BASEARCH/chroot/etc/wicd/manager-settings.conf
-
 statusprint "Setting ulimit values.."
 sudo cp -v ./resources/etc/security/limits.conf ./build.$GLOBAL_BASEARCH/chroot/etc/security/limits.conf
+
+statusprint "Fixing sudo warning.." #should be removed in the future. see https://bugzilla.redhat.com/show_bug.cgi?id=1773148 
+sudo cp -v ./resources/etc/sudo.conf ./build.$GLOBAL_BASEARCH/chroot/etc/
+
+statusprint "Setting up network plan for container and the host.."
+sudo cp -v ./resources/etc/netplan/01-network.yaml ./build.$GLOBAL_BASEARCH/chroot/etc/netplan/
 
 statusprint "Setting up shell aliases.."
 if ! grep -q '^#some shell aliases$' ./build.$GLOBAL_BASEARCH/chroot/etc/bash.bashrc

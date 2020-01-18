@@ -5,8 +5,8 @@
 PROJECTNAME="bitscout"
 PROJECTCAPNAME="Bitscout"
 PROJECTSHORTNAME="scout"
-BASERELEASE="bionic"
-CONTAINERNET_NAME="expert"
+BASERELEASE="focal"
+CONTAINERNET_NAME="ve-container"
 CONTAINERNET_HOST_IP="10.3.0.1"
 CONTAINERNET_HOST_IP_CIDR="10.3.0.1/24"
 CONTAINERNET_GUEST_IP="10.3.0.2"
@@ -18,7 +18,7 @@ HISTORIAN_ZRAM_SIZE=2048M
 
 [ -f "config/$PROJECTNAME-build.conf" ] && . "config/$PROJECTNAME-build.conf"
 
-INITRDPATH=build.$GLOBAL_BASEARCH/image/casper/initrd.gz
+INITRDPATH=build.$GLOBAL_BASEARCH/image/casper/initrd.img
 RESERVEDIR=reserve
 SCREENNAME=${PROJECTNAME}_${GLOBAL_BASEARCH}_chroot #creates a screen session for interactive configuration. see scripts/chroot_enter.sh and scripts/chroot_leave.sh
 
@@ -98,7 +98,7 @@ chroot_exec()
     sudo mkdir -p "$DIR/dev" &&
     cd "$DIR/dev" &&
     sudo MAKEDEV std &&
-    cd ../../ 
+    cd ../../
   fi
 
   chroot_mount_cache "$PWD/$DIR" &&
@@ -140,15 +140,57 @@ chroot_exec()
   return 0
 }
 
+nspawn_exec()
+{
+  install_required_package expect
+
+  CHROOTDIR="$1"
+  CHROOTCMD="${2:-/bin/true}"
+  INTERACTIVE="$3"
+  CONTAINER_SPAWN_SCRIPT="$PWD/scripts/nspawn_container_spawn.sh"
+
+  chroot_mount_cache "$PWD/$CHROOTDIR" &&
+  trap "chroot_unmount_fs \"$PWD/$CHROOTDIR\"" SIGINT SIGKILL SIGTERM &&
+  echo "$CHROOTCMD" | sudo tee "$PWD/$CHROOTDIR/chroot_exec.sh" >/dev/null
+
+  statusprint "Executing the following command in nspawn $CHROOTDIR:"
+  statusprint "$CHROOTCMD"
+  export CHROOTDIR
+  export INTERACTIVE
+  export CONTAINER_SPAWN_SCRIPT
+  sudo --preserve-env=CHROOTDIR,INTERACTIVE,CONTAINER_SPAWN_SCRIPT expect $PWD/scripts/nspawn_session.exp
+
+  if [ ! -f "$PWD/$CHROOTDIR/chroot_exec.retcode" ]; then return 0; fi
+  CHROOTRET=$(cat "$PWD/$CHROOTDIR/chroot_exec.retcode")
+  sudo rm "$PWD/$CHROOTDIR/chroot_exec.sh" "$PWD/$CHROOTDIR/chroot_exec.retcode" 2>/dev/null
+
+  if [ "x$CHROOTRET" == "x0" ] 
+  then
+    statusprint "Info: command in nspawn succeeded."
+    chroot_unmount_fs "$PWD/$CHROOTDIR" && return 0
+  else
+    statusprint "Warning: command in nspawn failed. Last return code: $CHROOTRET"
+    chroot_unmount_fs "$PWD/$CHROOTDIR" && return 1
+  fi
+}
+
 unpackinitrd()
 {
   statusprint "Unpacking initrd image from $INITRDPATH.."
   if [ -f "./$INITRDPATH" ]
   then
-    install_required_package initramfs-tools-core || statusprint "Couldn't find red enitramfs-tools-core package."
-    [ -d ./build.$GLOBAL_BASEARCH/initrd ] && rm -rf ./build.$GLOBAL_BASEARCH/initrd
-    mkdir ./build.$GLOBAL_BASEARCH/initrd &&
-    unmkinitramfs "./$INITRDPATH" ./build.$GLOBAL_BASEARCH/initrd
+    if [ ! -f ./build.$GLOBAL_BASEARCH/usr/bin/unmkinitramfs ]
+    then
+      chroot_exec build.$GLOBAL_BASEARCH/chroot 'DEBIAN_FRONTEND=noninteractive; apt install initramfs-tools-core' || exit 1
+    fi
+    chroot_exec build.$GLOBAL_BASEARCH/chroot 'INITRD=$(ls -1 boot/ | grep -m1 "initrd.*-.*");
+    cp /usr/bin/unmkinitramfs /tmp/unmkinitramfs
+    sed -i "s/--no-absolute-filenames//g" /tmp/unmkinitramfs
+    echo "Unpacking $INITRD.."
+    mkdir /tmp/initrd
+    /tmp/unmkinitramfs /boot/$(ls -1 boot/ | grep -m1 "initrd.*-.*") /tmp/initrd'
+    [ -d ./build.$GLOBAL_BASEARCH/initrd ] && sudo rm -rf ./build.$GLOBAL_BASEARCH/initrd
+    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd ./build.$GLOBAL_BASEARCH/initrd
   else
     echo "[ERROR]: initrd image not found in ./$INITRDPATH."
   fi
@@ -159,10 +201,15 @@ packinitrd()
   statusprint "Packing initrd image into $INITRDPATH.."
   if [ -d "./build.$GLOBAL_BASEARCH/initrd" ]
   then
-    cd ./build.$GLOBAL_BASEARCH/initrd
-    (cd ./early; find . | cpio -o -H newc ) | sudo tee ../../${INITRDPATH} >/dev/null
-    (cd ./main; find . | cpio -o -H newc ) | gzip -7 -c | sudo tee -a "../../${INITRDPATH}" >/dev/null
-    cd ../../
+    sudo mv -v ./build.$GLOBAL_BASEARCH/initrd ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd
+    chroot_exec build.$GLOBAL_BASEARCH/chroot 'cd /tmp/initrd
+    ls -1 | grep "early" | while read d;
+      do
+        (cd "$d"; find . | cpio -o -H newc ) | tee -a /tmp/initrd.img.new >/dev/null
+      done;
+    (cd ./main; find . | cpio -o -H newc ) | lz4 -l -9 -c | tee -a "/tmp/initrd.img.new" >/dev/null'
+    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd.img.new "$INITRDPATH"
+    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd ./build.$GLOBAL_BASEARCH/initrd
   else
     echo "[ERROR]: initrd directory not found. Aborting."
   fi

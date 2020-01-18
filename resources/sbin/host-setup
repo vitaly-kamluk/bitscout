@@ -4,13 +4,8 @@
 
 #Exit if the script was started NOT on the host system.
 #It must NOT be run within container!
-if head -n 1 /proc/1/sched | grep -q "(1, #threads"
-then
- touch /tmp/this_is_host
-else
- touch /tmp/this_is_container
- exit
-fi
+if [ -f /this_is_container ]; then exit 1; fi;
+touch /this_is_host
 
 PROJECTNAME="<PROJECTNAME>"
 CONTAINERDIR="/opt/container"
@@ -40,6 +35,9 @@ then
   #set opened files ulimit, required for bindfs operation
   echo "Setting opened files ulimit value.."
   ulimit -n 200000
+
+  echo "Loading default firewall rules.."
+  /sbin/host-iptables
 
   if [ $LANACCESS_ENABLED -eq 1 ]
   then
@@ -76,6 +74,8 @@ then
     bindfs --map=$IDMAP -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
 
     #do necessary changes TO THE CONTAINER'S (GUEST) rootfs
+        touch "$CONTAINERDIR/chroot/this_is_container"
+
         #enable lo/eth0 auto-configuration
         echo "Container chroot: enable lo/eth0 auto-configuration"
         echo -e "auto lo\niface lo inet loopback\nauto eth0\niface eth0 inet dhcp" >> "$CONTAINERDIR/chroot/etc/network/interfaces"
@@ -103,7 +103,7 @@ then
 
         #remove host setup script
         echo "Container chroot: remove host-setup script"
-        rm "$CONTAINERDIR/chroot/sbin/host-setup"
+        rm "$CONTAINERDIR/chroot/sbin/host-setup" "$CONTAINERDIR/chroot/lib/systemd/system/host-setup.service" "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/host-setup.service" ""
 
         #remove <PROJECTSHORTNAME>-manage startup
         echo "Container chroot: remove management tool"
@@ -181,6 +181,7 @@ then
       if [ -b "$DEVDIR/evidence$i" ]; then continue; fi;
       mknod "$DEVDIR/evidence$i" b 7 $[8+$i]
       mknod /dev/loop$[8+$i] b 7 $[8+$i]
+      mknod $CONTAINERDIR/chroot/dev/loop$[8+$i] b 7 $[8+$i]
     done 
 
     for((i=0;i<10;i++)) #this set of devices is suggested for read-write access
@@ -188,6 +189,7 @@ then
       if [ -b "$DEVDIR/storage$i" ]; then continue; fi;
       mknod "$DEVDIR/storage$i" b 7 $[18+$i]
       mknod /dev/loop$[18+$i] b 7 $[18+$i]
+      mknod $CONTAINERDIR/chroot/dev/loop$[18+$i] b 7 $[18+$i]
     done 
 
     #load nbd kernel module and copy 3 of them to the container
@@ -197,76 +199,40 @@ then
     do
       stat -c "%t %T" /dev/nbd$i | awk '{print "0x"$1" 0x"$2}' | xargs mknod /dev/container/nbd$i b
     done
-    chown :user /dev/container/*
+    chown 100000:100000 /dev/container/*
     chmod o+rw /dev/container/nbd*
 
     #duplicate created block devices to /opt/container/chroot/dev to allow mount.priv to use them
     cp -rv /dev/container /opt/container/chroot/dev/host
 
-    #initializing lxd
-    echo "Initialize lxd"
-    lxd init --auto
-    #Let's wait for lxd to be fully up
-    lxd waitready
-    while ! systemctl status --quiet --no-pager lxd.service >/dev/null 2>/dev/null; do sleep 0.2; done
-    while ! systemctl status --quiet --no-pager lxd-containers.service >/dev/null 2>/dev/null; do sleep 0.2; done
-
+    #Start systemd-nspawn container
+    echo "Preparing to start container.."
+    
     #creating dnsmasq config files
     echo "Create dnsmasq config files"
     echo "dhcp-hostsfile=/etc/dnsmasq-$CONTAINERNET_NAME.hosts
 dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
     echo "$PROJECTNAME,$CONTAINERNET_GUEST_IP" > "/etc/dnsmasq-$CONTAINERNET_NAME.hosts"
 
-    #Let's remove default network lxdbr0 (eth0 in default profile)
-    echo "Removing default lxd network lxdbr0"
-    lxc profile device remove default eth0
-    lxc network delete lxdbr0
-
-    #creating container network
-    echo "Create container network"
-    lxc network create $CONTAINERNET_NAME ipv4.address=$CONTAINERNET_HOST_IP_CIDR ipv4.routing=false ipv4.nat=false ipv4.firewall=false ipv6.nat=false ipv6.address=none raw.dnsmasq=conf-file=/etc/dnsmasq-$CONTAINERNET_NAME.conf
-
-    #creating empty container, using low-level LXC API to do that (seems that lxc client tool can't create empty containers)
-    echo "Create new empty container"
-    LXD_RESULT=`curl -s --unix-socket /var/lib/lxd/unix.socket -X POST -d "{\"name\": \"$CONTAINERNAME\", \"source\": {\"type\": \"none\"}}" a/1.0/containers`
-    LXD_OPERATION=`echo "$LXDRESULT" | sed 's/.*"operation":"\([^"]*\)".*/\1/'`
-    if [ -n "LXD_OPERATION" ]
-    then
-      #waiting until container is setup 
-      curl -s --unix-socket /var/lib/lxd/unix.socket $LXD_OPERATION/wait
-      while ! lxc info $CONTAINERNAME; do sleep 0.2; done;
-    fi
-
-    #attaching network to container
-    echo "Attach network to the container"
-    lxc network attach $CONTAINERNET_NAME $CONTAINERNAME
-
-    #attaching the shared directories
-    echo "Attach shared directories to the container"
-    lxc config device add $CONTAINERNAME shareddisk disk source=/dev/container path=/dev/host
-    lxc config device add $CONTAINERNAME ipc disk source="$CONTAINERDIR/ipc" path=/var/host/ipc
-    lxc config device add $CONTAINERNAME sharedmnt disk source="/mnt/container" path=/mnt/host
-    
-    #set apparamor profile to unconfined to be able to run on squashfs
-    echo "Disable AppArmor in container"
-    lxc config set $CONTAINERNAME raw.lxc "lxc.apparmor.profile=unconfined"
-
     #attach rootfs to the chroot.user
-    echo "Create symlink (based on chroot dir) for the container rootfs"
-    mkdir -p /var/lib/lxd/storage-pools/default/containers/$CONTAINERNAME &&
-    ln -s /opt/container/chroot.user /var/lib/lxd/storage-pools/default/containers/$CONTAINERNAME/rootfs
-
-   
-    #Attach kvm device to the expert container if kvm is available
-    if [ -c /dev/kvm ] 
-    then 
-      echo "Attaching /dev/kvm device to the container"
+    #echo "Create symlink (based on chroot dir) for the container rootfs"
+    #mkdir -p /var/run/systemd/machines &&
+    #ln -s /opt/container/chroot.user /var/run/systemd/machines/$CONTAINERNAME
+ 
+    echo "Checking if KVM is available (for nested hardware virtualization support)."
+    if [ ! -c /dev/kvm ]
+    then
+      echo "/dev/kvm was not found. Removing it from container config."
+      sed -i '/Bind=\/dev\/kvm/d' /etc/systemd/nspawn/container.nspawn
+    else
+      echo "Enabling access to /dev/kvm to all users.."
       chmod o+rw /dev/kvm
-      lxc config device add $CONTAINERNAME kvm unix-char source=/dev/kvm path=/dev/kvm
     fi
-
+  
     #start the container after all
-    lxc start $CONTAINERNAME
+    #SPAWNCMD="systemd-nspawn -M container --network-veth --private-users=100000:65536 --bind=/mnt/container:/mnt/host --bind=/dev/container:/dev/host --bind=/dev/fuse --property DeviceAllow='/dev/fuse rwm' $NSPAWN_EXTRA_OPTIONS -D /opt/container/chroot.user /sbin/init"
+    #echo -e "Spawning container with the following commandline:\n$SPAWNCMD"
+    #eval "$SPAWNCMD"
   fi
 fi
 

@@ -2,8 +2,8 @@
 
 IPT="/sbin/iptables"
 INET_IFACES=( eth0 wlan0 )
-LXC_IFACE=<CONTAINERNET_NAME>
-LXC_IP=<CONTAINERNET_GUEST_IP>
+CONTAINER_IFACE=<CONTAINERNET_NAME>
+CONTAINER_IP=<CONTAINERNET_GUEST_IP>
 VPN_IFACE=tap0
 
 if [ $# -eq 0 ]
@@ -48,7 +48,7 @@ then  #default for no parameters. executed during system boot.
   
   
   # Create new tables for port forwarding and host incoming connections
-  $IPT -t nat -N LXC_INCOMING
+  $IPT -t nat -N CONTAINER_INCOMING
   $IPT -N HOST_INCOMING
   
   # Enable free use of loopback interfaces
@@ -71,7 +71,7 @@ then  #default for no parameters. executed during system boot.
   $IPT -A INPUT -p ALL -m state --state ESTABLISHED,RELATED -j ACCEPT
   
   #Enable DHCP requests from container
-  $IPT -A INPUT -i $LXC_IFACE -p UDP --destination-port 67 -j ACCEPT
+  $IPT -A INPUT -i $CONTAINER_IFACE -p UDP --destination-port 67 -j ACCEPT
   
   $IPT -A INPUT -i $VPN_IFACE -j HOST_INCOMING
 
@@ -80,35 +80,35 @@ then  #default for no parameters. executed during system boot.
   #TODO: Recheck default isolation
   for INET_IFACE in ${INET_IFACES[*]}
   do
-    $IPT -A FORWARD -i $LXC_IFACE -o $INET_IFACE -d 0.0.0.0/0 -j ACCEPT
-    $IPT -A FORWARD -o $LXC_IFACE -i $INET_IFACE -s 0.0.0.0/0 -j ACCEPT
+    $IPT -A FORWARD -i $CONTAINER_IFACE -o $INET_IFACE -d 0.0.0.0/0 -j ACCEPT
+    $IPT -A FORWARD -o $CONTAINER_IFACE -i $INET_IFACE -s 0.0.0.0/0 -j ACCEPT
   done
   
   
-  #Setup LXC_DNAT table for port forwadring
-  $IPT -t nat -A LXC_INCOMING -p tcp --dport 22 -j DNAT --to-destination $LXC_IP:22
+  #Setup CONTAINER_DNAT table for port forwadring
+  $IPT -t nat -A CONTAINER_INCOMING -p tcp --dport 22 -j DNAT --to-destination $CONTAINER_IP:22
   
   for((i=0;i<10;i++))
   do
-    $IPT -t nat -A LXC_INCOMING -p tcp --dport $[2000+$i] -j DNAT --to-destination $LXC_IP:$[2000+$i]
+    $IPT -t nat -A CONTAINER_INCOMING -p tcp --dport $[2000+$i] -j DNAT --to-destination $CONTAINER_IP:$[2000+$i]
   done
 
   for((i=0;i<10;i++))
   do
-    $IPT -t nat -A LXC_INCOMING -p tcp --dport $[5900+$i] -j DNAT --to-destination $LXC_IP:$[5900+$i]
+    $IPT -t nat -A CONTAINER_INCOMING -p tcp --dport $[5900+$i] -j DNAT --to-destination $CONTAINER_IP:$[5900+$i]
   done
 
-  $IPT -t nat -A LXC_INCOMING -j RETURN
+  $IPT -t nat -A CONTAINER_INCOMING -j RETURN
 
   
   #Process connections from VPN interface to container
-  $IPT -t nat -A PREROUTING -i $VPN_IFACE -j LXC_INCOMING
+  $IPT -t nat -A PREROUTING -i $VPN_IFACE -j CONTAINER_INCOMING
   
-  $IPT -A FORWARD -i $LXC_IFACE -o $VPN_IFACE -s $LXC_IP -j ACCEPT
-  $IPT -A FORWARD -o $LXC_IFACE -i $VPN_IFACE -d $LXC_IP  -j ACCEPT
+  $IPT -A FORWARD -i $CONTAINER_IFACE -o $VPN_IFACE -s $CONTAINER_IP -j ACCEPT
+  $IPT -A FORWARD -o $CONTAINER_IFACE -i $VPN_IFACE -d $CONTAINER_IP  -j ACCEPT
 
-  #Enable outgoing traffic from LXC to inet (for updates)  
-  $IPT -A FORWARD -i $LXC_IFACE -j ACCEPT
+  #Enable outgoing traffic from CONTAINER to inet (for updates)  
+  $IPT -A FORWARD -i $CONTAINER_IFACE -j ACCEPT
   for INET_IFACE in ${INET_IFACES[*]}
   do
     $IPT -t nat -A POSTROUTING -o $INET_IFACE -j MASQUERADE
@@ -120,10 +120,10 @@ fi
 
 if [ "$1" = "enable-access-from-lan" ]
 then
-  $IPT -t nat -D PREROUTING -i $VPN_IFACE -j LXC_INCOMING
+  $IPT -t nat -D PREROUTING -i $VPN_IFACE -j CONTAINER_INCOMING
   for INET_IFACE in ${INET_IFACES[*]}
   do
-    $IPT -t nat -I PREROUTING -i $INET_IFACE -j LXC_INCOMING
+    $IPT -t nat -I PREROUTING -i $INET_IFACE -j CONTAINER_INCOMING
   done
 
   $IPT -D INPUT -i $VPN_IFACE -j HOST_INCOMING
@@ -135,10 +135,10 @@ if [ "$1" = "disable-access-from-lan" ]
 then
   for INET_IFACE in ${INET_IFACES[*]}
   do
-    $IPT -t nat -D PREROUTING -i $INET_IFACE -j LXC_INCOMING
+    $IPT -t nat -D PREROUTING -i $INET_IFACE -j CONTAINER_INCOMING
   done
 
-  $IPT -t nat -I PREROUTING -i $VPN_IFACE -j LXC_INCOMING
+  $IPT -t nat -I PREROUTING -i $VPN_IFACE -j CONTAINER_INCOMING
 
   $IPT -D INPUT -j HOST_INCOMING
   $IPT -I INPUT -i $VPN_IFACE -j HOST_INCOMING

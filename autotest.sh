@@ -14,7 +14,7 @@ export SHELL=/bin/bash
 
 . ./scripts/functions
 
-ISONAME="${PROJECTNAME}-18.04-${GLOBAL_BASEARCH}.iso"
+ISONAME="${PROJECTNAME}-20.04-${GLOBAL_BASEARCH}.iso"
 TESTLOG="./autotest.log"
 VISIBLE=1 #show tmux interface during testing. This should be set to 0 by default for better unattended auto-testing compatibility.
 VMRAM=1024 #Megabytes

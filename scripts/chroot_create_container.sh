@@ -4,7 +4,7 @@
 
 . ./scripts/functions
 
-statusprint "Setting up LXD container.."
+statusprint "Setting up expert container.."
 
 statusprint "Adding $CONTAINERUSERNAME's subuid and sudgid for unprivileged container.."
 if ! grep -q "$CONTAINERUSERNAME:100000" ./build.$GLOBAL_BASEARCH/chroot/etc/subuid
@@ -19,7 +19,22 @@ sudo_file_template_copy resources/sbin/host-setup ./build.$GLOBAL_BASEARCH/chroo
 sudo chmod +x ./build.$GLOBAL_BASEARCH/chroot/sbin/host-setup
 sudo ln -s /lib/systemd/system/host-setup.service ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/multi-user.target.wants/host-setup.service 2>/dev/null
 
-statusprint "Adding systemd task to setup the container on start.."
+statusprint "Adding systemd nspawn machine configuration.."
+sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/nspawn/
+sudo cp -v ./resources/etc/systemd/nspawn/container.nspawn ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/nspawn/
+
+sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/systemd-nspawn@container.service.d 2>&-
+sudo cp -v ./resources/etc/systemd/system/systemd-nspawn@container.service.d/override.conf ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/systemd-nspawn@container.service.d/
+
+sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/machines.target.wants 2>&-
+sudo ln -fs /lib/systemd/system/systemd-nspawn@.service ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/machines.target.wants/systemd-nspawn@container.service 
+
+sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/var/lib/machines 2>&-
+sudo ln -fs /opt/container/chroot.user ./build.$GLOBAL_BASEARCH/chroot/var/lib/machines/container 
+
+
+
+statusprint "Adding systemd task to configure container on start from within.."
 sudo cp -v resources/systemd/container-setup.service ./build.$GLOBAL_BASEARCH/chroot/lib/systemd/system/container-setup.service
 sudo cp -v resources/sbin/container-setup ./build.$GLOBAL_BASEARCH/chroot/sbin/container-setup
 sudo chmod +x ./build.$GLOBAL_BASEARCH/chroot/sbin/container-setup
@@ -36,7 +51,6 @@ sudo cp -v resources/etc/historian.profile ./build.$GLOBAL_BASEARCH/chroot/usr/s
 statusprint "Adding iptables setup script.."
 sudo_file_template_copy resources/sbin/host-iptables ./build.$GLOBAL_BASEARCH/chroot/sbin/host-iptables
 sudo chmod +x ./build.$GLOBAL_BASEARCH/chroot/sbin/host-iptables
-sudo ln -s /sbin/host-iptables ./build.$GLOBAL_BASEARCH/chroot/etc/network/if-pre-up.d/firewall 2>&-
 
 statusprint "Adding privileged execution service and client.."
 sudo cp resources/sbin/privexecd.sh ./build.$GLOBAL_BASEARCH/chroot/sbin/privexecd.sh
