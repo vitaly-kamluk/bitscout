@@ -10,7 +10,7 @@ mkdir -p ./build.$GLOBAL_BASEARCH/image/{casper,boot}
 
 statusprint "Copying bootloader files.."
 sudo cp ./build.$GLOBAL_BASEARCH/chroot/boot/vmlinuz-*-generic ./build.$GLOBAL_BASEARCH/image/casper/vmlinuz &&
-sudo cp ./build.$GLOBAL_BASEARCH/chroot/boot/initrd.img-*-generic ./build.$GLOBAL_BASEARCH/image/casper/initrd.gz &&
+sudo cp ./build.$GLOBAL_BASEARCH/chroot/boot/initrd.img-*-generic ./build.$GLOBAL_BASEARCH/image/casper/initrd.img &&
 install_required_package memtest86+ && 
 sudo cp /boot/memtest86+.bin ./build.$GLOBAL_BASEARCH/image/casper/memtest 
 

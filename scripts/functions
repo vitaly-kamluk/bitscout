@@ -18,7 +18,7 @@ HISTORIAN_ZRAM_SIZE=2048M
 
 [ -f "config/$PROJECTNAME-build.conf" ] && . "config/$PROJECTNAME-build.conf"
 
-INITRDPATH=build.$GLOBAL_BASEARCH/image/casper/initrd.gz
+INITRDPATH=build.$GLOBAL_BASEARCH/image/casper/initrd.img
 RESERVEDIR=reserve
 SCREENNAME=${PROJECTNAME}_${GLOBAL_BASEARCH}_chroot #creates a screen session for interactive configuration. see scripts/chroot_enter.sh and scripts/chroot_leave.sh
 
@@ -177,16 +177,23 @@ nspawn_exec()
 unpackinitrd()
 {
   statusprint "Unpacking initrd image from $INITRDPATH.."
-  rm -rf ./build.$GLOBAL_BASEARCH/initrd
-  mkdir ./build.$GLOBAL_BASEARCH/initrd
-  cd ./build.$GLOBAL_BASEARCH/initrd
-  if [ -f "../../$INITRDPATH" ]
+  if [ -f "./$INITRDPATH" ]
   then
-    gzip -dc "../../$INITRDPATH" | cpio -id
+    if [ ! -f ./build.$GLOBAL_BASEARCH/usr/bin/unmkinitramfs ]
+    then
+      chroot_exec build.$GLOBAL_BASEARCH/chroot 'DEBIAN_FRONTEND=noninteractive; apt install initramfs-tools-core' || exit 1
+    fi
+    chroot_exec build.$GLOBAL_BASEARCH/chroot 'INITRD=$(ls -1 boot/ | grep -m1 "initrd.*-.*");
+    cp /usr/bin/unmkinitramfs /tmp/unmkinitramfs
+    sed -i "s/--no-absolute-filenames//g" /tmp/unmkinitramfs
+    echo "Unpacking $INITRD.."
+    mkdir /tmp/initrd
+    /tmp/unmkinitramfs /boot/$(ls -1 boot/ | grep -m1 "initrd.*-.*") /tmp/initrd'
+    [ -d ./build.$GLOBAL_BASEARCH/initrd ] && sudo rm -rf ./build.$GLOBAL_BASEARCH/initrd
+    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd ./build.$GLOBAL_BASEARCH/initrd
   else
-    echo "[ERROR]: initrd image not found in $INITRDPATH."
+    echo "[ERROR]: initrd image not found in ./$INITRDPATH."
   fi
-  cd ..
 }
 
 packinitrd()
@@ -194,9 +201,15 @@ packinitrd()
   statusprint "Packing initrd image into $INITRDPATH.."
   if [ -d "./build.$GLOBAL_BASEARCH/initrd" ]
   then
-    cd ./build.$GLOBAL_BASEARCH/initrd
-    find . | cpio -o -H newc | gzip -7 -c | sudo tee "../../$INITRDPATH" >/dev/null
-    cd ..
+    sudo mv -v ./build.$GLOBAL_BASEARCH/initrd ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd
+    chroot_exec build.$GLOBAL_BASEARCH/chroot 'cd /tmp/initrd
+    ls -1 | grep "early" | while read d;
+      do
+        (cd "$d"; find . | cpio -o -H newc ) | tee -a /tmp/initrd.img.new >/dev/null
+      done;
+    (cd ./main; find . | cpio -o -H newc ) | lz4 -l -9 -c | tee -a "/tmp/initrd.img.new" >/dev/null'
+    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd.img.new "$INITRDPATH"
+    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd ./build.$GLOBAL_BASEARCH/initrd
   else
     echo "[ERROR]: initrd directory not found. Aborting."
   fi

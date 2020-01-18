@@ -20,7 +20,11 @@ apt-fast --yes install coreutils dcfldd sleuthkit hexedit indent' || exit 1
    chroot_exec build.$GLOBAL_BASEARCH/chroot 'export DEBIAN_FRONTEND=noninteractive;
 aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;
 apt-fast --yes install coreutils dcfldd sleuthkit forensics-all indent
-apt-fast --yes install aircrack-ng bfbtester binwalk bruteforce-luks bzip2 cabextract chntpw clamav cmospwd crunch cryptmount dcfldd disktype dnsutils ethstatus ethtool exfat-fuse exfat-utils exif exiftags libimage-exiftool-perl exiv2 fatcat fdupes flasm foremost gdisk geoip-bin  hexedit hydra john less  mc mdadm medusa memstat mpack nasm neopi netcat nmap ntfs-3g ophcrack-cli outguess p7zip-full parted pcapfix pdfcrack poppler-utils pecomato pev pyrit rarcrack samdump2 sipcrack smb-nat snowdrop stegsnow sucrack sxiv tcpdump tcpflow tcpick tcpreplay tcpxtract telnet testdisk tshark uni2ascii unrar-free unzip weplab whois wifite gdb' || exit 1
+apt-fast --yes install aircrack-ng bfbtester binwalk bruteforce-luks bzip2 cabextract chntpw clamav cmospwd crunch cryptmount dcfldd disktype dnsutils ethstatus ethtool exfat-fuse exfat-utils exif exiftags libimage-exiftool-perl exiv2 fatcat fdupes flasm foremost gdisk geoip-bin  hexedit hydra john less  mc mdadm medusa memstat mpack nasm neopi netcat nmap ntfs-3g ophcrack-cli outguess p7zip-full parted pcapfix pdfcrack poppler-utils pecomato pev rarcrack samdump2 sipcrack smb-nat snowdrop stegsnow sucrack sxiv tcpdump tcpflow tcpick tcpreplay tcpxtract telnet testdisk tshark uni2ascii unrar-free unzip weplab whois wifite gdb
+systemctl disable clamav-freshclam' || exit 1;
+   statusprint "Disabling network new services in chroot.."
+   chroot_exec build.$GLOBAL_BASEARCH/chroot 'systemctl disable clamav-freshclam && systemctl stop clamav-freshclam &&
+   systemctl disable postfix && systemctl stop postfix';
    ;;
 esac
 

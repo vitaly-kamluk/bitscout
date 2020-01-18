@@ -78,7 +78,9 @@ then
 
 fi
 
+statusprint "Removing chroot /tmp files.."
 sudo rm -rf ./build.$GLOBAL_BASEARCH/chroot/tmp/*
+
 sudo rm -f ./build.$GLOBAL_BASEARCH/chroot/root/.bashrc ./build.$GLOBAL_BASEARCH/chroot/home/user/.bashrc
 
 exit 0;

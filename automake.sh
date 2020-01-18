@@ -22,6 +22,7 @@ scripts/chroot_postdownload_setup.sh &&
 scripts/chroot_install_base.sh &&
 scripts/chroot_install_kernel.sh &&
 scripts/chroot_install_forensics.sh &&
+scripts/chroot_install_forensics_extra.sh &&
 scripts/chroot_install_remoteaccess.sh &&
 scripts/chroot_install_userchoice.sh &&
 
@@ -32,6 +33,7 @@ scripts/chroot_configure.sh &&
 scripts/chroot_configure_openvpn.sh &&
 scripts/chroot_configure_ssh.sh &&
 scripts/chroot_configure_irc.sh &&
+scripts/chroot_configure_syslog.sh &&
 
 #customize with own tools:
 scripts/chroot_add_managementtool.sh &&
@@ -39,12 +41,12 @@ scripts/chroot_add_managementtool.sh &&
 #prepare ISO files:
 scripts/image_prepare.sh &&
 
-#apply initrd/casper fixes:
-#scripts/initrd_unpack.sh &&
-#scripts/casper_findlivefs_fix.sh &&
-#scripts/casper_integritycheck_fix.sh &&
-#scripts/casper_writeblocker.sh &&
-#scripts/initrd_pack.sh &&
+#apply initrd/casper fixes: 
+scripts/initrd_unpack.sh &&
+scripts/casper_findlivefs_fix.sh &&
+scripts/casper_integritycheck_fix.sh &&
+scripts/casper_writeblocker.sh &&
+scripts/initrd_pack.sh &&
 
 #reduce size of rootfs and build ISO:
 scripts/image_prebuild_cleanup.sh &&
