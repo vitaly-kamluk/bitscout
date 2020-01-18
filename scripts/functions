@@ -160,8 +160,8 @@ packinitrd()
   if [ -d "./build.$GLOBAL_BASEARCH/initrd" ]
   then
     cd ./build.$GLOBAL_BASEARCH/initrd
-    (cd ./early; find . | cpio -o -H newc ) | sudo tee ../../${INITRDPATH}.test >/dev/null
-    (cd ./main; find . | cpio -o -H newc ) | gzip -7 -c | sudo tee -a "../../${INITRDPATH}.test" >/dev/null
+    (cd ./early; find . | cpio -o -H newc ) | sudo tee ../../${INITRDPATH} >/dev/null
+    (cd ./main; find . | cpio -o -H newc ) | gzip -7 -c | sudo tee -a "../../${INITRDPATH}" >/dev/null
     cd ../../
   else
     echo "[ERROR]: initrd directory not found. Aborting."
