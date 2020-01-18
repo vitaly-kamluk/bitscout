@@ -22,4 +22,7 @@ echo "nameserver 8.8.8.8" | sudo tee ./build.$GLOBAL_BASEARCH/chroot/etc/resolv.
 statusprint "Updating ./build.$GLOBAL_BASEARCH/chroot/etc/hostname"
 echo "$PROJECTNAME" | sudo tee ./build.$GLOBAL_BASEARCH/chroot/etc/hostname >/dev/null
 
+statusprint "Resetting root account inside new rootfs.."
+chroot_exec "./build.$GLOBAL_BASEARCH/chroot" "passwd -d root"
+
 exit 0;

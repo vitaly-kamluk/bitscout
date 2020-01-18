@@ -77,7 +77,7 @@ run_debootstrap_supervised_fast()
   mkdir -p "$DEBDIR" &&
 
   statusprint "Fetching the list of essential packages.." &&
-  DEBS=$(sudo debootstrap --include=aria2,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge,python3-netifaces --print-debs --arch=$GLOBAL_BASEARCH $BASERELEASE chroot http://archive.ubuntu.com/ubuntu ) || exit 1 &&
+  DEBS=$(sudo debootstrap --include=aria2,perl,libaria2-0,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge,python3-netifaces --print-debs --arch=$GLOBAL_BASEARCH $BASERELEASE chroot http://archive.ubuntu.com/ubuntu ) || exit 1 &&
   install_required_package aria2  &&
  
   chroot_mount_cache "$PWD/build.$GLOBAL_BASEARCH/chroot" &&
@@ -98,11 +98,11 @@ run_debootstrap_supervised_fast()
   echo "Origin: Ubuntu
 Label: Ubuntu
 Suite: $BASERELEASE
-Version: 18.04
+Version: 20.04
 Codename: $BASERELEASE
 Architectures: $GLOBAL_BASEARCH
 Components: main restricted universe multiverse
-Description: Ubuntu Bionic 18.04
+Description: Ubuntu Focal 20.04
 
 MD5Sum:
 $(md5sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$GLOBAL_BASEARCH/Packages

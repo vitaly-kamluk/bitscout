@@ -16,7 +16,7 @@ chroot_exec build.$GLOBAL_BASEARCH/chroot 'locale-gen "'$LANG'"' || exit 1 &&
 
 statusprint "Updating system and installing essential packages.." &&
 
-COMMON_PACKAGES="binutils netcat socat casper lupin-casper discover laptop-detect os-prober lxd lxd-client bindfs dialog tmux gawk grub-pc ntpdate ifupdown wicd-curses curl"
+COMMON_PACKAGES="binutils systemd-container netcat socat casper lupin-casper discover laptop-detect os-prober bindfs dialog tmux gawk grub-pc ntpdate ifupdown network-manager curl"
 
 if [ $GLOBAL_RELEASESIZE -eq 1 ]
 then
@@ -24,8 +24,14 @@ then
 apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install $COMMON_PACKAGES  && exit 0 || exit 1" || exit 1
 else
   chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive
-apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install $COMMON_PACKAGES file hdparm iptables lshw usbutils parted lsof psmisc strace ltrace time systemd-sysv man-db dosfstools cron busybox-static rsync dmidecode bash-completion command-not-found ntfs-3g uuid-runtime vim nano less pv ifupdown nbd-server grub-pc qemu-kvm fuse libfuse2 python-fusepy && exit 0 || exit 1" || exit 1
+apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install $COMMON_PACKAGES file hdparm iptables lshw usbutils parted lsof psmisc strace ltrace time systemd-sysv man-db dosfstools cron busybox-static rsync dmidecode bash-completion command-not-found ntfs-3g uuid-runtime vim nano less pv ifupdown nbd-server grub-pc qemu-kvm fuse libfuse2 python3-fusepy && exit 0 || exit 1" || exit 1
 fi &&
+
+#statusprint "Installing LXD using snap.."
+#nspawn_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install snapd" || exit 1
+#nspawn_exec build.$GLOBAL_BASEARCH/chroot "mount -o remount,rw /sys; systemctl restart systemd-udevd; snap install core; systemctl restart systemd-udevd; snap install lxd" || nspawn_exec build.$GLOBAL_BASEARCH/chroot "mount -o remount,rw /sys; systemctl restart systemd-udevd; snap install core; systemctl restart systemd-udevd; snap install lxd" || exit 1 
+#nspawn_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install lxd lxd-client && exit 0 || exit 1" || exit 1
+
 statusprint "Finished installing packages." &&
 
 statusprint "Upgrading kbd package." && #kbd is updated separately, because of related GDM issue/bug.

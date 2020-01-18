@@ -5,8 +5,8 @@
 PROJECTNAME="bitscout"
 PROJECTCAPNAME="Bitscout"
 PROJECTSHORTNAME="scout"
-BASERELEASE="bionic"
-CONTAINERNET_NAME="expert"
+BASERELEASE="focal"
+CONTAINERNET_NAME="ve-container"
 CONTAINERNET_HOST_IP="10.3.0.1"
 CONTAINERNET_HOST_IP_CIDR="10.3.0.1/24"
 CONTAINERNET_GUEST_IP="10.3.0.2"
@@ -98,7 +98,7 @@ chroot_exec()
     sudo mkdir -p "$DIR/dev" &&
     cd "$DIR/dev" &&
     sudo MAKEDEV std &&
-    cd ../../ 
+    cd ../../
   fi
 
   chroot_mount_cache "$PWD/$DIR" &&
@@ -138,6 +138,40 @@ chroot_exec()
   fi &&
 
   return 0
+}
+
+nspawn_exec()
+{
+  install_required_package expect
+
+  CHROOTDIR="$1"
+  CHROOTCMD="${2:-/bin/true}"
+  INTERACTIVE="$3"
+  CONTAINER_SPAWN_SCRIPT="$PWD/scripts/nspawn_container_spawn.sh"
+
+  chroot_mount_cache "$PWD/$CHROOTDIR" &&
+  trap "chroot_unmount_fs \"$PWD/$CHROOTDIR\"" SIGINT SIGKILL SIGTERM &&
+  echo "$CHROOTCMD" | sudo tee "$PWD/$CHROOTDIR/chroot_exec.sh" >/dev/null
+
+  statusprint "Executing the following command in nspawn $CHROOTDIR:"
+  statusprint "$CHROOTCMD"
+  export CHROOTDIR
+  export INTERACTIVE
+  export CONTAINER_SPAWN_SCRIPT
+  sudo --preserve-env=CHROOTDIR,INTERACTIVE,CONTAINER_SPAWN_SCRIPT expect $PWD/scripts/nspawn_session.exp
+
+  if [ ! -f "$PWD/$CHROOTDIR/chroot_exec.retcode" ]; then return 0; fi
+  CHROOTRET=$(cat "$PWD/$CHROOTDIR/chroot_exec.retcode")
+  sudo rm "$PWD/$CHROOTDIR/chroot_exec.sh" "$PWD/$CHROOTDIR/chroot_exec.retcode" 2>/dev/null
+
+  if [ "x$CHROOTRET" == "x0" ] 
+  then
+    statusprint "Info: command in nspawn succeeded."
+    chroot_unmount_fs "$PWD/$CHROOTDIR" && return 0
+  else
+    statusprint "Warning: command in nspawn failed. Last return code: $CHROOTRET"
+    chroot_unmount_fs "$PWD/$CHROOTDIR" && return 1
+  fi
 }
 
 unpackinitrd()

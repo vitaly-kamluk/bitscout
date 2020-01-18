@@ -1,0 +1,17 @@
+# This file describes the network interfaces available on your system
+# For more information, see netplan(5).
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: yes
+    host0:
+     dhcp4: no
+     addresses: [10.3.0.2/24]
+     gateway4: 10.3.0.1
+     nameservers:
+       addresses: [8.8.8.8,8.8.4.4]
+    ve-container:
+     dhcp4: no
+     addresses: [10.3.0.1/24]

@@ -1,0 +1,36 @@
+#!/usr/bin/expect
+set timeout -1
+
+send_user "Starting systemd-nspawn container for the chroot..\n"
+send_user "Container start script: $::env(CONTAINER_SPAWN_SCRIPT)\n"
+log_user 0
+spawn "$::env(CONTAINER_SPAWN_SCRIPT)"
+
+expect "bitscout login:"
+send "root\n"
+expect "root@bitscout:~#"
+
+log_user 1
+send "sh /chroot_exec.sh\n"
+
+expect "root@bitscout:~#"
+log_user 0
+send "echo $? > /chroot_exec.retcode\n"
+
+catch { 
+  if { $::env(INTERACTIVE) == 1 } { 
+    log_user 1
+    send_user "\nEntering interactive shell. Please Ctrl-Z when finished.\n";
+    interact \032 return;
+  } 
+}
+
+log_user 0
+catch {
+  send "\n"
+  expect "root@bitscout:~#"
+  send "poweroff\n"
+  expect "Container .* has been shut down."
+}
+log_user 1
+send_user "\n"

@@ -46,7 +46,7 @@ touch ./build.$GLOBAL_BASEARCH/image/ubuntu
 mkdir ./build.$GLOBAL_BASEARCH/image/.disk
 cd ./build.$GLOBAL_BASEARCH/image/.disk
 echo "live" > cd_type
-echo "Ubuntu Remix 18.04 \"$PROJECTCAPNAME\"" > info  # Update version number to match your OS version
+echo "Ubuntu Remix 20.04 \"$PROJECTCAPNAME\"" > info  # Update version number to match your OS version
 echo "A project by Vitaly Kamluk, Kaspersky Lab (www.kaspersky.com)." > release_notes_url
 cd ../../../
 
