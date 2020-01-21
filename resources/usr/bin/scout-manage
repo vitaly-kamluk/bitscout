@@ -22,7 +22,6 @@ DIALOG_ITEM_HELP=4
 DIALOG_ESC=255
 
 MAINMENUTEXT="Welcome to Bitscout system!
-Customized by Xavier Mertens Consulting - Contact: csirt@xameco.net
 You can use this simple tool for most common operations on the system.
 Please choose one of the menu items below:" 
 declare -a MAINMENU;
