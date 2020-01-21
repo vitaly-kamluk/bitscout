@@ -179,6 +179,7 @@ do
 		IFACECFG["Interface"]="$IFACECHOICE"
 		IFACECFG["IP/Mask"]=`ip -4 -o addr show "$IFACECHOICE" | awk '{print $4}'`
 		IFACECFG["Gateway"]=`ip route show default dev "$IFACECHOICE"|grep "^default via"| cut -d" " -f3`
+		IFACECFG["DNS"]=`systemd-resolve --status --no-pager | grep "DNS Servers" | awk '{ print $NF }' | paste -sd "," -`
                 #cloning array with the next two lines:
                 TMPVAR=$(declare -p IFACECFG)
                 eval "${TMPVAR/IFACECFG=/IFACECFGNEW=}"
@@ -186,7 +187,7 @@ do
                 DEFAULT_BUTTON=extra
 		while true
 		do
-		  CHOICE=`dialog --default-button $DEFAULT_BUTTON --extra-label "Edit" --title "STATIC IP" --inputmenu "Configuration of interface \"${IFACECFGNEW['Interface']}\":" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "IP/Mask" "${IFACECFGNEW['IP/Mask']}" "Gateway" "${IFACECFGNEW['Gateway']}" 3>&2 2>&1 1>&3`
+		  CHOICE=`dialog --default-button $DEFAULT_BUTTON --extra-label "Edit" --title "STATIC IP" --inputmenu "Configuration of interface \"${IFACECFGNEW['Interface']}\":" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "IP/Mask" "${IFACECFGNEW['IP/Mask']}" "Gateway" "${IFACECFGNEW['Gateway']}" "DNS" "${IFACECFGNEW['DNS']}" 3>&2 2>&1 1>&3`
 		  RETCODE=$?;
 		  case $RETCODE in
 		    $DIALOG_EXTRA)
@@ -203,6 +204,7 @@ do
 		    $DIALOG_OK)
                       IFACE="${IFACECFG['Interface']}"
                       if [ -z "${IFACECFGNEW['IP/Mask']}" ]; then IFACECFGNEW['IP/Mask']="0.0.0.0"; fi;
+                      if [ -z "${IFACECFGNEW['DNS']}" ]; then IFACECFGNEW['DNS']="8.8.8.8"; fi;
                       if [ "${IFACECFGNEW['IP/Mask']}" == '0.0.0.0' ] 
                       then
                         ifconfig "$IFACE" 0.0.0.0 down
@@ -214,7 +216,22 @@ do
                         [ -n "${IFACECFG['IP/Mask']}" ] && eval "ip addr delete ${IFACECFG['IP/Mask']} dev $IFACE 2>/dev/null"
                         eval "ip addr add \"${IFACECFGNEW['IP/Mask']}\" dev $IFACE"
                         sed -i 's/^iface '$IFACE' \(.*\) dhcp$/iface '$IFACE' \1 static/g; s/^auto '$IFACE'$/manual '$IFACE'/g' /etc/network/interfaces
-                        ifconfig "$IFACE" up
+			pkill dhclient
+			cat >/etc/netplan/01-netcfg.yaml <<EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    $IFACE:
+      dhcp4: no
+      addresses:
+        - ${IFACECFGNEW['IP/Mask']}
+      gateway4: ${IFACECFGNEW['Gateway']}
+      nameservers:
+        addresses: [${IFACECFGNEW['DNS']}]
+EOF
+			netplan apply
+                        systemctl --no-block restart ifup@$IFACE.service
                       fi
 
                       [ -n "${IFACECFG['Gateway']}" ] && eval "ip route del default via ${IFACECFG['Gateway']} dev $IFACE 2>/dev/null"
