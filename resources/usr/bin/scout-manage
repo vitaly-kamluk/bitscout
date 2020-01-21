@@ -1,5 +1,6 @@
 #!/bin/bash
 OPENVPNCONFIG=/etc/openvpn/scout.conf
+SYSLOGCONFIG=/etc/rsyslog.d/userdefined.conf
 TERMINAL=linux
 CONTAINERNAME=container
 CONTAINERUSER=user
@@ -51,6 +52,7 @@ NETWORKMENU+=("ENABLE ACCESS FROM LAN:Enable LAN access to LiveCD.")
 NETWORKMENU+=("STATIC IP:Setup static IP for LAN interface.")
 NETWORKMENU+=("HTTP PROXY:Configure internet access via HTTP proxy.")
 NETWORKMENU+=("SOCKS PROXY:Configure internet access via SOCKS proxy.")
+NETWORKMENU+=("SYSLOG:Configure a new Syslog forwarder.")
 NETWORKMENU+=("BACK:Return to previous menu.")
 #reverse array elements
 unset T; T=("${NETWORKMENU[@]}"); unset NETWORKMENU; declare -a NETWORKMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do NETWORKMENU[${#NETWORKMENU[@]}]=${T[i]}; done
@@ -165,10 +167,50 @@ do
                 continue
                 ;;
 	
-	       "BACK")
+         "BACK")
                 break;
                 ;;
-	       "STATIC IP")
+         "SYSLOG")
+                declare -A SYSLOGCFG;
+                if [ -r "$SYSLOGCONFIG" ]; then
+                    SYSLOGCFG["IP/FQDN"]=`cat $SYSLOGCONFIG | awk -F '@' '{ print $2 }' | awk -F ':' '{ print $1 }'`
+                else
+                    SYSLOGCFG["IP/FQDN"]=""
+                fi
+                TMPVAR=$(declare -p SYSLOGCFG)
+                eval "${TMPVAR/SYSLOGCFG=/SYSLOGCFGNEW=}"
+                DEFAULT_BUTTON=extra
+                while true
+                do
+                    CHOICE=`dialog --default-button $DEFAULT_BUTTON --extra-label "Edit" --title "SYSLOG" --inputmenu "Configuration of a Syslog forwarder:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "IP/FQDN" "${SYSLOGCFGNEW['IP/FQDN']}" 3>&2 2>&1 1>&3`
+                    RETCODE=$?;
+                    case $RETCODE in
+                        $DIALOG_EXTRA)
+                            CHANGES=($CHOICE)
+			    if [ "${CHANGES[0]}" == "RENAMED" ]; then
+			        SYSLOGCFGNEW["${CHANGES[1]}"]="${CHANGES[2]}"
+                                DEFAULT_BUTTON="ok"
+			        continue;
+		   	    fi
+			    ;;
+		        $DIALOG_CANCEL)
+			    break;
+			    ;;
+		        $DIALOG_OK)
+                            if [ "${SYSLOGCFGNEW['IP/FQDN']}" != "" -a ! -z "${SYSLOGCFGNEW['IP/FQDN']}" ]; then
+                                cat >$SYSLOGCONFIG <<__SYSLOG__
+*.* @${SYSLOGCFGNEW['IP/FQDN']}:514
+__SYSLOG__
+                                systemctl --no-pager status rsyslog >/dev/null && systemctl restart --no-block rsyslog
+                                logger "New forwarder configured by the user: ${SYSLOGCFGNEW['IP/FQDN']}"
+                            fi
+                            break;
+                            ;;
+                    esac
+                done
+                continue
+                ;;
+         "STATIC IP")
 		declare -a IFACEMENU;
 		mapfile -t IFACEMENU < <( ip -o link show | awk '{if($2!~/ve-container.*|tap0.*/){print $2}}'| while read dev; do echo -n "$dev"; ip -4 -o addr show "${dev%:}" | awk '{print $4}'; done; )
 		IFACECHOICE=($( DIALOGOPTIONS=" " dialog_menu "NETWORK INTERFACE" "Select network interface to configure:" "$(declare -p IFACEMENU)")); RETCODE=$?
