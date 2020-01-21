@@ -22,6 +22,7 @@ DIALOG_ITEM_HELP=4
 DIALOG_ESC=255
 
 MAINMENUTEXT="Welcome to Bitscout system!
+Customized by Xavier Mertens Consulting - Contact: csirt@xameco.net
 You can use this simple tool for most common operations on the system.
 Please choose one of the menu items below:" 
 declare -a MAINMENU;
@@ -205,15 +206,30 @@ do
                         systemctl --no-pager status ifup@$IFACE.service >/dev/null || systemctl --no-block start ifup@$IFACE.service
                         break;
                       else
-                        systemctl --no-pager status ifup@$IFACE.service >/dev/null && systemctl stop --no-block ifup@$IFACE.service
                         [ -n "${IFACECFG['IP/Mask']}" ] && eval "ip addr delete ${IFACECFG['IP/Mask']} dev $IFACE 2>/dev/null"
+                        systemctl --no-pager status ifup@$IFACE.service >/dev/null && systemctl stop --no-block ifup@$IFACE.service
                         eval "ip addr add \"${IFACECFGNEW['IP/Mask']}\" dev $IFACE"
                         sed -i 's/^iface '$IFACE' \(.*\) dhcp$/iface '$IFACE' \1 static/g; s/^auto '$IFACE'$/manual '$IFACE'/g' /etc/network/interfaces
-                        ifconfig "$IFACE" up
+			pkill dhclient
+			cat >/etc/netplan/01-netcfg.yaml <<EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    $IFACE:
+      dhcp4: no
+      addresses:
+        - ${IFACECFGNEW['IP/Mask']}
+      gateway4: ${IFACECFGNEW['Gateway']}
+      nameservers:
+        addresses: [8.8.8.8]
+EOF
+			netplan apply
+                        systemctl --no-block restart ifup@$IFACE.service
                       fi
 
-                      [ -n "${IFACECFG['Gateway']}" ] && eval "ip route del default via ${IFACECFG['Gateway']} dev $IFACE 2>/dev/null"
-                      [ -n "${IFACECFGNEW['Gateway']}" ] && eval "ip route add default via ${IFACECFGNEW['Gateway']} dev $IFACE"
+                    #  [ -n "${IFACECFG['Gateway']}" ] && eval "ip route del default via ${IFACECFG['Gateway']} dev $IFACE 2>/dev/null"
+                    #  [ -n "${IFACECFGNEW['Gateway']}" ] && eval "ip route add default via ${IFACECFGNEW['Gateway']} dev $IFACE"
 
                       break; 
                       ;;
