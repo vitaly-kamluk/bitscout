@@ -23,6 +23,16 @@ case $GLOBAL_RELEASESIZE in
  3)
    statusprint "Installing extra forensics packages in chroot.."
 
+   # -------------
+   # Install byobu
+   # -------------
+   statusprint "Installing Byobu.."
+   if [ ! -x "build.$GLOBAL_BASEARCH/chroot/usr/bin/byobu" ]
+       chroot_exec build.$GLOBAL_BASEARCH/chroot 'apt-get -y install byobu'
+   else
+       statusprint "Byobu already installed.."
+   fi
+
    # --------------
    # Install rip.pl
    # --------------
