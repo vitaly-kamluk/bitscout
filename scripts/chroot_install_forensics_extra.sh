@@ -28,6 +28,7 @@ case $GLOBAL_RELEASESIZE in
    # -------------
    statusprint "Installing Byobu.."
    if [ ! -x "build.$GLOBAL_BASEARCH/chroot/usr/bin/byobu" ]
+   then
        chroot_exec build.$GLOBAL_BASEARCH/chroot 'apt-get -y install byobu'
    else
        statusprint "Byobu already installed.."
