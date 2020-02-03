@@ -22,18 +22,23 @@ case $GLOBAL_RELEASESIZE in
  2)
    ;;
  3)
-   statusprint "Installing custom files in chroot.."
+   statusprint "Installating custom files in chroot.."
 
    # ----------------------------------------------
-   # Apt proxy config
+   # Proxy config
    # This is useful to install missing package via
    # a reserve-tunnel through the SSH session
    # ----------------------------------------------
-   statusprint "Configuring Apt proxy config.."
+   statusprint "Configuring proxy config.."
    cat <<__APTPROXYCFG__ >build.$GLOBAL_BASEARCH/chroot/etc/apt/apt.conf.d/proxy.conf
 Acquire::http::Proxy "http://127.0.0.1:3128/";
 Acquire::http::Proxy "http://127.0.0.1:3128/";
 __APTPROXYCFG__
+
+   cat <<__BASHPROXYCFG__ >>/etc/bash.bashrc
+export HTTP_PROXY="http://127.0.0.1:3128"
+export HTTPS_PROXY="http://127.0.0.1:3128"
+__BASHPROXYCFG__
    ;;
 esac
 
