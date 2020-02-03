@@ -79,8 +79,9 @@ case $GLOBAL_RELEASESIZE in
        cd $BASEDIRECTORY
        mkdir -p build.$GLOBAL_BASEARCH/chroot/opt
        git clone https://github.com/Neo23x0/Loki.git build.$GLOBAL_BASEARCH/chroot/opt/loki
-       chroot_exec build.$GLOBAL_BASEARCH/chroot 'apt-get -y install python3-pip'
-       chroot_exec build.$GLOBAL_BASEARCH/chroot 'cd /opt/loki && pip3 install -r requirements.txt'
+       chroot_exec build.$GLOBAL_BASEARCH/chroot 'apt-get -y install python-pip'
+       chroot_exec build.$GLOBAL_BASEARCH/chroot 'cd /opt/loki && pip install -r requirements.txt'
+       chroot_exec build.$GLOBAL_BASEARCH/chroot 'cd /opt/loki && python loki-upgrader.py'
    else
        statusprint "Loki already installed.."
    fi
