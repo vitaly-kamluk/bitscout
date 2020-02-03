@@ -23,6 +23,7 @@ scripts/chroot_install_base.sh &&
 scripts/chroot_install_kernel.sh &&
 scripts/chroot_install_forensics.sh &&
 scripts/chroot_install_forensics_extra.sh &&
+scripts/chroot_install_custom.sh &&
 scripts/chroot_install_remoteaccess.sh &&
 scripts/chroot_install_userchoice.sh &&
 
