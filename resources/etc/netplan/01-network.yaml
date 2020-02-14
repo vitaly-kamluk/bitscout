@@ -1,11 +1,10 @@
 # This file describes the network interfaces available on your system
 # For more information, see netplan(5).
+# It excludes eth0 interface described separately
 network:
   version: 2
   renderer: networkd
   ethernets:
-    eth0:
-      dhcp4: yes
     host0:
      dhcp4: no
      addresses: [10.3.0.2/24]

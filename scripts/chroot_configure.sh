@@ -43,7 +43,7 @@ statusprint "Fixing sudo warning.." #should be removed in the future. see https:
 sudo cp -v ./resources/etc/sudo.conf ./build.$GLOBAL_BASEARCH/chroot/etc/
 
 statusprint "Setting up network plan for container and the host.."
-sudo cp -v ./resources/etc/netplan/01-network.yaml ./build.$GLOBAL_BASEARCH/chroot/etc/netplan/
+sudo cp -v ./resources/etc/netplan/{01-network.yaml,02-network-eth0.yaml} ./build.$GLOBAL_BASEARCH/chroot/etc/netplan/
 
 statusprint "Setting up shell aliases.."
 if ! grep -q '^#some shell aliases$' ./build.$GLOBAL_BASEARCH/chroot/etc/bash.bashrc

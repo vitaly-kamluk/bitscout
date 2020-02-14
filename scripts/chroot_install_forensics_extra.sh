@@ -31,6 +31,7 @@ case $GLOBAL_RELEASESIZE in
    # -------------
    statusprint "Installing Byobu.."
    if [ ! -x "build.$GLOBAL_BASEARCH/chroot/usr/bin/byobu" ]
+   then
        chroot_exec build.$GLOBAL_BASEARCH/chroot 'apt-get -y install byobu'
    else
        statusprint "Byobu already installed.."
@@ -83,8 +84,8 @@ case $GLOBAL_RELEASESIZE in
        apt-get -y install python-pip &&\
        cd /opt/loki &&\
        pip install -r requirements.txt &&\
-       rm -rf ./.git
-       python loki-upgrader.py'
+       rm -rf ./.git &&\
+       python2 ./loki-upgrader.py'
    else
        statusprint "Loki already installed.."
    fi
