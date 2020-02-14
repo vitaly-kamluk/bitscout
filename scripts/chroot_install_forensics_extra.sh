@@ -26,6 +26,17 @@ case $GLOBAL_RELEASESIZE in
    [ ! -d "build.$GLOBAL_BASEARCH/tmp/" ] && mkdir -p build.$GLOBAL_BASEARCH/tmp
    [ ! -d "build.$GLOBAL_BASEARCH/chroot/opt" ] && sudo mkdir -p build.$GLOBAL_BASEARCH/chroot/opt
 
+   # -------------
+   # Install byobu
+   # -------------
+   statusprint "Installing Byobu.."
+   if [ ! -x "build.$GLOBAL_BASEARCH/chroot/usr/bin/byobu" ]
+   then
+       chroot_exec build.$GLOBAL_BASEARCH/chroot 'apt-get -y install byobu'
+   else
+       statusprint "Byobu already installed.."
+   fi
+
    # --------------
    # Install rip.pl
    # --------------
