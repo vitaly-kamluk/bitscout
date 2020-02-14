@@ -80,11 +80,12 @@ case $GLOBAL_RELEASESIZE in
    then
        [ ! -d "build.$GLOBAL_BASEARCH/tmp/loki" ] && git clone --recursive --depth=1 https://github.com/Neo23x0/Loki.git build.$GLOBAL_BASEARCH/tmp/loki
        sudo cp -r build.$GLOBAL_BASEARCH/tmp/loki build.$GLOBAL_BASEARCH/chroot/opt/
-       chroot_exec build.$GLOBAL_BASEARCH/chroot 'export DEBIAN_FRONTEND=noninteractive; 
-       apt-get -y install python-pip &&
-       cd /opt/loki &&
-       pip install -r requirements.txt &&
-       rm -rf ./.git'
+       chroot_exec build.$GLOBAL_BASEARCH/chroot 'export DEBIAN_FRONTEND=noninteractive; \
+       apt-get -y install python-pip &&\
+       cd /opt/loki &&\
+       pip install -r requirements.txt &&\
+       rm -rf ./.git
+       python loki-upgrader.py'
    else
        statusprint "Loki already installed.."
    fi
