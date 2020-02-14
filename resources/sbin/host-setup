@@ -98,12 +98,11 @@ then
 
         #remove host iptables setup script
         echo "Container chroot: remove host-iptables script"
-        rm "$CONTAINERDIR/chroot/etc/network/if-pre-up.d/firewall"
         rm "$CONTAINERDIR/chroot/sbin/host-iptables"
 
         #remove host setup script
         echo "Container chroot: remove host-setup script"
-        rm "$CONTAINERDIR/chroot/sbin/host-setup" "$CONTAINERDIR/chroot/lib/systemd/system/host-setup.service" "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/host-setup.service" ""
+        rm "$CONTAINERDIR/chroot/sbin/host-setup" "$CONTAINERDIR/chroot/lib/systemd/system/host-setup.service" "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/host-setup.service"
 
         #remove <PROJECTSHORTNAME>-manage startup
         echo "Container chroot: remove management tool"
