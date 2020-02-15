@@ -39,7 +39,7 @@ done
 apt-fast --yes purge deborphan'
 
 statusprint "Removing .pyc files cache.."
-sudo find ./build.$GLOBAL_BASEARCH/chroot/usr/share/python* ./build.$GLOBAL_BASEARCH/chroot/usr/lib/python* -iname "*.pyc" 2>&- | while read f; do sudo rm "$f" 2>&-; done 
+sudo find ./build.$GLOBAL_BASEARCH/chroot/usr/share/python* ./build.$GLOBAL_BASEARCH/chroot/usr/lib/python* -name "*.pyc" -delete 2>&- 
 
 if [ ${GLOBAL_RELEASESIZE} -le 1 ]
 then

@@ -35,10 +35,15 @@ StandardOutput=tty
 StandardError=tty
 
 [Install]
-WantedBy=default.target" | sudo tee ./build.$GLOBAL_BASEARCH/chroot/lib/systemd/system/${PROJECTSHORTNAME}-manage.service >/dev/null
+WantedBy=default.target" | sudo tee ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/${PROJECTSHORTNAME}-manage.service >/dev/null
 
 sudo_file_template_copy resources/usr/share/${PROJECTNAME}/${PROJECTSHORTNAME}-manage.service ./build.$GLOBAL_BASEARCH/chroot/usr/share/${PROJECTNAME}/${PROJECTSHORTNAME}-manage.service
 sudo chmod +x ./build.$GLOBAL_BASEARCH/chroot/usr/share/${PROJECTNAME}/${PROJECTSHORTNAME}-manage.service
-sudo ln -s /lib/systemd/system/${PROJECTSHORTNAME}-manage.service ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/multi-user.target.wants/${PROJECTSHORTNAME}-manage.service 2>/dev/null
+sudo ln -s /etc/systemd/system/${PROJECTSHORTNAME}-manage.service ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/multi-user.target.wants/${PROJECTSHORTNAME}-manage.service 2>/dev/null
+
+
+statusprint "Adding container management scripts.."
+sudo cp -v resources/usr/bin/container-{suspend,resume}.sh ./build.$GLOBAL_BASEARCH/chroot/usr/bin/
+sudo chmod +x ./build.$GLOBAL_BASEARCH/chroot/usr/bin/container-{suspend,resume}.sh
 
 exit 0;

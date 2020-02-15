@@ -76,7 +76,7 @@ then  #default for no parameters. executed during system boot.
   $IPT -A INPUT -i $VPN_IFACE -j HOST_INCOMING
 
    
-  #Enable NAT (lxc->inet)
+  #Enable NAT (container->inet)
   #TODO: Recheck default isolation
   for INET_IFACE in ${INET_IFACES[*]}
   do

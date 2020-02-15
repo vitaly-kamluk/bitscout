@@ -26,6 +26,9 @@ Bind=/dev/fuse
 Bind=/mnt/container:/mnt/host
 Bind=/dev/container:/dev/host
 
+Bind=/opt/container/history/.profile:/etc/profile
+Bind=/opt/container/ipc:/var/host/ipc
+
 [Exec]
 MachineID=container
 PrivateUsers=100000:65536

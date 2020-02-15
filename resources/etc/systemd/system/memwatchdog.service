@@ -1,0 +1,11 @@
+[Unit]
+Description=Memory watchdog
+After=systemd-machined.service
+
+[Service]
+Type=simple
+ExecStart=/sbin/memwatchdog.sh
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

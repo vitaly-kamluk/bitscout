@@ -22,23 +22,21 @@ expect {
 }
 set timeout 120
 send "user\n"
-expect "Password: "
-send "\n"
-expect "user*bitscout-host*\$ "
+expect -re {^.*user.*@.*bitscout-host.*\$ }
 
-send_log "Elevating to root user..\n"
+send_log "Becoming root..\n"
 send "sudo -i\n"
-expect "root*bitscout-host*\$ "
+expect -re {^.*root.*@.*bitscout-host.*\$ }
 
-#1. Test LXC container status
-send_log "\nChecking if LXC container \"expert\" is running..\n"
-set lxdstarted 0
-while { $lxdstarted == 0 } {
- send "lxc list --format csv\n"
+#1. Test container status
+send_log "\nChecking if the container is running..\n"
+set container_started 0
+while { $container_started == 0 } {
+ send "machinectl show container\n"
  expect {
-   "expert,RUNNING,10.3.0.2" { expect "\n"; send_log "autotest: LXC container is up. LXC check: OK\n"; set lxdstarted 1; break }
-   "root*bitscout-host*\$ " { send_log "\nLXD has not started yet. Sleeping before trying again..\n"; sleep 3 }
-   timeout { send_log "autotest: CRITICAL, timeout waiting for container. LXC check: ERROR"; exit }
+   "State=running" { expect "\n"; send_log "autotest: Container is up. Container check: OK\n"; set container_started 1; break }
+   -re {^.*root.*@bitscout-host.*\$ } { send_log "\nContainer has not started yet. Waiting..\n"; sleep 3 }
+   timeout { send_log "autotest: CRITICAL, timeout waiting for container. Container check: ERROR"; exit }
  }
 }
 
@@ -72,19 +70,19 @@ expect "root*bitscout-host*\$ "
 send_log "Checking guest system services status..\n"
 
 #entering the guest container
-send "lxc exec expert -- bash\n"
+send "machinectl shell container\n"
 expect { 
-  "root*bitscout*\$ " { send_log "\nautotest: Guest LXC container shell is available. LXC shell: OK\n"; }
-  timeout { send_log "\nautotest: CRITICAL, couldn't enter the container shell. LXC shell: ERROR\n"; exit; } 
+  -re {^.*root.*@.*bitscout[^-].*\$ } { send_log "\nautotest: Guest container shell is available. Container shell: OK\n"; }
+  timeout { send_log "\nautotest: CRITICAL, couldn't enter the container shell. Container shell: ERROR\n"; exit; } 
 }
 
 #check ssh.service
 send "systemctl --no-pager status ssh.service | tr -cd '\\11\\12\\15\\40-\\176' \n"
 expect {
-  "Active: failed" { expect "\n"; send_log "\nautotest: Container's ssh service is not running. LXC SSH: ERROR\n"; }
-  "Active: active (running)" { expect "\n"; send_log "\nautotest: Container's ssh service is running. LXC SSH: OK\n"; }
+  "Active: failed" { expect "\n"; send_log "\nautotest: Container's ssh service is not running. Container SSH: ERROR\n"; }
+  "Active: active (running)" { expect "\n"; send_log "\nautotest: Container's ssh service is running. Container SSH: OK\n"; }
   -re "Active: inactive|Active: activating" { expect "root*bitscout*\$ "; sleep 1; send "systemctl --no-pager status ssh.service | tr -cd '\\11\\12\\15\\40-\\176' \n"; exp_continue; }
-  timeout { send_log "\nautotest: SSH server is not running in the container. LXC SSH: ERROR\n"; exit }
+  timeout { send_log "\nautotest: SSH server is not running in the container. Container SSH: ERROR\n"; exit }
 }
 expect "root*bitscout*\$ "
 

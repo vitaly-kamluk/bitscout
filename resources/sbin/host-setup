@@ -10,8 +10,6 @@ touch /this_is_host
 PROJECTNAME="<PROJECTNAME>"
 CONTAINERDIR="/opt/container"
 CONTAINERHOSTDEV="/dev/host"
-CONTAINERNAME="<CONTAINERNAME>"
-CONTAINERUSER="<CONTAINERUSERNAME>"
 CONTAINERNET_NAME="<CONTAINERNET_NAME>"
 CONTAINERNET_HOST_IP_CIDR="<CONTAINERNET_HOST_IP_CIDR>"
 CONTAINERNET_GUEST_IP="<CONTAINERNET_GUEST_IP>"
@@ -102,29 +100,33 @@ then
 
         #remove host setup script
         echo "Container chroot: remove host-setup script"
-        rm "$CONTAINERDIR/chroot/sbin/host-setup" "$CONTAINERDIR/chroot/lib/systemd/system/host-setup.service" "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/host-setup.service"
+        rm "$CONTAINERDIR/chroot/sbin/host-setup" "$CONTAINERDIR/chroot/etc/systemd/system/host-setup.service" "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/host-setup.service"
+
+        #remove memory watchdog
+        echo "Container chroot: remove memory watchdog"
+        rm "$CONTAINERDIR/chroot/sbin/memwatchdog.sh" "$CONTAINERDIR/chroot/etc/systemd/system/memwatchdog.service" "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/memwatchdog.service"
 
         #remove <PROJECTSHORTNAME>-manage startup
         echo "Container chroot: remove management tool"
-        rm "$CONTAINERDIR/chroot/lib/systemd/system/<PROJECTSHORTNAME>-manage.service"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/<PROJECTSHORTNAME>-manage.service"
         rm "$CONTAINERDIR/chroot/usr/share/<PROJECTNAME>/<PROJECTSHORTNAME>-manage.service"
         rm "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/<PROJECTSHORTNAME>-manage.service"
 
         #remove the historian service from the guest
         echo "Container chroot: remove historian daemon"
-        rm "$CONTAINERDIR/chroot/lib/systemd/system/historian.service"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/historian.service"
         rm "$CONTAINERDIR/chroot/sbin/historian.sh"
         rm "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/historian.service"
 
         #remove privexec service from the guest
         echo "Container chroot: remove privexec daemon"
-        rm "$CONTAINERDIR/chroot/lib/systemd/system/privexec.service"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/privexec.service"
         rm "$CONTAINERDIR/chroot/sbin/privexecd.sh"
         rm "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/privexec.service"
 
         #remove supervised service from the guest
         echo "Container chroot: remove supervised daemon"
-        rm "$CONTAINERDIR/chroot/lib/systemd/system/supervise.service"
+        rm "$CONTAINERDIR/chroot/etc/systemd/system/supervise.service"
         rm "$CONTAINERDIR/chroot/sbin/supervised.sh"
         rm "$CONTAINERDIR/chroot/etc/systemd/system/multi-user.target.wants/supervise.service"
 
@@ -213,11 +215,6 @@ then
 dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
     echo "$PROJECTNAME,$CONTAINERNET_GUEST_IP" > "/etc/dnsmasq-$CONTAINERNET_NAME.hosts"
 
-    #attach rootfs to the chroot.user
-    #echo "Create symlink (based on chroot dir) for the container rootfs"
-    #mkdir -p /var/run/systemd/machines &&
-    #ln -s /opt/container/chroot.user /var/run/systemd/machines/$CONTAINERNAME
- 
     echo "Checking if KVM is available (for nested hardware virtualization support)."
     if [ ! -c /dev/kvm ]
     then
@@ -240,7 +237,7 @@ then
   echo "Stopping the container"
   if mount | grep -q "$CONTAINERDIR/reflection"
   then
-    sudo -H -u $CONTAINERUSER lxc-stop -k -n "$CONTAINERNAME"
+    sudo machinectl stop container
     umount "$CONTAINERDIR/chroot.user"
     umount "$CONTAINERDIR/chroot"
     umount "$CONTAINERDIR/reflection"

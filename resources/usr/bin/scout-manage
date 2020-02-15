@@ -3,7 +3,6 @@ OPENVPNCONFIG=/etc/openvpn/scout.conf
 SYSLOGCONFIG=/etc/rsyslog.d/userdefined.conf
 TERMINAL=linux
 CONTAINERNAME=container
-CONTAINERUSER=user
 BOXHEIGHT=$[`tput lines`*4/5]
 BOXWIDTH=$[`tput cols`*4/5];
 BOXHEIGHT2=$[$BOXHEIGHT-5]

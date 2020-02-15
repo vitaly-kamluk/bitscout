@@ -1,12 +1,11 @@
 #!/bin/bash
-CONTAINERNAME=expert
-CONTAINERUSER=user
 CONTAINERROOT=/opt/container/chroot
 CONTROLFILE=/var/run/privexec.enabled
 IPCDIR=/opt/container/ipc
 PRIVPIPE="$IPCDIR/privexec.pipe"
 PRIVLOCK="$IPCDIR/privexec.lock"
-PRIVLOG=/opt/container/history/log/privexecd.log
+PRIVLOGDIR=/opt/container/history/log
+PRIVLOG="$PRIVLOGDIR/privexecd.log"
 
 CMD_WHITELIST=( "/bin/mount" "/bin/umount" )
 FS_WHITELIST=( "ntfs" "ntfs-3g" "vfat" "exfat" "ext" "ext2" "ext3" "ext4" "iso9660" "udf" "xfs" "reiserfs" "hfs" "hfsplus"  )
@@ -97,6 +96,8 @@ is_valid_option()
  return 1
 }
 
+[ ! -d "$IPCDIR" ] && mkdir -p "$IPCDIR";
+[ ! -d "$PRIVLOGDIR" ] && mkdir -p "$PRIVLOGDIR";
 [ ! -p "$PRIVPIPE" ] && mkfifo "$PRIVPIPE" && chmod o+rw "$PRIVPIPE";
 [ ! -p "$PRIVLOCK" ] && touch "$PRIVLOCK" && chmod o+rw "$PRIVLOCK";
 

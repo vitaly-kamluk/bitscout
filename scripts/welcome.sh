@@ -7,11 +7,11 @@
 BUILDCONFPATH="config/${PROJECTNAME}-build.conf"
 CONFIGNAME={"GLOBAL_RELEASESIZE"}
 
-statusprint "Welcome to $PROJECTNAME builder!"
-HOSTUNAME=$(uname -a)
-HOSTDIST=$(lsb_release -a 2>&-)
-COMMIT=$(git log -1 2>&-|head -n1)
-statusprint "Host OS info:\n$HOSTUNAME\n$HOSTDIST\nUsing git $COMMIT"
+statusprint "Welcome to $PROJECTCAPNAME builder!"
+HOSTUNAME=$(uname -srvi)
+HOSTDIST=$(lsb_release -idrc 2>&-)
+COMMIT=$(git log -1 2>&-|head -n1 | cut -d' ' -f2)
+statusprint "Host OS info: $HOSTUNAME\n$HOSTDIST\nBuild Target:\t$PROJECTCAPNAME $PROJECTRELEASE\nGit commit:\t$COMMIT\n"
 
 validate_hostaddr()
 {

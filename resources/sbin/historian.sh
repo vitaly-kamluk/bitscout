@@ -19,6 +19,7 @@ validate_pid()
 
 historian_start()
 {
+  [ ! -d "$IPCDIR" ] && mkdir -p "$IPCDIR"
   [ ! -p "$IPCDIR/historian.pipe" ] && mkfifo "$IPCDIR/historian.pipe" 2>&- && chmod o-r,o+w "$IPCDIR/historian.pipe" 
   [ ! -f "$IPCDIR/historian.lock" ] && touch "$IPCDIR/historian.lock" 2>&- && chmod o+w "$IPCDIR/historian.lock"
 

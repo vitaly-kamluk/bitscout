@@ -1,6 +1,6 @@
 [Unit]
 Description=Host system setup
-After=lxc.service lxc-net.service rc-local.service
+After=systemd-machined.service
 
 [Service]
 Type=oneshot

@@ -1,6 +1,4 @@
 #!/bin/bash
-CONTAINERNAME=expert
-CONTAINERUSER=user
 CONTAINERROOT=/opt/container/chroot
 SUPERVISEDROOT=/var/run/supervised
 IPCDIR=/opt/container/ipc
@@ -9,7 +7,8 @@ COMMPIPE_OUT="$IPCDIR/supervised_out.pipe"
 COMMLOCK="$IPCDIR/supervised.lock"
 SUPERVISEDBYPASS="$SUPERVISEDROOT/bypass"
 SUPERVISEDAUTHPIPE="$SUPERVISEDROOT/auth.pipe"
-COMMLOG=/opt/container/history/log/supervised.log
+COMMLOGDIR=/opt/container/history/log
+COMMLOG=$COMMLOGDIR/supervised.log
 
 log_add()
 {
@@ -18,7 +17,9 @@ log_add()
   echo "$T: $1"
 }
 
+[ ! -d "$COMMLOGDIR" ] && mkdir -p "$COMMLOGDIR";
 [ ! -d "$SUPERVISEDROOT" ] && mkdir -p "$SUPERVISEDROOT";
+[ ! -d "$IPCDIR" ] && mkdir -p "$IPCDIR";
 [ ! -p "$COMMPIPE_IN" ] && mkfifo "$COMMPIPE_IN" && chmod o+rw "$COMMPIPE_IN";
 [ ! -p "$COMMPIPE_OUT" ] && mkfifo "$COMMPIPE_OUT" && chmod o+rw "$COMMPIPE_OUT";
 [ ! -p "$COMMLOCK" ] && touch "$COMMLOCK" && chmod o+rw "$COMMLOCK";

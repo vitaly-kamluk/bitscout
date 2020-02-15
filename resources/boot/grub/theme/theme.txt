@@ -1,6 +1,6 @@
 desktop-image: "background.jpg"
 title-text: "Boot Menu"
-
+title-color: "215, 255, 255"
 terminal-box: "terminal_box_*.png"
 terminal-font: "DejaVu Sans 18"
 
@@ -10,7 +10,7 @@ terminal-font: "DejaVu Sans 18"
   top = 25%
   height = 50%	
 
-  item_font = "DejaVu Sans 18"
+  item_font = "DejaVu Sans 24"
   item_color = "#0ae7ea" 
   item_height = 48
   item_icon_space = 8
