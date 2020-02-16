@@ -100,7 +100,7 @@ then
     customkernel="0"
     PRINTOPTIONS=n statusprint "If you are going to deal with badly unmounted filesystems, software RAID or LVM, it is recommended to apply kernel write-blocker patch for extra care of the evidence. However, please note that this is eperimental feature and may take 3-4 hours to rebuild the kernel on a single-core CPU.\nWould you like to build and use kernel with write-blocker? [y/N]: "
     read choice
-    if [ -z "$choice" -o "${choice^}" = "N" -o -o "${choice^}" = "n" ]
+    if [ -z "$choice" -o "${choice^}" = "N" ]
     then
       customkernel="0"
     else
