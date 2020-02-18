@@ -7,7 +7,7 @@ PRIVLOCK="$IPCDIR/privexec.lock"
 PRIVLOGDIR=/opt/container/history/log
 PRIVLOG="$PRIVLOGDIR/privexecd.log"
 
-CMD_WHITELIST=( "/bin/mount" "/bin/umount" )
+CMD_WHITELIST=( "/usr/bin/mount" "/usr/bin/umount" )
 FS_WHITELIST=( "ntfs" "ntfs-3g" "vfat" "exfat" "ext" "ext2" "ext3" "ext4" "iso9660" "udf" "xfs" "reiserfs" "hfs" "hfsplus"  )
 declare -a LINE
 
@@ -18,7 +18,7 @@ log_add()
   echo "$T: $1"
 }
 
-privileged_bin_mount()
+privileged_usr_bin_mount()
 {
   log_add "privileged_bin_mount ${LINE[*]}"
   ARGLEN=${LINE[0]}
@@ -55,7 +55,7 @@ privileged_bin_mount()
   fi
 }
 
-privileged_bin_umount()
+privileged_usr_bin_umount()
 {
   SRC="/opt/container/chroot${LINE[2]}"
   if is_valid_path "$SRC"
@@ -128,3 +128,4 @@ do
   fi
   #declare -p LINE
 done
+
