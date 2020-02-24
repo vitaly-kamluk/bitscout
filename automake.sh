@@ -55,5 +55,5 @@ scripts/image_build.sh &&
 
 #prepare exportable configs/certs/keys:
 scripts/export_generate.sh 
-) 2>&1 | tee  ./automake.log
+) 2>&1 | stdbuf -i0 -o0 -e0 tee  ./automake.log
 

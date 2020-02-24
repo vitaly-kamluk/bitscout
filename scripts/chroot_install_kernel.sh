@@ -35,15 +35,23 @@ then
   statusprint "Installing build tools and downloading kernel source.." &&
   chroot_exec build.$GLOBAL_BASEARCH/chroot.devel "export DEBIAN_FRONTEND=noninteractive
   KERNELPKG=\$(apt-cache show --no-all-versions linux-image-generic| grep '^Depends:' | sed 's/^Depends: \\([^, ]*\\)[, ].*/\\1/') &&
-  KERNELPKG=\"linux-image-$FORCED_KERNEL_VERSION\" &&
-  KERNELUNSIGNEDPKG=\${KERNELPKG/linux-image/linux-image-unsigned} &&
-  apt-fast --yes install build-essential git bsdtar bc libssl-dev;
+  KERNELUNSIGNEDPKG=\${KERNELPKG/linux-image/linux-image-unsigned};
+  if [ \"x$FORCED_KERNEL_VERSION\" != "x" ]
+  then
+    KERNELPKG=\"linux-image-$FORCED_KERNEL_VERSION\";
+  fi
+  apt-fast --yes install build-essential git bc libssl-dev fakeroot;
   mkdir -p /opt/kernel 2>&-; chmod o+w /opt/kernel; cd /opt/kernel;
   KERNELVER=\$(echo \"\$KERNELPKG\"| cut -d\"-\" -f1,3 | tee /opt/kernel/kernel.version ) &&
   apt-fast --yes build-dep \"\$KERNELUNSIGNEDPKG\"
-  apt-get --yes source linux=$FORCED_KERNEL_SOURCE_VERSION
+  if [ \"x$FORCED_KERNEL_VERSION\" != "x" ]
+  then
+    apt-get --yes source linux=$FORCED_KERNEL_SOURCE_VERSION
+  else
+    apt-get --yes source linux
+  fi
   KERNELDIR=\"/opt/kernel/\$KERNELVER\"
-  cd \"\$KERNELDIR\" && [ ! -f debian_rules.cleaned ] && fakeroot debian/rules clean && touch debian_rules.cleaned" || ( chrootdevel_unmount; exit 1 )  &&
+  cd \"\$KERNELDIR\" && [ ! -f debian_rules.cleaned ] && ( fakeroot debian/rules clean && touch debian_rules.cleaned ) || exit 0" || ( chrootdevel_unmount; exit 1 ) &&
 
   statusprint "Patching kernel with write-blocker patch.." &&
   KERNELVER=$(cat ./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/kernel.version) &&
@@ -60,30 +68,37 @@ then
   if [ -z "$PATCHFILE" ]
   then
     statusprint "No patch file selected. Aborting."
+    chrootdevel_unmount
     exit 1
   else
     statusprint "Using the latest kernel patch file for current kernel: $PATCHFILE"
   fi &&
-  sudo patch --forward --batch -b -d "./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/$KERNELVER" -p1 < "./resources/kernel/writeblocker/kernel/$PATCHFILE" &&
+  ( PATCHMSG=$( sudo patch --forward --batch -b -d "./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/$KERNELVER" -p1 < "./resources/kernel/writeblocker/kernel/$PATCHFILE" 2>&1 | tail -n +2 )
+    if [ -n "$PATCHMSG" ]
+    then
+      if ! echo "$PATCHMSG" | grep -q 'Reversed (or previously applied) patch detected'
+      then
+        statusprint "Error applying kernel patch.\n$PATCHMSG"
+        chrootdevel_unmount
+        exit 1
+      fi
+    fi
+  ) &&
 
   statusprint "Building kernel.." &&
-  chroot_exec build.$GLOBAL_BASEARCH/chroot.devel "cd \"/opt/kernel/$KERNELVER\" && fakeroot debian/rules binary-headers binary-generic binary-perarch" &&
+  chroot_exec build.$GLOBAL_BASEARCH/chroot.devel "cd \"/opt/kernel/$KERNELVER\" && \
+  fakeroot debian/rules binary-headers binary-generic" || ( chrootdevel_unmount; exit 1) && #removed binary-perarch
 
   statusprint "Installing kernel.." &&
-  sudo cp -rv ./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/linux-{image,modules}-* "./build.$GLOBAL_BASEARCH/chroot/tmp/" &&
-  sudo umount ./build.$GLOBAL_BASEARCH/chroot.devel &&
+  sudo cp -rv ./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/linux-{image,modules}-*.deb "./build.$GLOBAL_BASEARCH/chroot/opt/" &&
+  chrootdevel_unmount &&
   chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive
   apt-fast -y install linux-firmware
-  dpkg -i /tmp/linux-{image,modules}*
+  dpkg -i /opt/linux-{image,modules}*.deb
   apt-fast --yes -f install
-  rm /tmp/linux-image-*" &&
+  rm /opt/linux-{image,modules}-*" &&
 
-  statusprint "Copying write-blocker management tools.." &&
-  sudo cp -v ./resources/kernel/writeblocker/userspace/tools/{wrtblk,wrtblk-ioerr,wrtblk-disable} ./build.$GLOBAL_BASEARCH/chroot/usr/sbin/ &&
-
-  statusprint "Copying write-blocker udev rules.." &&
-  sudo cp -v ./resources/kernel/writeblocker/userspace/udev/01-forensic-readonly.rules ./build.$GLOBAL_BASEARCH/chroot/lib/udev/rules.d/
-
+  chrootdevel_unmount
 else
   statusprint "Installing stock kernel version." &&
   if [ -n "$FORCED_KERNEL_VERSION" ]
@@ -94,6 +109,11 @@ else
   fi
 fi
 
+statusprint "Copying write-blocker management tools.." &&
+sudo cp -v ./resources/kernel/writeblocker/userspace/tools/{wrtblk,wrtblk-ioerr,wrtblk-disable} ./build.$GLOBAL_BASEARCH/chroot/usr/sbin/ &&
+
+statusprint "Copying write-blocker udev rules.." &&
+sudo cp -v ./resources/kernel/writeblocker/userspace/udev/01-forensic-readonly.rules ./build.$GLOBAL_BASEARCH/chroot/lib/udev/rules.d/
 
 statusprint "Removing older kernels in ./build.$GLOBAL_BASEARCH/chroot.."
 chroot_exec build.$GLOBAL_BASEARCH/chroot 'LATEST_KERNEL=`ls -1 /boot/vmlinuz-*-generic | sort | tail -n1 | cut -d"-" -f2-`

@@ -94,16 +94,17 @@ chroot_exec()
 
   DIR="$1"
   CMD="$2"
+  BASEDIR="$PWD"
   if [ ! -d "$DIR/dev" ]
   then
     sudo mkdir -p "$DIR/dev" &&
     cd "$DIR/dev" &&
     sudo MAKEDEV std &&
-    cd ../../
+    cd "$BASEDIR"
   fi
 
-  chroot_mount_cache "$PWD/$DIR" &&
-  trap "chroot_unmount_fs \"$PWD/$DIR\"" SIGINT SIGKILL SIGTERM &&
+  chroot_mount_cache "$DIR" &&
+  trap "chroot_unmount_fs \"$DIR\"" SIGINT SIGKILL SIGTERM &&
 
   sudo chmod o+rwX "$DIR/tmp" &&
   statusprint "Executing command in chroot ($DIR):" &&
@@ -132,10 +133,10 @@ chroot_exec()
   if sudo chroot "$DIR" "/tmp/chroot_session.sh"
   then
       statusprint "Info: command in chroot succeeded."
-    chroot_unmount_fs "$PWD/$DIR" && return 0
+    chroot_unmount_fs "$DIR" && return 0
   else
     statusprint "Warning: command in chroot failed."
-    chroot_unmount_fs "$PWD/$DIR" && return 1
+    chroot_unmount_fs "$DIR" && return 1
   fi &&
 
   return 0
