@@ -1,50 +1,38 @@
-Project Bitscout 
-Author: Vitaly Kamluk  // bitscout[at]kaspersky.com
+Project Bitscout
+Home page: https://bitscout-forensics.info
 
-Bitscout is customizable live OS constructor tool written purely in bash. It's
-main purpose is to help you quickly create own remote forensics bootable disk 
-image.
+Bitscout is customizable live OS constructor tool written entirely in bash. It's main purpose is to help you quickly create own remote forensics bootable disk image.
 
-This project was created by security researchers for security researchers and 
-incident handlers. Do not expect user-friendly interface and if you are not
-familiar with Linux commandline, it's wise idea to learn that first. This
-constructor can be customised to include your tools, however one of the core
-ideas was to remotely assist Law Enforcement investigations as well as incident
-responders, which is why Bitscout by default includes a number of forensic
-packages and settings. 
+This project was created by security researchers to be able to do remote system triage, malware threat hunting, digital forensics, incident response, and more. Do not expect common user graphical interface and if you are not
+familiar with Linux commandline, it's wise idea to learn that first. This constructor can be customised to include your tools, however one of the core ideas was to remotely assist Law Enforcement investigations as well as incident
+responders, which is why Bitscout by default includes a number of forensics and malware analysis tools.
+
+We recommend you to explore the project home page first. However, if you are ready to start on your own, below is a little guidance to help you.
 
 Basic usage:
 
 1. Build new ISO file:
  $ ./automake.sh
 
-After running this command, you may need to answer some questions such as
-location of your VPN server, type of build, etc.
+After running this command, you may need to answer some questions such as location of your VPN server, type of build, etc.
 
-Hint: if you are not running Linux and want to try Bitscout, you can start
-Ubuntu from LiveCD. It works perfectly fine, but we suggest you to have at least
-2Gb+ RAM in this case. To download Ubuntu LiveCD, please go here:
+Hint: if you are not running Linux and still want to try Bitscout, you can start Ubuntu from LiveCD and build an image there. It's better to attach an external storage in this case to make sure you don't run out of memory. But previously, we managed you to build Bitscout even with 2GB of RAM. To download Ubuntu LiveCD, please go here:
 https://www.ubuntu.com/download/desktop
+Alternatively, you may try one of our pre-built images (only for demo, not production):
+https://bitscout-forensics.info/quick-try/prebuilt-images
 
-Bitscout build demo from Ubuntu LiveCD (older version of Bitscout):
-https://www.youtube.com/watch?v=knA0NS9tWsY
+Bitscout build demo on Ubuntu 18.04, as well as setup of other components,can be seen here:
+https://bitscout-forensics.info/docs/basic-usage
 
-Note: the automake.sh script runs some commands as root, such as mounting local
-cache directories and creating new root filesystem permissions. However, all 
-changes shall affect only current directory and subdirectories, unless your 
-system is missing some essential packages to build the ISO (in this 
-case they will be installed).
+Note: the automake.sh script runs some commands as root, such as mounting local cache directories and creating new root filesystem permissions. However, all changes shall affect only current directory and subdirectories, unless your system is missing some essential packages to build the ISO (in this case they will be installed).
 
 2. Test new ISO file:
  $ ./autotest.sh
 
-This command shall run tests against freshly build ISO file. It verifies
-components' presence on the ISO and attempts to boot the ISO file using qemu to
-verify that all essential services are running.
+This command shall run tests against freshly build ISO file. It verifies components' presence on the ISO and attempts to boot the ISO file using qemu to verify that all essential services are running.
 
 
-To better understand what Bitscout is, we suggest you read further description
-of users' roles in the process and the FAQ below.
+To better understand what Bitscout is, we suggest you read further description of users' roles in the process and the FAQ below.
 
 User roles:
 Bitscout relies on at least three components in the process of remote forensics:
@@ -98,7 +86,7 @@ Bitscout Features:
   provided storage devices, which prevents potential data loss from the source
   disk. This is achieved via layers of virtualization.
 
-3. Customisation
+3. Customization
   a. The set of tools available on Bitscout can be customized by editing
   respective scripts before running the build. You can add standard packages 
   or your own tools. Make it available to expert, system owner or both.
@@ -126,7 +114,6 @@ Bitscout Features:
   duplication. Yet, mapped with copy-on-write access it provides almost unlimited
   modification of the whole OS. The real limit is just the size of available
   memory and swap.
-
   As a matter of fact fully running OS with a child OS inside the container used
   less than 200Mb of RAM in some of our tests in the past.
 
@@ -136,18 +123,18 @@ F.A.Q:
 Q: Why was the system created?
 A: There is a lot of commercial and rather expensive forensic software suites 
 out there. We tried several most popular of them and always bumped into 
-functionality limitations and lack of transparency in the processes. While some
+functionality limitations and lack of transparency. While some
 suites provide scriptability, they lack remote analysis features that do not
 modify the evidence disk. Most of forensic tools are not designed for remote 
-analysis, lacked flexibility and cost a fortune.
+analysis, lacked flexibility and costed a fortune.
 We found that there was a niche for a new tool which is
   a. trusted, transparent and opensource (you build your own OS!)
-  b. customisable (you put your own tools!)
+  b. customizable (you put your own tools!)
   c. stable and reliable
-  d. optimal and compact
-  e. fast and optimal (with low RAM usage)
+  d. rich in features and compact
+  e. fast and optimised for lower RAM usage
   f. free of charge
-  g. runs on old and new hardware
+  g. runs on merely any hardware
 
 Q: How was the project developed?
 A: The project was initially developed as a hobby project. The first variant 
@@ -186,21 +173,21 @@ help us in the past in some compicated circumstances and under time pressure.
 If it works for you we will be happy to hear your story. If not, perhaps you 
 could suggest a clever patch?
 
-Q: Is this project used for Kaspersky Lab business?
-A: This project was created independently of Kaspersky Lab product line and
+Q: Is this project used for business?
+A: This project was created independently of my employer's product line and
 outside of scope of company's business operation. The developed tool is not
 limited to particular users and might be useful to researchers, high-tech crime
 units of Law Enforcement and educational institutions.
 
 
 Credits:
-  Kaspersky Lab
-  INTERPOL Global Complex For Innovation (IGCI)
-  IGCI Digital Forensics Lab
+  Kaspersky
+  INTERPOL Digital Forensics Lab
+  Individual contributors to Bitscout project
 
 Thanks to
   Linux kernel developers
   Canonical Ltd
-  All open-source software developers
-  LXC developers
-  All those awesome authors of Linux forensics tools
+  All those incredible authors of Linux forensics tools
+
+For more information, please see our website at https://bitscout-forensics.info/
