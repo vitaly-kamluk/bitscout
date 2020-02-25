@@ -1,18 +1,20 @@
-Project Bitscout
+## Project Bitscout
 Home page: https://bitscout-forensics.info
 
 Bitscout is customizable live OS constructor tool written entirely in bash. It's main purpose is to help you quickly create own remote forensics bootable disk image.
 
 This project was created by security researchers to be able to do remote system triage, malware threat hunting, digital forensics, incident response, and more. Do not expect common user graphical interface and if you are not
-familiar with Linux commandline, it's wise idea to learn that first. This constructor can be customised to include your tools, however one of the core ideas was to remotely assist Law Enforcement investigations as well as incident
+familiar with Linux commandline, it's wise idea to learn that first. This constructor can be customized to include your tools, however one of the core ideas was to remotely assist Law Enforcement investigations as well as incident
 responders, which is why Bitscout by default includes a number of forensics and malware analysis tools.
 
 We recommend you to explore the project home page first. However, if you are ready to start on your own, below is a little guidance to help you.
 
-Basic usage:
+### Basic usage:
 
 1. Build new ISO file:
- $ ./automake.sh
+   ```
+   $ ./automake.sh
+   ```
 
 After running this command, you may need to answer some questions such as location of your VPN server, type of build, etc.
 
@@ -23,20 +25,22 @@ https://bitscout-forensics.info/quick-try/prebuilt-images
 
 Bitscout build demo on Ubuntu 18.04, as well as setup of other components,can be seen here:
 https://bitscout-forensics.info/docs/basic-usage
+Alternatively, here is some older video on Youtube that shows building Bitscout right from an Ubuntu LiveCD:
+https://www.youtube.com/watch?v=knA0NS9tWsY
 
 Note: the automake.sh script runs some commands as root, such as mounting local cache directories and creating new root filesystem permissions. However, all changes shall affect only current directory and subdirectories, unless your system is missing some essential packages to build the ISO (in this case they will be installed).
 
 2. Test new ISO file:
- $ ./autotest.sh
-
+    ```
+    $ ./autotest.sh
+    ```
 This command shall run tests against freshly build ISO file. It verifies components' presence on the ISO and attempts to boot the ISO file using qemu to verify that all essential services are running.
-
 
 To better understand what Bitscout is, we suggest you read further description of users' roles in the process and the FAQ below.
 
-User roles:
+### User roles:
 Bitscout relies on at least three components in the process of remote forensics:
-1. The owner
+1. **The owner**  
    The owner is a user who has physical access to the target system and owns it.
    The owner's role is to download, verify and burn Live ISO image file to a
    removable storage (CD-Rom or USB). After that the target system must be 
@@ -45,7 +49,7 @@ Bitscout relies on at least three components in the process of remote forensics:
    to configure network access using simple management interface that is
    brought up on physical console once Bitscout is loaded.
 
-2. The expert
+2. **The expert**  
    The expert is a remote user who connects to the target system over SSH using
    VPN link via the expert's server. Bitscout attempts to find existing VPN
    configuration and SSH keys in ./config directory. If it doesn't exist it
@@ -53,17 +57,17 @@ Bitscout relies on at least three components in the process of remote forensics:
    during the build.
 
    Hint: let Bitscout generate new keys for you and populate ./config
-   directory, which you can customise later and rebuild the ISO by running
-   automake.sh again. 
+   directory, which you can customize later and rebuild the ISO by running
+   [automake.sh](https://github.com/KasperskyLab/bitscout/blob/master/automake.sh) again. 
 
-3. Expert's server
+3. **Expert's server**  
    The expert's server shall be accessible from the network of target system.
    It shall run an instance of OpenVPN server, and recommended to have a Syslog
    server for logging an IRC chat server for communication. Suggested server
-   configuration files can be found in the ./exports directory after successfull
+   configuration files can be found in the ./exports directory after successful
    build of ISO file.
 
-Bitscout Features:
+### Bitscout Features:
 1. Transparency
   a. You build your own live disk instead of using someone else's. The build
   process is rather straightforward and detailed. One of the core principles of
@@ -114,30 +118,29 @@ Bitscout Features:
   duplication. Yet, mapped with copy-on-write access it provides almost unlimited
   modification of the whole OS. The real limit is just the size of available
   memory and swap.
-  As a matter of fact fully running OS with a child OS inside the container used
-  less than 200Mb of RAM in some of our tests in the past.
+  
+  As a matter of fact fully running OS with a child OS inside the container used less than 200Mb of RAM in some of our tests in the past.
 
+### F.A.Q:
 
-F.A.Q:
-
-Q: Why was the system created?
-A: There is a lot of commercial and rather expensive forensic software suites 
+**Q: Why was the system created?**  
+**A:** There is a lot of commercial and rather expensive forensic software suites 
 out there. We tried several most popular of them and always bumped into 
 functionality limitations and lack of transparency. While some
 suites provide scriptability, they lack remote analysis features that do not
 modify the evidence disk. Most of forensic tools are not designed for remote 
 analysis, lacked flexibility and costed a fortune.
 We found that there was a niche for a new tool which is
-  a. trusted, transparent and opensource (you build your own OS!)
-  b. customizable (you put your own tools!)
-  c. stable and reliable
-  d. rich in features and compact
-  e. fast and optimised for lower RAM usage
-  f. free of charge
-  g. runs on merely any hardware
+  1. trusted, transparent and opensource (you build your own OS!)
+  2. customizable (you put your own tools!)
+  3. stable and reliable
+  4. rich in features and compact
+  5. fast and optimised for lower RAM usage
+  6. free of charge
+  7. runs on merely any hardware
 
-Q: How was the project developed?
-A: The project was initially developed as a hobby project. The first variant 
+**Q: How was the project developed?**  
+**A:** The project was initially developed as a hobby project. The first variant 
 relied on full trust to the remote user, who was provided with root access to 
 the live system. Soon we realized that the remote system owner is willing to 
 track the progress, communicate with the expert and be able to approve access
@@ -147,37 +150,34 @@ assured the owner of the system that the source disk information
 will never be tampered (unless it is permitted by the owner in case of 
 system remediation request).
 
-Q: Does the author provide VPN server with this project?
-A: No, you have to use own server. All you need is an OpenVPN instance. It's 
-free and opensource, it runs on all platforms.
+**Q: Does the author provide VPN server with this project?**  
+**A:** No, you have to use own server. All you need is an OpenVPN instance. It's 
+free and open-source, it runs on all platforms.
 For more information, see https://openvpn.net
 
-Q: Will the product be supported?
-A: It will be supported as long as there is need for such tool. We will migrate
+**Q: Will the product be supported?**  
+**A:** It will be supported as long as there is need for such tool. We will migrate
 to newer LTS versions of Ubuntu as it is released. This is important to upgrade
 forensic tools. However, you can always update already running live system from a
 newer repository and install more recent versions of certain packages.
 
-Q: Do I need to re-run ./automake.sh every time I change anything, i.e. put my
-own VPN certificate or SSH key?
-A: No. automake.sh script is just an easy do-everything script to build new ISO
+**Q: Do I need to re-run `./automake.sh` every time I change anything, i.e. put my
+own VPN certificate or SSH key?**  
+**A:** No. automake.sh script is just an easy do-everything script to build new ISO
 file from scratch in one run. Feel free to copy and modify it. Comment out
 stages that you don't want to pass again from top to bottom and run it. Make
 sure you run the last stage image_build.sh to rebuild the ISO file. If you
 didn't modify the rootfs in chroot directory, you can also use
 scripts/image_build-nosquashfs-rebuild.sh to save even more time.
 
-Q: Is this the best forensic product to save the world?
-A: It is not and was never meant to be so. It serves it's task though and did 
-help us in the past in some compicated circumstances and under time pressure. 
+**Q: Is this the best forensic product to save the world?**  
+**A:** It is not and was never meant to be so. It serves it's task though and did 
+help us in the past in some complicated circumstances and under time pressure. 
 If it works for you we will be happy to hear your story. If not, perhaps you 
 could suggest a clever patch?
 
-Q: Is this project used for business?
-A: This project was created independently of my employer's product line and
-outside of scope of company's business operation. The developed tool is not
-limited to particular users and might be useful to researchers, high-tech crime
-units of Law Enforcement and educational institutions.
+**Q: Is this project used for business?**
+**A:** This project was created independently of my employer's product line and outside of scope of company's business operation. The developed tool is not limited to particular users and might be useful to researchers, high-tech crime units of Law Enforcement and educational institutions.
 
 
 Credits:
@@ -190,4 +190,5 @@ Thanks to
   Canonical Ltd
   All those incredible authors of Linux forensics tools
 
-For more information, please see our website at https://bitscout-forensics.info/
+For more information, please visit our website at https://bitscout-forensics.info/
+
