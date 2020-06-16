@@ -16,7 +16,6 @@ ns-cert-type server
 cipher AES-256-CBC
 
 tls-client
-dh "/etc/openvpn/<PROJECTSHORTNAME>/dh<CRYPTOKEYSIZE>.pem"
 tls-auth "/etc/openvpn/<PROJECTSHORTNAME>/ta.key" 1
 ca "/etc/openvpn/<PROJECTSHORTNAME>/ca.crt"
 cert "/etc/openvpn/<PROJECTSHORTNAME>/expert.crt"
