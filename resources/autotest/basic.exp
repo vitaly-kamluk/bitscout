@@ -80,11 +80,11 @@ while { $container_loaded == 0 } {
 
 #check guest services
 send_log "Checking guest system services status..\n"
-interact
+#interact
 
 set timeout 180
 #entering the guest container
-send "machinectl shell container\n"
+send "machinectl shell container /bin/bash\n"
 expect { 
   -re {^.*root.*@.*bitscout[^-].*\$ } { send_log "\nautotest: Guest container shell is available. Container shell: OK\n"; }
   timeout { send_log "\nautotest: CRITICAL, couldn't enter the container shell. Container shell: ERROR\n"; exit; } 
