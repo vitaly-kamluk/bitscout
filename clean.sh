@@ -15,6 +15,7 @@
 builddirs=( $(ls $PWD | grep build. | cut -d "." -f 2) )
 
 statusprint "Removing all temporary files for each architecture, except iso file(s) and configuration.."
+sudo rm -rf ./chroot
 #sudo rm -rf ./chroot ./chroot.devel ./tmp ./image ./initrd ./recycle ./cache ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock
 
 if [ ${#builddirs[@]} = 1 ]; then
