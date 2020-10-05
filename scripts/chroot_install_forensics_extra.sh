@@ -43,7 +43,7 @@ case $GLOBAL_RELEASESIZE in
    statusprint "Installing RegRipper.."
    if [ ! -d "build.$GLOBAL_BASEARCH/chroot/opt/regripper" ]
    then
-       chroot_exec build.$GLOBAL_BASEARCH/chroot 'export DEBIAN_FRONTEND=noninteractive; apt-get -y install libparse-win32registry-perl'
+       chroot_exec build.$GLOBAL_BASEARCH/chroot 'export DEBIAN_FRONTEND=noninteractive; apt-get -y install libparse-win32registry-perl unzip'
        wget -O build.$GLOBAL_BASEARCH/tmp/master.zip https://github.com/keydet89/RegRipper3.0/archive/master.zip
        sudo mv -v build.$GLOBAL_BASEARCH/tmp/master.zip build.$GLOBAL_BASEARCH/chroot/opt/
        chroot_exec build.$GLOBAL_BASEARCH/chroot 'unzip -o /opt/master.zip -d /opt/ && mv /opt/RegRipper3.0-master /opt/regripper && rm /opt/master.zip'
