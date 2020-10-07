@@ -226,7 +226,7 @@ dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
     fi
  
     echo "Checking if CDROM is available."
-    if [ ! -c /dev/sr0 ]
+    if [ ! -b /dev/sr0 ]
     then
       echo "/dev/sr0 was not found. Removing it from container config."
       sed -i '/Bind=\/dev\/sr0/d' /etc/systemd/nspawn/container.nspawn
