@@ -22,6 +22,10 @@ Bind=/dev/loop27
 
 Bind=/dev/kvm
 Bind=/dev/fuse
+Bind=/dev/nbd0
+Bind=/dev/nbd1
+Bind=/dev/nbd2
+Bind=/dev/sr0
 
 Bind=/mnt/container:/mnt/host
 Bind=/dev/container:/dev/host

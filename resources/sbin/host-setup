@@ -224,7 +224,17 @@ dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
       echo "Enabling access to /dev/kvm to all users.."
       chmod o+rw /dev/kvm
     fi
-  
+ 
+    echo "Checking if CDROM is available."
+    if [ ! -c /dev/sr0 ]
+    then
+      echo "/dev/sr0 was not found. Removing it from container config."
+      sed -i '/Bind=\/dev\/sr0/d' /etc/systemd/nspawn/container.nspawn
+    else
+      echo "Enabling access to /dev/sr0 to all users.."
+      chmod o+rw /dev/sr0
+    fi
+ 
     #start the container after all
     #SPAWNCMD="systemd-nspawn -M container --network-veth --private-users=100000:65536 --bind=/mnt/container:/mnt/host --bind=/dev/container:/dev/host --bind=/dev/fuse --property DeviceAllow='/dev/fuse rwm' $NSPAWN_EXTRA_OPTIONS -D /opt/container/chroot.user /sbin/init"
     #echo -e "Spawning container with the following commandline:\n$SPAWNCMD"
