@@ -1,11 +1,11 @@
 #!/usr/bin/expect
 
 log_file ./autotest.log
-set timeout 120
+set timeout 180
 send_log "\nConnecting to bitscout serial socket..\n"
 
-send "Please let the system boot (timeout 120 sec)..\n// "
-spawn socat STDIO,echo=1 UNIX-CONNECT:./bitscout.serial.sock
+send "Please let the system boot..\n// "
+spawn socat - UNIX-CONNECT:./bitscout.serial.sock
 set socatpid [exp_pid]
 
 if { $socatpid > 0 } {
@@ -20,7 +20,7 @@ expect {
   "bitscout-host login:" { send_log "\nautotest: Login prompt found. System boot: OK\n"; }
   timeout { send_log "\nautotest: Timeout expired while waiting for login prompt. System boot: ERROR\n"; exit }
 }
-set timeout 120
+set timeout 180
 send "user\n"
 expect -re {^.*user.*@.*bitscout-host.*\$ }
 
@@ -66,11 +66,25 @@ expect {
 }
 expect "root*bitscout-host*\$ "
 
+set timeout 180
+set container_loaded 0
+while { $container_loaded == 0 } {
+  send "systemctl show systemd-nspawn@container.service --no-pager -p StatusText \n"
+  expect {
+    -re {StatusText=Container running: Startup finished in.*} { expect "$ "; send_log "\n autotest: Container is booted\n"; set container_loaded 1; break; }
+    -re {StatusText=Container running\.\r.*} { expect "$ "; sleep 5; send "systemctl show systemd-nspawn@container.service --no-pager -p StatusText \n"; }
+    -re {StatusText=\r.*} { expect "$ "; sleep 5; send "systemctl show systemd-nspawn@container.service --no-pager -p StatusText \n"; }
+    timeout { send_log "\n autotest: CRITICAL, timeout waiting for container to boot.\n"; exit; }
+  }
+}
+
 #check guest services
 send_log "Checking guest system services status..\n"
+#interact
 
+set timeout 180
 #entering the guest container
-send "machinectl shell container\n"
+send "machinectl shell container /bin/bash\n"
 expect { 
   -re {^.*root.*@.*bitscout[^-].*\$ } { send_log "\nautotest: Guest container shell is available. Container shell: OK\n"; }
   timeout { send_log "\nautotest: CRITICAL, couldn't enter the container shell. Container shell: ERROR\n"; exit; } 

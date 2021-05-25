@@ -35,27 +35,32 @@ apt_make_dirs()
 
 apt_update()
 {
-  statusprint "Preparing repository PGP key(s).." &&
-  KEYS=( 40976EAF437D05B5 3B4FE6ACC0B21F32 ) &&
-  sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/apt &&
-  for KEY in ${KEYS[*]} 
-  do
-    sudo apt-key --keyring ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg add ./resources/gpg/$KEY.asc
-  done &&
-
-  statusprint "Saving PGP key(s) to chroot system-wide keyring.." &&
-  sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ &&
-  sudo cp ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg  ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ubuntu-archive-keyring.gpg &&
-
-  statusprint "Updating $BASERELEASE:$GLOBAL_BASEARCH indices for chroot.." &&
-  sudo apt-get -y -o "Dir=$PWD/build.$GLOBAL_BASEARCH/chroot" -o "APT::Architecture=$GLOBAL_BASEARCH" -o "Acquire::Languages=$LANG" update
+  if statusprint "Preparing repository PGP key(s).." &&
+    KEYS=( 40976EAF437D05B5 3B4FE6ACC0B21F32 ) &&
+    sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/apt &&
+    for KEY in ${KEYS[*]} 
+    do
+      sudo apt-key --keyring ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg add ./resources/gpg/$KEY.asc
+    done &&
+  
+    statusprint "Saving PGP key(s) to chroot system-wide keyring.." &&
+    sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ &&
+    sudo cp ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg  ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ubuntu-archive-keyring.gpg &&
+  
+    statusprint "Updating $BASERELEASE:$GLOBAL_BASEARCH indices for chroot.." &&
+    sudo apt-get -y -o "Dir=$PWD/build.$GLOBAL_BASEARCH/chroot" -o "APT::Architecture=$GLOBAL_BASEARCH" -o "Acquire::Languages=$LANG" update
+  then
+    return 0
+  else
+    return 1	
+  fi
 }
 
 apt_fast_download()
 {
   DLLIST="$PROJECTROOT/aria2c.task" &&
   statusprint "Fetching URLs of packages to download.." &&
-  apt-get -y -o "Dir=$PROJECTROOT/build.$GLOBAL_BASEARCH/chroot" -o "APT::Architecture=$GLOBAL_BASEARCH" -o "Acquire::Languages=$LANG" --print-uris download $* | awk "/^'/,//" | awk '{gsub("^'"'"'|'"'"'$","",$1); sub("MD5Sum:","md5=",$4); sub("SHA256:","sha-256=",$4); print $1"\n checksum="$4" \n out="$2}' > "$DLLIST" &&
+  apt-get -y -o "Dir=$PROJECTROOT/build.$GLOBAL_BASEARCH/chroot" -o "APT::Architecture=$GLOBAL_BASEARCH" -o "Acquire::Languages=$LANG" --print-uris download $* | awk "/^'/,//" | awk '{gsub("^'"'"'|'"'"'$","",$1); sub("MD5Sum:","md5=",$4); sub("SHA256:","sha-256=",$4); sub("SHA512:","sha-512=",$4); print $1"\n checksum="$4" \n out="$2}' > "$DLLIST" &&
 
   _MAXNUM=8 &&
   _MAXCONPERSRV=10 &&

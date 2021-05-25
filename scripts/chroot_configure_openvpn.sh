@@ -10,7 +10,7 @@ SYSTEM_EASYRSADIR="/usr/share/easy-rsa"
 
 statusprint "Configuring OpenVPN.."
 
-if filelist_exists "$VPNCFGDIR/easy-rsa/keys/"{${PROJECTSHORTNAME}.crt,${PROJECTSHORTNAME}.key,ca.crt,dh${CRYPTOKEYSIZE}.pem,ta.key}
+if filelist_exists "$VPNCFGDIR/easy-rsa/pki/"{issued/client.crt,private/client.key,ca.crt,dh.pem,ta.key}
 then
   statusprint "Found existing keys. Using existing keys/config.."
 else
@@ -44,29 +44,33 @@ else
   statusprint "Copying easy-rsa directory to local configs subdirectory.."
   cp -r "$SYSTEM_EASYRSADIR" "$VPNCFGDIR/"
 
-  statusprint "Editing default easy-rsa settings.."
+  statusprint "Preparing Easy-RSA 3 settings.."
+  cp -v "$VPNCFGDIR/easy-rsa/vars.example" "$VPNCFGDIR/easy-rsa/vars"
   PROJDIR=`pwd`
-  sed -i 's,^export KEY_DIR=.*,export KEY_DIR="'"$PROJDIR/$VPNCFGDIR"'/easy-rsa/keys",; s,^export KEY_COUNTRY=.*,export KEY_COUNTRY="NA",;  s,^export KEY_PROVINCE=.*,export KEY_PROVINCE="n/a",;  s,^export KEY_CITY=.*,export KEY_CITY="n/a",; s,^export KEY_ORG=.*,export KEY_ORG="'${PROJECTNAME}'",;  s,^export KEY_EMAIL=.*,export KEY_EMAIL="n/a",;  s,^export KEY_OU=.*,export KEY_OU="n/a",;  s,^export KEY_SIZE=.*,export KEY_SIZE='${CRYPTOKEYSIZE}',;  s,^export CA_EXPIRE=.*,export CA_EXPIRE=1095,;  s,^export KEY_EXPIRE=.*,export KEY_EXPIRE=365,; '  "$VPNCFGDIR/easy-rsa/vars" 
+  echo "set_var EASYRSA_PKI            \"pki\"
+set_var EASYRSA_BATCH            \"1\"
+set_var EASYRSA            \".\"
+" > "$VPNCFGDIR/easy-rsa/vars"
 
   statusprint "Patching easy-rsa tools to enable non-interactive mode by default."
   find "$VPNCFGDIR/easy-rsa/" -maxdepth 1 -type f | grep -v "pkitool" | while read f; do sed -i 's/--interact/--batch/g' "$f"; done
 
-  #TODO: Update this when there will be openvpn/easy-rsa/openssl-1.1.0.cnf
-  statusprint "Symlinking openssl.cnf file to openssl-1.0.0.cnf"
-  sudo ln -fs "openssl-1.0.0.cnf" "$VPNCFGDIR/easy-rsa/openssl.cnf"
-
   statusprint "Creating certificate authority and server+client certificates.."
-  mkdir -p "$VPNCFGDIR/easy-rsa/keys"
+  mkdir -p "$VPNCFGDIR/easy-rsa/pki"
   cd "$VPNCFGDIR/easy-rsa/"
-  . "./vars"
-  ./clean-all
-  install_required_package openvpn
-  openvpn --genkey --secret ./keys/ta.key
-  ./build-ca
-  ./build-dh
-  ./build-key-server ${PROJECTSHORTNAME}server
-  ./build-key --batch $PROJECTSHORTNAME
-  ./build-key --batch expert
+  dd if=/dev/urandom of=./pki/.rnd bs=1024 count=1
+
+  ./easyrsa init-pki
+  ./easyrsa build-ca nopass
+  ./easyrsa gen-req server nopass
+  ./easyrsa gen-req client nopass
+  ./easyrsa gen-req expert nopass
+  ./easyrsa sign-req server server
+  ./easyrsa sign-req client client
+  ./easyrsa sign-req client expert
+  ./easyrsa gen-dh
+  openvpn --genkey --secret ./pki/ta.key
+
   cd "$PROJDIR"
 
 fi
@@ -79,7 +83,7 @@ fi
 
 statusprint "Copying essential files: certificates,keys.."
 sudo mkdir -p "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}"
-sudo cp -v "$VPNCFGDIR/easy-rsa/keys/"{${PROJECTSHORTNAME}.crt,${PROJECTSHORTNAME}.key,ca.crt,dh${CRYPTOKEYSIZE}.pem,ta.key} "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}/"
+sudo cp -v "$VPNCFGDIR/easy-rsa/pki/"{issued/client.crt,private/client.key,ca.crt,ta.key} "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}/"
 
 statusprint "Enabling VPN client start on system boot.."
 sudo sed -i '/^AUTOSTART="[^"]*"$/d' ./build.$GLOBAL_BASEARCH/chroot/etc/default/openvpn

@@ -138,6 +138,7 @@ dprint "Attaching to serial port socket.." #pane .2
 tmux split-window -h -t "$TMSESSION:$TMWINDOW" -p 90 "./resources/autotest/basic.exp; tmux send-keys -t:$TMWINDOW.1 \"system_powerdown\" && tmux send-keys -t:$TMWINDOW.1 \"enter\" && tmux send-keys -t:$TMWINDOW.1 \"quit\" && tmux send-keys -t:$TMWINDOW.1 \"enter\""
 sleep 0.1
 
+
 dprint "Initiating boot process.."
 tmux send-keys -t:$TMWINDOW.1 "cont"
 tmux send-keys -t:$TMWINDOW.1 "enter"
