@@ -14,6 +14,9 @@
 . ./scripts/functions
 builddirs=( $(ls $PWD | grep build. | cut -d "." -f 2) )
 
+statusprint "Unmounting filesystems from chroot environment.."
+chroot_unmount_fs "./build.$GLOBAL_BASEARCH/chroot"
+
 statusprint "Removing all temporary files for each architecture, except iso file(s) and configuration.."
 sudo rm -rf ./chroot
 #sudo rm -rf ./chroot ./chroot.devel ./tmp ./image ./initrd ./recycle ./cache ./autotest.log ./automake.log ./bitscout.monitor.sock ./bitscout.serial.sock

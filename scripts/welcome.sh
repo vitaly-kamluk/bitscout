@@ -67,7 +67,7 @@ msg_new_config_opt="\nSome new options were not found in your config file, pleas
 
 if ! [ -f "$BUILDCONFPATH" ]
 then
-  statusprint "It seems that you are at fresh build environment.\nWe need to populate the config with some essential data.\nPlease answer the following questions or put your existing build config to config/$PROJECTNAME-build.conf."
+  statusprint "It seems that you are in a fresh build environment.\nWe need to populate the config with some essential data.\nPlease answer the following questions or put your existing build config to config/$PROJECTNAME-build.conf."
   PRINTOPTIONS=n statusprint "Proceed to interactive settings? [Y/n]: "
   read choice
   if [ ! -z "$choice" -a ! "${choice^}" = "Y" ] 
@@ -85,7 +85,7 @@ then
     releasesize=""
     while ! validate_releasesize "$releasesize"
     do
-      PRINTOPTIONS=n statusprint "${PROJECTNAME} may be built to be compact or normal.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers.\n 2. normal - includes most common forensic tools, drivers, etc.\n 3. maximal - includes maximum of forensic tools and frameworks.\n Your choice (1|2|3): "
+      PRINTOPTIONS=n statusprint "${PROJECTNAME} may be built to be compact or normal.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers.\n 2. normal - includes most common forensic tools, drivers, etc.\n 3. maximal - includes maximum forensic tools and frameworks.\n Your choice (1|2|3): "
       read releasesize
       if ! validate_releasesize "$releasesize"
       then
