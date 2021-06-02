@@ -73,7 +73,6 @@ apt_fast_download()
 
 run_debootstrap_supervised_fast()
 {
-  #trap "chroot_unmount_cache \"$PWD/build.$GLOBAL_BASEARCH/chroot\"" SIGINT SIGKILL SIGTERM
   statusprint "Downloading $BASERELEASE:$GLOBAL_BASEARCH.. " &&
  
   BASEDIR="$PWD" &&

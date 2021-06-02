@@ -72,7 +72,7 @@ chroot_unmount_cache()
   fi
 
   statusprint "Unmounting chroot cache directories inside \"$CHROOTPATH\".."
-  sudo umount -f "$CHROOTPATH/var/cache/apt/archives" "$CHROOTPATH/var/lib/apt/lists" 2>&-
+  sudo umount -l "$CHROOTPATH/var/cache/apt/archives" "$CHROOTPATH/var/lib/apt/lists" 2>&-
   return 0
 }
 
@@ -80,8 +80,8 @@ chroot_unmount_fs()
 {
   CHROOTPATH="$1"
   statusprint "Unmounting active chroot filesystems inside \"$CHROOTPATH\".."
-  mount | grep -q "$CHROOTPATH/sys/kernel/security" && sudo umount -f "$CHROOTPATH/sys/kernel/security"
-  sudo umount -f "$CHROOTPATH/dev/pts" "$CHROOTPATH/sys" "$CHROOTPATH/proc" 2>&-
+  mount | grep -q "$CHROOTPATH/sys/kernel/security" && sudo umount -l "$CHROOTPATH/sys/kernel/security"
+  sudo umount -l "$CHROOTPATH/dev/pts" "$CHROOTPATH/sys" "$CHROOTPATH/proc" 2>&-
   chroot_unmount_cache "$1"
   return 0
 }

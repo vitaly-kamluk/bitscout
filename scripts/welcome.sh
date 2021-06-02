@@ -85,7 +85,7 @@ then
     releasesize=""
     while ! validate_releasesize "$releasesize"
     do
-      PRINTOPTIONS=n statusprint "${PROJECTNAME} may be built to be compact or normal.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers.\n 2. normal - includes most common forensic tools, drivers, etc.\n 3. maximal - includes maximum forensic tools and frameworks.\n Your choice (1|2|3): "
+      PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may be built in various sizes.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers.\n 2. normal - includes most common forensic tools, drivers, etc.\n 3. maximal - includes maximum forensic tools and frameworks.\n Your choice (1|2|3): "
       read releasesize
       if ! validate_releasesize "$releasesize"
       then
@@ -94,11 +94,14 @@ then
     done
 fi
 
-if [ -z "$GLOBAL_CUSTOMKERNEL" ] 
+#Override to default generic kernel:
+GLOBAL_CUSTOMKERNEL=0
+customkernel=0
+if [ -z "$GLOBAL_CUSTOMKERNEL" ]
 then
     if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
     customkernel="0"
-    PRINTOPTIONS=n statusprint "If you are going to deal with badly unmounted filesystems, software RAID or LVM, it is recommended to apply kernel write-blocker patch for extra care of the evidence. However, please note that this is experimental feature and may take 3-4 hours to rebuild the kernel on a single-core CPU.\nWould you like to build and use kernel with write-blocker? [y/N]: "
+    PRINTOPTIONS=n statusprint "\nIf you are going to deal with badly unmounted filesystems, software RAID or LVM, it is recommended to apply kernel write-blocker patch for extra care of the evidence. However, please note that this is experimental feature and may take 3-4 hours to rebuild the kernel on a single-core CPU.\nWould you like to build and use kernel with write-blocker? [y/N]: "
     read choice
     if [ -z "$choice" -o "${choice^}" = "N" ]
     then
@@ -109,34 +112,51 @@ then
 
 fi
 
-if [ -z "$GLOBAL_VPNSERVER" ] || [ -z "$GLOBAL_VPNPROTOCOL" ] || [ -z "$GLOBAL_VPNPORT" ]
-then
-    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
-    vpnhost=""
-    vpnprotocol=""
-    vpnport=""
-    while ! validate_hostaddr "$vpnhost" && ! validate_vpnprotocol "$vpnprotocol" && ! validate_portnum "$vpnport"
-    do
-      statusprint "To use ${PROJECTNAME} remotely you will need a VPN server."
-      PRINTOPTIONS=n statusprint "Please enter your designated VPN server protocol (udp/tcp), host and port. You can change it later.\nExamples:\n udp://127.0.0.1:2222\n tcp://myvpnserver:8080\nYour input: "
-      read vpnuri
-      mapfile -t VPNCFG < <( echo "$vpnuri" | sed 's#^\(udp\|tcp\)://\([a-zA-Z0-9_.-]*\):\([0-9]\{1,5\}\)$#\2\n\1\n\3#' )
-      vpnhost="${VPNCFG[0]}"
-      vpnprotocol="${VPNCFG[1]}"
-      vpnport="${VPNCFG[2]}"
-
-      if ! validate_hostaddr "$vpnhost" && ! validate_vpnprotocol "$vpnprotocol" && ! validate_portnum "$vpnport"
+if [ -z "$GLOBAL_VPNTYPE" -o "$GLOBAL_VPNTYPE" != 'none' ]
+then 
+  if [ -z "$GLOBAL_VPNSERVER" ] || [ -z "$GLOBAL_VPNPROTOCOL" ] || [ -z "$GLOBAL_VPNPORT" ]
+  then
+      if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
+      vpntype=""
+      vpnhost=""
+      vpnprotocol=""
+      vpnport=""
+      if [ "$GLOBAL_VPNTYPE" != 'none' ]
       then
-        statusprint "Invalid input data format. Please try again.."
+        while ! validate_hostaddr "$vpnhost" && ! validate_vpnprotocol "$vpnprotocol" && ! validate_portnum "$vpnport"
+        do
+          statusprint "\nTo use ${PROJECTNAME} over the internet you will likely need a VPN server."
+          PRINTOPTIONS=n statusprint "Just enter your protocol/host/port and we generate an OpenVPN config template for you. You can always change it later.\nExamples:\n udp://127.0.0.1:2222\n tcp://myvpnserver:8080\nYour input [connection string|<NONE>]: "
+          read vpnuri
+          if [ ! -z "$vpnuri" ]
+          then
+            mapfile -t VPNCFG < <( echo "$vpnuri" | sed 's#^\(udp\|tcp\)://\([a-zA-Z0-9_.-]*\):\([0-9]\{1,5\}\)$#\2\n\1\n\3#' )
+    	vpntype="openvpn"
+            vpnhost="${VPNCFG[0]}"
+            vpnprotocol="${VPNCFG[1]}"
+            vpnport="${VPNCFG[2]}"
+    
+            if ! validate_hostaddr "$vpnhost" && ! validate_vpnprotocol "$vpnprotocol" && ! validate_portnum "$vpnport"
+            then
+              statusprint "Invalid input data format. Please try again.."
+            fi
+          else
+            vpntype="none"
+    	break;
+          fi      
+        done
+      else
+        vpntype="none"
+        GLOBAL_VPNSERVER="none"
       fi
-    done
-    if ( [ -n "$GLOBAL_VPNSERVER" ] || [ -n "$GLOBAL_VPNPROTOCOL" ] || [ -n "$GLOBAL_VPNPORT" ] ) &&  [ -f "$BUILDCONFPATH" ]
-    then
-       echo "GLOBAL_VPNSERVER=\"$vpnhost\"
+      if ( [ -n "$GLOBAL_VPNTYPE" -o -n "$GLOBAL_VPNSERVER" -o -n "$GLOBAL_VPNPROTOCOL" -o -n "$GLOBAL_VPNPORT" ] ) &&  [ -f "$BUILDCONFPATH" ]
+      then
+         echo "GLOBAL_VPNTYPE=\"$vpntype\"
+GLOBAL_VPNSERVER=\"$vpnhost\"
 GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
 GLOBAL_VPNPORT=\"$vpnport\"" >> "$BUILDCONFPATH"
-
-    fi
+      fi
+  fi
 fi
 
 if [ -z "$GLOBAL_SYSLOGSERVER" ]
@@ -145,13 +165,13 @@ then
     sysloghost=""
     while ! validate_hostaddr "$sysloghost"
     do
-        statusprint "It is recommended to configure a remote syslog server (can be the VPN server) to log shell commands."
-        PRINTOPTIONS=n statusprint "Please enter the syslog server address.\nIf you do not intend using remote logging of commands simply press Enter.\nYour input [syslog server address]: "
+        statusprint "\nYou may configure a remote syslog server to log shell history. To continue without syslog server simply press Enter."
+        PRINTOPTIONS=n statusprint "Your input [host|<NONE>]: "
         read sysloghost
         if [ "$sysloghost" = "" ]
         then
             sysloghost="none"
-            statusprint "Remote syslog support is not used."
+            statusprint "Remote syslog support disabled."
             [ -f "$BUILDCONFPATH" ] && echo "GLOBAL_SYSLOGSERVER=\"$sysloghost\"" >> "$BUILDCONFPATH"
             break
         fi
@@ -187,7 +207,7 @@ then
     while ! validate_buildarch "$buildarch"
     do
         echo "$buildarch"
-        PRINTOPTIONS=n statusprint "You have an option to build this image in the following architecture\n1. 64-bit architecture (amd64)\n2. 32-bit architecture (i386)\nPlease make your choice [1 or 2]: "
+        PRINTOPTIONS=n statusprint "\nWhat's the target system architecture?\n1. 64-bit (amd64)\n2. 32-bit (i386)\nPlease choose [1|2]: "
         read choice
         
         if [ "$choice" = "1" ]
@@ -214,10 +234,11 @@ fi
 
 if ! [ -f "$BUILDCONFPATH" ]
 then
-    statusprint "Saving configuration.."
+    statusprint "\nSaving configuration.."
     echo "GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)
 GLOBAL_LANACCESS_ENABLED=0 #set to 1 to enable access from LAN after boot
+GLOBAL_VPNTYPE=\"$vpntype\"
 GLOBAL_VPNSERVER=\"$vpnhost\"
 GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
 GLOBAL_VPNPORT=\"$vpnport\"

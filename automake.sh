@@ -12,7 +12,8 @@
 # Bitscout. If not, see <http://www.gnu.org/licenses/>.
 
 #welcome and initial settings:
-( 
+(
+SECONDS=0
 scripts/welcome.sh &&
 scripts/submodules_fetch.sh &&
 
@@ -55,5 +56,11 @@ scripts/image_build.sh &&
 
 #prepare exportable configs/certs/keys:
 scripts/export_generate.sh 
+
+duration=$SECONDS
+echo "Process finished. Time taken: $(($duration / 60)) min. $(($duration % 60)) sec."
 ) 2>&1 | stdbuf -i0 -o0 -e0 tee  ./automake.log
+
+#Final cleanup in case of interrupted builds
+scripts/interrupted_clean.sh
 
