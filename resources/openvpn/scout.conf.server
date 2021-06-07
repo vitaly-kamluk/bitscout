@@ -5,7 +5,8 @@ proto <SERVER_PROTOCOL>
 
 tun-mtu 1500
 daemon
-dev tap1
+dev scout_vpn
+dev-type tap
 
 user nobody
 group nogroup
@@ -14,6 +15,8 @@ ifconfig 10.1.0.1 255.255.255.0
 
 ifconfig-pool 10.1.0.2 10.1.0.250
 ifconfig-pool-persist /etc/openvpn/<PROJECTSHORTNAME>/ip_pool.lst 0
+
+remote-cert-tls client
 
 tls-server
 tls-auth /etc/openvpn/<PROJECTSHORTNAME>/ta.key 0

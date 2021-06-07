@@ -1,7 +1,8 @@
 remote <SERVER_IP> # set server's external IP here!
 port <SERVER_PORT> #set server's listening port here!
 proto <SERVER_PROTOCOL> #set comms protocol: tcp-client or udp. udp is recommended as the fastest option.
-dev tap0
+dev scout_vpn
+dev-type tap
 
 client
 resolv-retry infinite
@@ -11,7 +12,7 @@ persist-tun
 persist-key
 tun-mtu 1500
 
-ns-cert-type server
+remote-cert-tls server
 
 cipher AES-256-CBC
 
