@@ -4,7 +4,7 @@ IPT="/sbin/iptables"
 INET_IFACES=( eth0 wlan0 )
 CONTAINER_IFACE=<CONTAINERNET_NAME>
 CONTAINER_IP=<CONTAINERNET_GUEST_IP>
-VPN_IFACE=tap0
+VPN_IFACE=scout_vpn
 
 if [ $# -eq 0 ]
 then  #default for no parameters. executed during system boot.
