@@ -3,5 +3,5 @@ clear;
 echo "Starting integrity check script.."
 cd "$1"
 md5sum -c "$2" && echo "Integrity check result: GOOD" || echo "Integrity check result: BAD (some files are broken)."
-echo "15 seconds delay before continue.."
-sleep 15
+echo "5 seconds delay before continue.."
+sleep 5

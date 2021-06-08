@@ -24,9 +24,9 @@ scripts/chroot_install_base.sh &&
 scripts/chroot_install_kernel.sh &&
 scripts/chroot_install_forensics.sh &&
 #scripts/chroot_install_forensics_extra.sh && #several issues need to be resolved
-scripts/chroot_install_custom.sh &&
 scripts/chroot_install_remoteaccess.sh &&
-scripts/chroot_install_userchoice.sh &&
+scripts/chroot_customize.sh &&
+
 
 #configure target system:
 scripts/chroot_create_user.sh &&

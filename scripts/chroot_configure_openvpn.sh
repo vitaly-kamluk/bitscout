@@ -61,10 +61,10 @@ set_var EASYRSA            \".\"
   dd if=/dev/urandom of=./pki/.rnd bs=1024 count=1
 
   ./easyrsa init-pki
-  ./easyrsa build-ca nopass
-  ./easyrsa gen-req server nopass
-  ./easyrsa gen-req client nopass
-  ./easyrsa gen-req expert nopass
+  EASYRSA_REQ_CN=${PROJECTNAME} ./easyrsa build-ca nopass
+  EASYRSA_REQ_CN=server ./easyrsa gen-req server nopass
+  EASYRSA_REQ_CN=client ./easyrsa gen-req client nopass
+  EASYRSA_REQ_CN=expert ./easyrsa gen-req expert nopass
   ./easyrsa sign-req server server
   ./easyrsa sign-req client client
   ./easyrsa sign-req client expert
@@ -77,17 +77,18 @@ fi
 
 if ! [ -f "$VPNCFGDIR/${PROJECTSHORTNAME}.conf" ]
 then
-  statusprint "Copying VPN client config to chroot.. Feel free to edit it in ./build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}.conf!"
-  sudo cp -v "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}.conf"
+  statusprint "Copying VPN client config to chroot.. Feel free to edit it in ./build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}.conf!"
+  sudo cp -v "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}.conf"
 fi
 
 statusprint "Copying essential files: certificates,keys.."
-sudo mkdir -p "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}"
-sudo cp -v "$VPNCFGDIR/easy-rsa/pki/"{issued/client.crt,private/client.key,ca.crt,ta.key} "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/${PROJECTSHORTNAME}/"
+sudo mkdir -p "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}"
+sudo cp -v "$VPNCFGDIR/easy-rsa/pki/"{issued/client.crt,private/client.key,ca.crt,ta.key} "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}/"
 
 statusprint "Enabling VPN client start on system boot.."
 sudo sed -i '/^AUTOSTART="[^"]*"$/d' ./build.$GLOBAL_BASEARCH/chroot/etc/default/openvpn
 echo "AUTOSTART=\"${PROJECTSHORTNAME}\"" | sudo tee -a ./build.$GLOBAL_BASEARCH/chroot/etc/default/openvpn >/dev/null
+chroot_exec build.$GLOBAL_BASEARCH/chroot "systemctl enable openvpn-client@${PROJECTSHORTNAME}.service"
 
 
 exit 0;

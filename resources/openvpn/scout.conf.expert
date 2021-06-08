@@ -17,10 +17,10 @@ remote-cert-tls server
 cipher AES-256-CBC
 
 tls-client
-tls-auth "/etc/openvpn/<PROJECTSHORTNAME>/ta.key" 1
-ca "/etc/openvpn/<PROJECTSHORTNAME>/ca.crt"
-cert "/etc/openvpn/<PROJECTSHORTNAME>/expert.crt"
-key "/etc/openvpn/<PROJECTSHORTNAME>/expert.key"
+tls-auth "/etc/openvpn/client/<PROJECTSHORTNAME>/ta.key" 1
+ca "/etc/openvpn/client/<PROJECTSHORTNAME>/ca.crt"
+cert "/etc/openvpn/client/<PROJECTSHORTNAME>/expert.crt"
+key "/etc/openvpn/client/<PROJECTSHORTNAME>/expert.key"
 
 log-append "/var/log/openvpn.<PROJECTSHORTNAME>.log"
 status "/var/run/openvpn.<PROJECTSHORTNAME>.status" 1
