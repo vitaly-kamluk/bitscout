@@ -1,2 +1,2 @@
-scout,10.1.0.2
-expert,10.1.0.3
+client,<OPENVPN_CLIENT_IP>
+expert,<OPENVPN_EXPERT_IP>

@@ -131,7 +131,7 @@ then
           if [ ! -z "$vpnuri" ]
           then
             mapfile -t VPNCFG < <( echo "$vpnuri" | sed 's#^\(udp\|tcp\)://\([a-zA-Z0-9_.-]*\):\([0-9]\{1,5\}\)$#\2\n\1\n\3#' )
-    	vpntype="openvpn"
+            vpntype="openvpn"
             vpnhost="${VPNCFG[0]}"
             vpnprotocol="${VPNCFG[1]}"
             vpnport="${VPNCFG[2]}"
@@ -142,7 +142,7 @@ then
             fi
           else
             vpntype="none"
-    	break;
+            break;
           fi      
         done
       else

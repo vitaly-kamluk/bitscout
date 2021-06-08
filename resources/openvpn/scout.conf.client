@@ -1,6 +1,6 @@
-remote <SERVER_IP> # set server's external IP here!
-port <SERVER_PORT> #set server's listening port here!
-proto <SERVER_PROTOCOL> #set comms protocol: tcp-client or udp. udp is recommended as the fastest option.
+remote <OPENVPN_SERVER_EXTIP> # set server's external IP here!
+port <OPENVPN_SERVER_PORT> #set server's listening port here!
+proto <OPENVPN_SERVER_PROTOCOL> #set comms protocol: tcp-client or udp. udp is recommended as the fastest option.
 dev scout_vpn
 dev-type tap
 

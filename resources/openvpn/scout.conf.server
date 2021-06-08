@@ -1,7 +1,7 @@
 mode server
-local <SERVER_IP> #SET SERVER EXTERNAL IP HERE!
-port <SERVER_PORT>
-proto <SERVER_PROTOCOL>
+local <OPENVPN_SERVER_EXTIP> #SET SERVER EXTERNAL IP HERE!
+port <OPENVPN_SERVER_PORT>
+proto <OPENVPN_SERVER_PROTOCOL>
 
 tun-mtu 1500
 daemon
@@ -11,9 +11,9 @@ dev-type tap
 user nobody
 group nogroup
 
-ifconfig 10.1.0.1 255.255.255.0
+ifconfig <OPENVPN_SERVER_IP> 255.255.255.0
 
-ifconfig-pool 10.1.0.2 10.1.0.250
+ifconfig-pool <OPENVPN_IPPOOL_START> <OPENVPN_IPPOOL_END>
 ifconfig-pool-persist /etc/openvpn/server/<PROJECTSHORTNAME>/ip_pool.lst 0
 
 remote-cert-tls client
