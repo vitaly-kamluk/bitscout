@@ -16,6 +16,8 @@ ifconfig <OPENVPN_SERVER_IP> 255.255.255.0
 ifconfig-pool <OPENVPN_IPPOOL_START> <OPENVPN_IPPOOL_END>
 ifconfig-pool-persist /etc/openvpn/server/<PROJECTSHORTNAME>/ip_pool.lst 0
 
+duplicate-cn #Allow multiple clients to use the same certificate
+
 remote-cert-tls client
 
 tls-server
