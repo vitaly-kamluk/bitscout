@@ -37,7 +37,7 @@ scripts/chroot_configure_ssh.sh &&
 scripts/chroot_configure_irc.sh &&
 scripts/chroot_configure_syslog.sh &&
 
-#customize with own tools:
+#adding management tool(s):
 scripts/chroot_add_managementtool.sh &&
 
 #prepare ISO files:

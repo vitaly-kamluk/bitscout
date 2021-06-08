@@ -4,19 +4,14 @@
 
 . ./scripts/functions
 
-statusprint "Copying client irssi configuration.."
-if [ ! -f "config/irssi/irssi.conf" ]
-then
- file_template_copy "resources/irssi/irssi.conf.client" config/irssi/irssi.conf
-fi
-sudo cp -v config/irssi/irssi.conf ./build.$GLOBAL_BASEARCH/chroot/etc/irssi.conf
-
-statusprint "Copying server irssi configuration.."
-mkdir config/ngircd 2>&-
-if [ ! -f "config/ngircd/ngircd.conf" ]
-then
- file_template_copy "resources/etc/ngircd/ngircd.conf" config/ngircd/ngircd.conf
-fi
+irc_template_copy()
+{
+  SRCFILE="$1"
+  DSTFILE="$2"  
+  [ ! -d "${DSTFILE%/*}" ] && $SUDO mkdir -p "${DSTFILE%/*}"
+  echo "'$SRCFILE' -> '$DSTFILE'"
+  sed "s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<PROJECTNAME>/${PROJECTNAME}/g; s/<IRC_SERVER>/${IRC_SERVER}/g; s/<IRC_PORT>/${IRC_PORT}/g; s/<IRCOPPASS>/$GLOBAL_IRCOPPASS/g; " "$SRCFILE" > "$DSTFILE"
+}
 
 if ! grep -q "^GLOBAL_IRCOPPASS" "config/${PROJECTNAME}-build.conf"
 then
@@ -27,6 +22,18 @@ then
   echo "GLOBAL_IRCOPPASS=\"${GLOBAL_IRCOPPASS}\"" >> "config/${PROJECTNAME}-build.conf"
 fi
 
-sed -i "s/<IRCOPPASS>/$GLOBAL_IRCOPPASS/g" config/ngircd/ngircd.conf
+statusprint "Copying client irssi configuration.."
+if [ ! -f "config/irssi/irssi.conf" ]
+then
+ irc_template_copy "resources/irssi/irssi.conf.client" "config/irssi/irssi.conf"
+fi
+sudo cp -v config/irssi/irssi.conf ./build.$GLOBAL_BASEARCH/chroot/etc/irssi.conf
+
+statusprint "Copying server irssi configuration.."
+if [ ! -f "config/ngircd/ngircd.conf" ]
+then
+ irc_template_copy "resources/etc/ngircd/ngircd.conf" "config/ngircd/ngircd.conf"
+fi
+
 
 exit 0;

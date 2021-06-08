@@ -1,5 +1,5 @@
 servers = (
-  { address = "10.1.0.1"; port = "6667"; autoconnect = "yes"; chatnet="main"; }
+  { address = "<IRC_SERVER>"; port = "<IRC_PORT>"; autoconnect = "yes"; chatnet="main"; }
 );
 
 chatnets = { main = { type = "IRC";}; };

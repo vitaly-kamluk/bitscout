@@ -55,4 +55,9 @@ alias la='ls -A'
 alias l='ls -CF'" | sudo tee -a ./build.$GLOBAL_BASEARCH/chroot/etc/bash.bashrc >/dev/null
 fi
 
+
+statusprint "Adding custom sysctl settings.."
+sudo mkdir -p /build.$GLOBAL_BASEARCH/chroot/etc/sysctl.d/ 2>&-
+sudo cp -v ./resources/etc/sysctl.d/* ./build.$GLOBAL_BASEARCH/chroot/etc/sysctl.d/
+
 exit 0;
