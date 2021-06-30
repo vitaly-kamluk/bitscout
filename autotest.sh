@@ -103,7 +103,7 @@ fi
 [ -S "./${PROJECTNAME}.monitor.sock" ] && dprint "Removing existing monitor socket.."  && rm "./${PROJECTNAME}.monitor.sock"
 [ -S "./${PROJECTNAME}.serial.sock" ] && dprint "Removing existing serial socket.." && rm "./${PROJECTNAME}.serial.sock"
 
-dprint "Creating new local tmux session and starting qemu.." #pane .0
+dprint "Creating a new local tmux session and starting qemu.." #pane .0
 if [ -w /dev/kvm ]
 then
   dprint "Using hardware virtualization support.."
@@ -112,7 +112,7 @@ then
     dprint "Failed to start qemu in tmux session. Aborting.."
     exit 1
   else
-    dprint "Started qemu in tmux session."
+    dprint "Started qemu in a tmux session."
   fi
 else
   dprint "No hardware virtualization support found. Going for software emulation.."
@@ -125,16 +125,16 @@ else
   fi
 fi
 
-dprint "Waiting for qemu monitor socket.."
+dprint "Waiting for the qemu monitor socket.."
 waitfor_socket "./${PROJECTNAME}.monitor.sock"
 
 dprint "Attaching to monitor socket.." #pane .1
 tmux split-window -v -t "$TMSESSION:$TMWINDOW" -p 90 "socat - ./${PROJECTNAME}.monitor.sock"
 
-dprint "Waiting for serial port socket.."
+dprint "Waiting for the serial port socket.."
 waitfor_socket "./${PROJECTNAME}.serial.sock"
 
-dprint "Attaching to serial port socket.." #pane .2
+dprint "Attaching to the serial port socket.." #pane .2
 tmux split-window -h -t "$TMSESSION:$TMWINDOW" -p 90 "./resources/autotest/basic.exp; tmux send-keys -t:$TMWINDOW.1 \"system_powerdown\" && tmux send-keys -t:$TMWINDOW.1 \"enter\" && tmux send-keys -t:$TMWINDOW.1 \"quit\" && tmux send-keys -t:$TMWINDOW.1 \"enter\""
 sleep 0.1
 
@@ -152,7 +152,7 @@ tmux send-keys -t:$TMWINDOW.1 "enter"
 dprint "To view the VM console use command:\n$ remote-viewer spice://localhost:2001"
 if [ $VISIBLE -eq 1 ]
 then
- dprint "Attaching to tmux session.."
+ dprint "Attaching to the tmux session.."
  tmux attach -t $TMSESSION
 else
  dprint "Waiting for autotest completion..\n(Hint: set VISIBLE=1 in $0 to see VM interaction)."

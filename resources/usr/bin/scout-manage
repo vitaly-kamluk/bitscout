@@ -107,7 +107,7 @@ function dialog_menu()
 
 function feature_not_implemented()
 {
-  dialog --title "NOT IMPLEMENTED" --msgbox "Sorry, this feature is not implemented yet." $BOXHEIGHT $BOXWIDTH
+  dialog --title "NOT IMPLEMENTED" --msgbox "Sorry, this feature is not implemented or was temporary disabled." $BOXHEIGHT $BOXWIDTH
 }
 
 while true
@@ -118,6 +118,9 @@ do
     "NETWORK")
   while true
   do
+    if /sbin/host-iptables check-access-from-lan | grep -q "ON$"; then NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."; fi;
+    if systemctl status ssh > /dev/null; then NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."; fi;
+
     read NETWORKCHOICE <<< $(dialog_menu "NETWORK" "$NETWORKMENUTEXT" "$(declare -p NETWORKMENU)")
       
     case "$NETWORKCHOICE" in

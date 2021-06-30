@@ -165,7 +165,7 @@ then
     sysloghost=""
     while ! validate_hostaddr "$sysloghost"
     do
-        statusprint "\nYou may configure a remote syslog server to log shell history. To continue without syslog server simply press Enter."
+        statusprint "\nYou may configure a remote syslog server to log shell history. To continue without a syslog server simply press Enter."
         PRINTOPTIONS=n statusprint "Your input [host|<NONE>]: "
         read sysloghost
         if [ "$sysloghost" = "" ]

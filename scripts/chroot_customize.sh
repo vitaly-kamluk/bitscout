@@ -11,7 +11,7 @@
 
 statusprint "Adding custom packages and settings in chroot.."
 
-#The following is executed as a script inside chroot environment.
+#The following is executed as a script inside the chroot environment.
 #Ignore the first line required for apt-fast (a faster alternative for apt)
 chroot_exec build.$GLOBAL_BASEARCH/chroot \
 'export DEBIAN_FRONTEND=noninteractive; aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;

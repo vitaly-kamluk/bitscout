@@ -42,10 +42,11 @@ while { $container_started == 0 } {
 
 #2. Test services status: openvpn, ssh, privexecd, historian, ...
 send_log "Checking host system services status..\n"
-#check openvpn@scout.service
-send "systemctl --no-pager status openvpn@scout.service | tr -cd '\\11\\12\\15\\40-\\176' \n"
+#check openvpn-client@scout.service
+send "systemctl --no-pager status openvpn-client@scout.service | tr -cd '\\11\\12\\15\\40-\\176' \n"
 expect {
   "Active:*failed" { expect "\n"; send_log "\nautotest: OpenVPN service is not running. OpenVPN: ERROR\n"; }
+  "Unit openvpn*@scout.service could not be found." { expect "\n"; send_log "\nautotest: OpenVPN service is not installed. OpenVPN: ERROR\n"; }
   "Active:*active (running)" { expect "\n"; send_log "\nautotest: OpenVPN service is running. OpenVPN: OK\n"; }
 }
 expect "root*bitscout-host*\$ "

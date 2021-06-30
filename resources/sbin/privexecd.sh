@@ -11,6 +11,22 @@ CMD_WHITELIST=( "/usr/bin/mount" "/usr/bin/umount" )
 FS_WHITELIST=( "ntfs" "ntfs-3g" "vfat" "exfat" "ext" "ext2" "ext3" "ext4" "iso9660" "udf" "xfs" "reiserfs" "hfs" "hfsplus"  )
 declare -a LINE
 
+RESPONSEMSG=""
+response_add()
+{
+  RESPONSEMSG="$RESPONSEMSG$1"
+}
+
+response_push()
+{
+  if [ -n "$RESPONSEMSG" ]
+  then
+    echo -e "$RESPONSEMSG" > "$PRIVPIPE"
+    RESPONSEMSG=""
+  fi
+}
+
+
 log_add()
 {
   T=$(TZ=UTC date +"%H:%M:%S %Y-%m-%d")
@@ -39,7 +55,7 @@ privileged_usr_bin_mount()
   if ! is_fs_authorized "$FSTYPE"; 
   then 
     log_add "Prohibited filesystem $FSTYPE"; 
-    echo "Cannot mount filesystem $FSTYPE." > "$PRIVPIPE"
+    response_add "Cannot mount filesystem $FSTYPE.\n"
     return 1; 
   fi;
 
@@ -103,10 +119,11 @@ is_valid_option()
 
 while true
 do
+  response_push
   mapfile -t LINE < <(head -n1 "$PRIVPIPE" | awk -vFPAT='([^ ]*)|("[^"]+")' -vOFS=" " '{for(i=1;i<=NF;i++){print $i;}}'| sed 's/^"//; s/"$//' )
   if [ ! -f "$CONTROLFILE" ]
   then
-    echo "Privileged execution mode is not enabled." > "$PRIVPIPE"
+    response_add "Privileged execution mode is not enabled.\n"
     CMDREQ=$(echo "${LINE[*]}" | sed 's/^[0-9]\{1,2\} //')
     log_add "Guest container requested privileged mode command but was denied: $CMDREQ"
     continue
@@ -120,7 +137,7 @@ do
     if ! eval "privileged$PROCNAME"
     then 
       log_add "Failed to run privileged$PROCNAME"
-      echo -e "Failed to run privileged command.\n Hints:\n  1. Use \"-o ro\" option when mounting\n  2. Make sure src and destination paths exist." > "$PRIVPIPE"
+      response_add "Failed to run privileged command.\n Hints:\n  1. Use \"-o ro\" option when mounting\n  2. Specify filesystem type with -t <type>\n  3. Make sure src and dest paths exist\n"
     fi
   else
     log_add "Denied running $CMDPATH"
