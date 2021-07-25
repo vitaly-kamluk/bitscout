@@ -16,7 +16,7 @@ export SHELL=/bin/bash
 
 ISONAME="${PROJECTNAME}-20.04-${GLOBAL_BASEARCH}.iso"
 TESTLOG="./autotest.log"
-VISIBLE=1 #show tmux interface during testing. This should be set to 0 by default for better unattended auto-testing compatibility.
+VISIBLE=$(test -z $TERM && echo 0 || echo 1) #show tmux interface during testing
 VMRAM=1024 #Megabytes
 
 if [ ! -f "./$ISONAME" ]
