@@ -1,7 +1,8 @@
 #!/bin/bash
 
 IPT="/sbin/iptables"
-INET_IFACES=( eth0 wlan0 )
+#List all eth* and wlan* interfaces and add to INET_IFACES array:
+I=0; while read INET_IFACE; do INET_IFACES[$I]="$INET_IFACE";((I++));done  < <(ls -1 /sys/class/net/ |grep -E '^(eth|wlan)' )
 CONTAINER_IFACE=<CONTAINERNET_NAME>
 CONTAINER_IP=<CONTAINERNET_GUEST_IP>
 VPN_IFACE=scout_vpn

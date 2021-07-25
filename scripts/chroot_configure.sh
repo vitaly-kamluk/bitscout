@@ -8,6 +8,9 @@ statusprint "Setting network interface autoconfiguration timeout.."
 sudo sed -i 's/^TimeoutStartSec=[0-9a-z]*$/TimeoutStartSec=1min/' ./build.$GLOBAL_BASEARCH/chroot/lib/systemd/system/networking.service 
 sudo sed -i 's/^TimeoutStartSec=[0-9a-z]*$/TimeoutStartSec=10sec/' ./build.$GLOBAL_BASEARCH/chroot/lib/systemd/system/networking.service 
 
+statusprint "Replacing networkd default configuration.."
+sudo cp -v ./resources/etc/systemd/networkd.conf ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/
+
 statusprint "Disabling intel_rapl module.."
 if ! grep -q '^blacklist intel_rapl$' ./build.$GLOBAL_BASEARCH/chroot/etc/modprobe.d/blacklist.conf
 then
@@ -43,7 +46,7 @@ statusprint "Fixing sudo warning.." #should be removed in the future. see https:
 sudo cp -v ./resources/etc/sudo.conf ./build.$GLOBAL_BASEARCH/chroot/etc/
 
 statusprint "Setting up network plan for container and the host.."
-sudo cp -v ./resources/etc/netplan/{01-network.yaml,02-network-eth0.yaml} ./build.$GLOBAL_BASEARCH/chroot/etc/netplan/
+sudo cp -v ./resources/etc/netplan/{01-network.yaml,02-network-eth.yaml} ./build.$GLOBAL_BASEARCH/chroot/etc/netplan/
 
 statusprint "Setting up shell aliases.."
 if ! grep -q '^#some shell aliases$' ./build.$GLOBAL_BASEARCH/chroot/etc/bash.bashrc

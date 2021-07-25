@@ -4,5 +4,7 @@ network:
   version: 2
   renderer: networkd
   ethernets:
-    eth0:
+    ethX:
+      match:
+        name: eth*
       dhcp4: yes
