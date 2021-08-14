@@ -6,6 +6,8 @@
 
 statusprint "Making sure package cache and other fs are detached.."
 chroot_unmount_fs "./build.$GLOBAL_BASEARCH/chroot"
+sudo umount -l "./build.$GLOBAL_BASEARCH/image/persistence" 2>/dev/null
+sudo umount -l "./build.$GLOBAL_BASEARCH/image" 2>/dev/null
 
 install_required_package grub-common
 install_required_package grub-pc-bin
@@ -108,7 +110,7 @@ elif [ "$GLOBAL_TARGET" = "raw" ]; then
   sudo chown root:root ./build.${GLOBAL_BASEARCH}/image/persistence/host ./build.${GLOBAL_BASEARCH}/image/persistence/container
 
   statusprint "Unmounting persistence filesystem.."
-  sudo umount ./build.${GLOBAL_BASEARCH}/image/persistence
+  sudo umount -l ./build.${GLOBAL_BASEARCH}/image/persistence
 
   PROJDIR=$PWD
   statusprint "Adding target loop devices to the mounted rootfs.."

@@ -11,6 +11,7 @@ parse_cmdline()
     case $x in
      root=*) export ROOTDEV="${x#root=}";;
      persist=*) export PERSDEV="${x#persist=}";;
+     persistmode=*) export PERSISTMODE="${x#persistmode=}";;
     esac
   done
 }
@@ -32,6 +33,16 @@ mountroot()
 
   mkdir /rofs /persistence
   mount -o rw $PERSDEV /persistence
+  [ -n $PERSISTMODE -a $PERSISTMODE = "cleanup" ] && rm -rf /persistence/*
+  if [ ! -d "/persistence/host/overlay" ]; then
+    mkdir -p /persistence/host/overlay/upper 2>/dev/null
+    mkdir -p /persistence/host/overlay/work 2>/dev/null
+  fi
+  if [ ! -d "/persistence/container/overlay" ]; then
+    mkdir -p /persistence/container/overlay/upper 2>/dev/null
+    mkdir -p /persistence/container/overlay/work 2>/dev/null
+  fi
+
   mount -o ro $ROOTDEV /rofs
   mount -t overlay overlay -o lowerdir=/rofs,upperdir=/persistence/host/overlay/upper,workdir=/persistence/host/overlay/work /root
   mount --move /persistence /root/persistence

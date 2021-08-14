@@ -534,7 +534,9 @@ Privileged mount mode is currently $PMSTATE.";
 
      "SHELL")
          clear;
+         pushd /root 2>/dev/null >/dev/null
          /bin/bash --rcfile /etc/bash.bashrc -i
+         popd 2>/dev/null >/dev/null
          continue;
          ;;
      "CHAT")

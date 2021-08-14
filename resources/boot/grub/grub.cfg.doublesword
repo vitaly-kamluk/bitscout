@@ -5,7 +5,7 @@ insmod part_msdos
 insmod iso9660
 insmod jpeg
 
-set gfxmode=1024x768x24
+set gfxmode=1024x768x24,auto
 set color_normal=white/black
 set color_highlight=red/black
 set theme=/boot/grub/theme/theme.txt
@@ -19,6 +19,11 @@ background_image /boot/grub/theme/background.jpg
 
 menuentry "Start <PROJECTCAPNAME>" {
  linux /boot/vmlinuz boot=doublesword root=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX persist=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX net.ifnames=0 biosdevname=0 hostname=<PROJECTNAME>-host username=<CONTAINERUSERNAME> initrd=/boot/initrd.img noeject noprompt console=tty0 console=ttyS0,115200 vga=791 --
+ initrd /boot/initrd.img
+}
+
+menuentry "Clean start <PROJECTCAPNAME>" {
+ linux /boot/vmlinuz boot=doublesword persistmode=cleanup root=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX persist=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX net.ifnames=0 biosdevname=0 hostname=<PROJECTNAME>-host username=<CONTAINERUSERNAME> initrd=/boot/initrd.img noeject noprompt console=tty0 console=ttyS0,115200 vga=791 --
  initrd /boot/initrd.img
 }
 
