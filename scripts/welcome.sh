@@ -94,7 +94,23 @@ then
   else
     mkdir config 2>&-
   fi
+else
+  . "$BUILDCONFPATH"
 fi
+
+
+if [ -n "$GLOBAL_TARGET" ]; then
+  target=$GLOBAL_TARGET
+else
+  target="iso"
+fi
+
+if [ -n "$GLOBAL_PERSISTSIZE" ]; then
+  persistsize=$GLOBAL_PERSISTSIZE
+else
+  persistsize="1GiB"
+fi
+
 
 if [ -z "$GLOBAL_RELEASESIZE" ]
 then
@@ -109,6 +125,8 @@ then
         statusprint "Invalid input data format. Please try again.."
       fi
     done
+else
+  releasesize=$GLOBAL_RELEASESIZE
 fi
 
 #Override to default generic kernel:
@@ -126,7 +144,8 @@ then
     else
       customkernel="1"
     fi
-
+else
+  customkernel=$GLOBAL_CUSTOMKERNEL
 fi
 
 if [ -z "$GLOBAL_VPNTYPE" -o "$GLOBAL_VPNTYPE" != 'none' ]
@@ -166,14 +185,12 @@ then
         vpntype="none"
         GLOBAL_VPNSERVER="none"
       fi
-      if ( [ -n "$GLOBAL_VPNTYPE" -o -n "$GLOBAL_VPNSERVER" -o -n "$GLOBAL_VPNPROTOCOL" -o -n "$GLOBAL_VPNPORT" ] ) &&  [ -f "$BUILDCONFPATH" ]
-      then
-         echo "GLOBAL_VPNTYPE=\"$vpntype\"
-GLOBAL_VPNSERVER=\"$vpnhost\"
-GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
-GLOBAL_VPNPORT=\"$vpnport\"" >> "$BUILDCONFPATH"
-      fi
   fi
+else
+  vpntype=$GLOBAL_VPNTYPE
+  vpnhost=$GLOBAL_VPNSERVER
+  vpnprotocol=$GLOBAL_VPNPROTOCOL
+  vpnport=$GLOBAL_VPNPORT
 fi
 
 if [ -z "$GLOBAL_SYSLOGSERVER" ]
@@ -189,7 +206,6 @@ then
         then
             sysloghost="none"
             statusprint "Remote syslog support disabled."
-            [ -f "$BUILDCONFPATH" ] && echo "GLOBAL_SYSLOGSERVER=\"$sysloghost\"" >> "$BUILDCONFPATH"
             break
         fi
         if ! validate_hostaddr "$sysloghost"
@@ -197,10 +213,8 @@ then
             statusprint "Invalid input data format. Please try again.."
         fi
     done
-    if [ -n "$GLOBAL_SYSLOGSERVER" ] && [ "$sysloghost" != "" ] && [ -f "$BUILDCONFPATH" ]
-    then
-        echo "GLOBAL_SYSLOGSERVER=\"$sysloghost\"" >> "$BUILDCONFPATH"
-    fi
+else
+  sysloghost=$GLOBAL_SYSLOGSERVER
 fi
 
 if [ -z "$GLOBAL_BUILDID" ]
@@ -210,11 +224,15 @@ then
     if [ -n "$GLOBAL_BUILDID" ] &&  [ -f "$BUILDCONFPATH" ]; then
         echo "GLOBAL_BUILDID=\"$buildid\"" >> "$BUILDCONFPATH"
     fi
+else
+  buildid=$GLOBAL_BUILDID
 fi
 
-if [ -z "$CRYPTOKEYSIZE" ] && [ -f "$BUILDCONFPATH" ]
+if [ -z "$CRYPTOKEYSIZE" ]
 then
-    echo "CRYPTOKEYSIZE=2048" >> "$BUILDCONFPATH"
+  cryptokeysize=2048
+else
+  cryptokeysize=$CRYPTOKEYSIZE
 fi
 
 if [ -z "$GLOBAL_BASEARCH" ] 
@@ -240,20 +258,17 @@ then
             statusprint "Invalid input choice. Please try again.."
         fi
     done
-    
-    if [ -z "$GLOBAL_BASEARCH" ] && [ -f "$BUILDCONFPATH" ]
-    then
-        echo "GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)"  >> "$BUILDCONFPATH"
-    fi
-
+else
+  buildarch=$GLOBAL_BASEARCH
 fi
 
-
 EXTRA_CONFIG=0
-if ! [ -f "$BUILDCONFPATH" ]
-then
-    statusprint "\nSaving configuration.."
-    echo "GLOBAL_TARGET=\"iso\" #target to build: iso, raw, qcow2, vmdk
+PRINTOPTIONS=n statusprint "Basic configuration complete. Build/Stop/Extra-config extra config? [B/s/e]: "
+read choice
+
+statusprint "\nSaving basic configuration.."
+echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
+GLOBAL_PERSISTSIZE=\"$persistsize\" #persistence partition size for non-iso builds
 GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)
 GLOBAL_LANACCESS_ENABLED=0 #set to 1 to enable access from LAN after boot
@@ -265,19 +280,17 @@ GLOBAL_SYSLOGSERVER=\"$sysloghost\"
 GLOBAL_BUILDID=\"$buildid\"
 GLOBAL_CUSTOMKERNEL=\"$customkernel\" 
 GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
-CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
+CRYPTOKEYSIZE=$cryptokeysize" > "$BUILDCONFPATH"
 
-    EXTRA_CONFIG=0
-    PRINTOPTIONS=n statusprint "Basic configuration saved. Start build/Abort/Edit extra config? [S/a/e]: "
-    read choice
-    if [ -z "$choice" -o "${choice^}" = "S" ]
-    then
-        exit 0;
-    else
-        if [ -z "$choice" -o "${choice^}" = "A" ]; then  exit 1; fi;
-        if [ -z "$choice" -o "${choice^}" = "E" ]; then  EXTRA_CONFIG=1; fi;
-    fi
+if [ -z "$choice" -o "${choice^}" = "B" ]
+then
+    exit 0;
+else
+    if [ -z "$choice" -o "${choice^}" = "S" ]; then  exit 1; fi;
+    if [ -z "$choice" -o "${choice^}" = "E" ]; then  EXTRA_CONFIG=1; fi;
 fi
+
+
 
 if [ $EXTRA_CONFIG -eq 1 ]; then
   target=""
@@ -296,7 +309,7 @@ fi
 
 statusprint "\nUpdating basic configuration.."
 echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
-GLOBAL_PERSISTSIZE=\"1GiB\" #persistence partition size for non-iso builds
+GLOBAL_PERSISTSIZE=\"$persistsize\" #persistence partition size for non-iso builds
 GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)
 GLOBAL_LANACCESS_ENABLED=0 #set to 1 to enable access from LAN after boot
@@ -308,7 +321,7 @@ GLOBAL_SYSLOGSERVER=\"$sysloghost\"
 GLOBAL_BUILDID=\"$buildid\"
 GLOBAL_CUSTOMKERNEL=\"$customkernel\" 
 GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
-CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
+CRYPTOKEYSIZE=$cryptokeysize" > "$BUILDCONFPATH"
 
 EXTRA_CONFIG=0
 PRINTOPTIONS=n statusprint "New configuration saved. Proceed to the building phase? [Y/n]: "

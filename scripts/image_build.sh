@@ -41,7 +41,7 @@ if [ "$GLOBAL_TARGET" = "iso" ]; then
 
   sudo grub-mkrescue --modules="part_gpt iso9660 linux ext2 fshelp ls boot jpeg video_bochs video_cirrus" --output=./$PROJECTNAME-$PROJECTRELEASE-$GLOBAL_BASEARCH.iso ./build.$GLOBAL_BASEARCH/image -- -as mkisofs -r -volid "${PROJECTNAME}-${GLOBAL_BUILDID}" -J -l -joliet-long -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -no-emul-boot
 
-elif [ "$GLOBAL_TARGET" = "raw" ]; then
+elif [ "$GLOBAL_TARGET" != "iso" ]; then
   statusprint "Preparing to build a raw disk image.."
   install_required_package gdisk
 
@@ -60,7 +60,7 @@ elif [ "$GLOBAL_TARGET" = "raw" ]; then
 
   IMG_SIZE_MB=$[$PERSPART_START_MB+$PERSPART_SIZE_MB+1]
   IMG_SIZE_B=$[$IMG_SIZE_MB*1024*1024]
-  IMGFILE=$PROJECTNAME-$PROJECTRELEASE-$GLOBAL_BASEARCH.$GLOBAL_TARGET
+  IMGFILE=$PROJECTNAME-$PROJECTRELEASE-$GLOBAL_BASEARCH.raw
 
   statusprint "Target disk image size: $IMG_SIZE_B bytes"
   [ -f "./$IMGFILE" ] && rm -f "./$IMGFILE" 2>&1
@@ -138,6 +138,21 @@ elif [ "$GLOBAL_TARGET" = "raw" ]; then
   statusprint "Unmounting image rootfs filesystem and removing loop devices.."
   sudo umount ./build.$GLOBAL_BASEARCH/image/boot/efi ./build.$GLOBAL_BASEARCH/image
   sudo losetup -d $LOOPDEV_IMG
+
+
+  if [ -n "$GLOBAL_TARGET" ]; then
+    statusprint "Converting image to $GLOBAL_TARGET format.."
+    case ${GLOBAL_TARGET} in
+      qcow2) 
+          qemu-img convert -f raw -O qcow2 $IMGFILE $PROJECTNAME-$PROJECTRELEASE-$GLOBAL_BASEARCH.qcow2
+          rm "$IMGFILE"
+        ;;
+      vmdk) 
+          qemu-img convert -f raw -O vmdk $IMGFILE $PROJECTNAME-$PROJECTRELEASE-$GLOBAL_BASEARCH.vmdk
+          rm "$IMGFILE"
+        ;;
+    esac
+  fi
 
 fi
 
