@@ -12,7 +12,6 @@ set theme=/boot/grub/theme/theme.txt
 
 insmod gfxmenu
 insmod gfxterm
-insmod vbe
 
 terminal_output gfxterm
 loadfont /boot/grub/font.pf2

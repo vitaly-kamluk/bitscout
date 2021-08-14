@@ -79,9 +79,6 @@ elif [ "$GLOBAL_TARGET" = "raw" ]; then
   LOOPDEV_PART_ROOT=${LOOPDEV_IMG}p3
   LOOPDEV_PART_PERS=${LOOPDEV_IMG}p4
 
-  #statusprint "Formatting boot partition.."
-  #sudo mkfs -q -t ext2 -d ./build.${GLOBAL_BASEARCH}/chroot/boot -F -e remount-ro -L /boot -U random $LOOPDEV_PART_BOOT
-
   statusprint "Formatting EFI partition.."
   sudo mkfs.fat -F32 -n EFI $LOOPDEV_PART_EFI
 
@@ -100,11 +97,6 @@ elif [ "$GLOBAL_TARGET" = "raw" ]; then
   statusprint "Mounting target image rootfs.."
   sudo mount -t ext4 ${LOOPDEV_PART_ROOT} ./build.${GLOBAL_BASEARCH}/image
 
-  #statusprint "Mounting boot partition.."
-  #sudo rm -rf ./build.${GLOBAL_BASEARCH}/image/boot
-  #[ ! -d "./build.${GLOBAL_BASEARCH}/image/boot" ] && sudo mkdir -p ./build.${GLOBAL_BASEARCH}/image/boot
-  #sudo mount -t ext4 ${LOOPDEV_PART_BOOT} ./build.${GLOBAL_BASEARCH}/image/boot
-
   statusprint "Mounting EFI partition.."
   [ ! -d "./build.${GLOBAL_BASEARCH}/image/boot/efi" ] && sudo mkdir -p ./build.${GLOBAL_BASEARCH}/image/boot/efi
   sudo mount -t vfat ${LOOPDEV_PART_EFI} ./build.${GLOBAL_BASEARCH}/image/boot/efi
@@ -121,7 +113,7 @@ elif [ "$GLOBAL_TARGET" = "raw" ]; then
   PROJDIR=$PWD
   statusprint "Adding target loop devices to the mounted rootfs.."
   pushd /dev >/dev/null
-  tar -cpf- ${LOOPDEV_IMG##*/} ${LOOPDEV_PART_BOOT##*/} ${LOOPDEV_PART_EFI##*/} ${LOOPDEV_PART_ROOT##*/} ${LOOPDEV_PART_PERS##*/} | sudo tar -xf- -C $PROJDIR/build.$GLOBAL_BASEARCH/image/dev
+  tar -cpf- ${LOOPDEV_IMG##*/} ${LOOPDEV_PART_EFI##*/} ${LOOPDEV_PART_ROOT##*/} ${LOOPDEV_PART_PERS##*/} | sudo tar -xf- -C $PROJDIR/build.$GLOBAL_BASEARCH/image/dev
   popd >/dev/null
 
   if [ ! -b "./build.$GLOBAL_BASEARCH/image/dev/${LOOPDEV_IMG##*/}" ]; then 
@@ -131,39 +123,18 @@ elif [ "$GLOBAL_TARGET" = "raw" ]; then
     exit 1; 
   fi;
 
-  statusprint "Copying boot configuration from resources.."
-  sudo cp -rv ./resources/boot/* ./build.$GLOBAL_BASEARCH/image/boot/
-  sudo sed -i "s/<PROJECTNAME>/${PROJECTNAME}/g; s/<PROJECTCAPNAME>/${PROJECTCAPNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g; s/<PROJECTRELEASE>/${PROJECTRELEASE}/g; s#/casper/#/boot/#g; s/boot=casper/boot=doublesword root=UUID=$PART_ROOT_UUID persist=UUID=$PART_PERS_UUID/" ./build.$GLOBAL_BASEARCH/image/boot/grub/grub.cfg
-
-  statusprint "Altering boot splash image.."
-  install_required_package imagemagick
-  sudo convert -quiet ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.jpg +repage ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.tiff
-  sudo convert ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.tiff \( -clone 0 -fill srgb\(255,255,255\) -colorize 100% -modulate 100,100,100 \) \( -clone 0 -blur 0x1 -fuzz 10% -fill none -draw "matte 580,630 floodfill" -channel rgba -fill black +opaque none -fill white -opaque none -blur 0x8 -auto-level -evaluate multiply 1 \) -compose over -composite -pointsize 22 -font /usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf -fill rgba\(255,255,255,0.8\) -annotate +750+580 20.04 ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.jpg
-  sudo rm ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.tiff 
-  
-  statusprint "Preparing font for grub bootloader.."
-  install_required_package fonts-dejavu-core
-  install_required_package grub-common
-  FONTNAME="DejaVuSansMono.ttf"
-  FONTSIZE=24
-  FONTPATH="/usr/share/fonts/truetype/dejavu/$FONTNAME"
-  statusprint "Generating grub font from $FONTNAME.."
-  if [ ! -f "$FONTPATH" ]
-  then
-    statusprint "Couldn't find required font at $FONTPATH. Aborting.."
-    exit 1;
-  fi
-  sudo grub-mkfont -s $FONTSIZE -o ./build.$GLOBAL_BASEARCH/image/boot/grub/font.pf2 "$FONTPATH"
+  statusprint "Updating paritions UUID for grub.."
+  sudo sed -i "s/root=UUID=[0-9a-zA-Z-]*/root=UUID=${PART_ROOT_UUID}/g; s/persist=UUID=[0-9a-zA-Z-]*/persist=UUID=${PART_PERS_UUID}/g;" ./build.$GLOBAL_BASEARCH/image/boot/grub/grub.cfg
 
   statusprint "Installing MBR grub.."
-  chroot_exec build.$GLOBAL_BASEARCH/image "grub-install --target i386-pc --boot-directory=/boot --modules=\"part_msdos ext2\" --install-modules=\"ahci all_video ata biosdisk cat disk drivemap ehci gfxmenu gfxterm halt hdparm help linux nativedisk ohci pata jpeg probe reboot scsi uhci usb_keyboard usb vbe videoinfo videotest part_msdos part_gpt fat ext2 normal\" $LOOPDEV_IMG"
+  chroot_exec build.$GLOBAL_BASEARCH/image "grub-install --target i386-pc --boot-directory=/boot --modules=\"part_msdos ext2 vbe\" --install-modules=\"ahci all_video ata biosdisk cat disk drivemap ehci gfxmenu gfxterm halt hdparm help linux nativedisk ohci pata jpeg probe reboot scsi uhci usb_keyboard usb vbe videoinfo videotest part_msdos part_gpt fat ext2 normal\" $LOOPDEV_IMG"
 
   statusprint "Installing EFI grub.."
   chroot_exec build.$GLOBAL_BASEARCH/image "grub-install --target x86_64-efi --efi-directory=/boot/efi --modules=\"part_gpt fat\" --install-modules=\"ahci all_video ata boot cat disk echo ehci efi_gop efi_uga font gfxmenu gfxterm_background gfxterm_menu gfxterm halt hdparm help linux linuxefi ls msdospart nativedisk ohci pata jpeg probe reboot scsi uhci usb_keyboard usb videoinfo videotest part_msdos part_gpt fat ext2 normal\" $LOOPDEV_IMG"
 
 
   statusprint "Unmounting image rootfs filesystem and removing loop devices.."
-  sudo umount ./build.$GLOBAL_BASEARCH/image/boot/efi ./build.$GLOBAL_BASEARCH/image/boot ./build.$GLOBAL_BASEARCH/image
+  sudo umount ./build.$GLOBAL_BASEARCH/image/boot/efi ./build.$GLOBAL_BASEARCH/image
   sudo losetup -d $LOOPDEV_IMG
 
 fi

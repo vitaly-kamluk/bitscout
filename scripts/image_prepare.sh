@@ -82,6 +82,33 @@ else
   statusprint "Preparing persistence mount directories.."
   sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/persistence/{host,container}/overlay/{work,upper}
   sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/rofs
+
+  statusprint "Copying boot configuration from resources.."
+  sudo cp -rv ./resources/boot/* ./build.$GLOBAL_BASEARCH/chroot/boot/
+  sudo rm ./build.$GLOBAL_BASEARCH/chroot/boot/grub/grub.cfg.casper
+  sudo mv ./build.$GLOBAL_BASEARCH/chroot/boot/grub/grub.cfg.doublesword ./build.$GLOBAL_BASEARCH/chroot/boot/grub/grub.cfg
+  sudo sed -i "s/<PROJECTNAME>/${PROJECTNAME}/g; s/<PROJECTCAPNAME>/${PROJECTCAPNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g; s/<PROJECTRELEASE>/${PROJECTRELEASE}/g;" ./build.$GLOBAL_BASEARCH/chroot/boot/grub/grub.cfg
+
+  statusprint "Altering boot splash image.."
+  install_required_package imagemagick
+  sudo convert -quiet ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.jpg +repage ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.tiff
+  sudo convert ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.tiff \( -clone 0 -fill srgb\(255,255,255\) -colorize 100% -modulate 100,100,100 \) \( -clone 0 -blur 0x1 -fuzz 10% -fill none -draw "matte 580,630 floodfill" -channel rgba -fill black +opaque none -fill white -opaque none -blur 0x8 -auto-level -evaluate multiply 1 \) -compose over -composite -pointsize 22 -font /usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf -fill rgba\(255,255,255,0.8\) -annotate +750+580 20.04 ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.jpg
+  sudo rm ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.tiff 
+  
+  statusprint "Preparing font for grub bootloader.."
+  install_required_package fonts-dejavu-core
+  install_required_package grub-common
+  FONTNAME="DejaVuSansMono.ttf"
+  FONTSIZE=24
+  FONTPATH="/usr/share/fonts/truetype/dejavu/$FONTNAME"
+  statusprint "Generating grub font from $FONTNAME.."
+  if [ ! -f "$FONTPATH" ]
+  then
+    statusprint "Couldn't find required font at $FONTPATH. Aborting.."
+    exit 1;
+  fi
+  sudo grub-mkfont -s $FONTSIZE -o ./build.$GLOBAL_BASEARCH/chroot/boot/grub/font.pf2 "$FONTPATH"
+
 fi
 
 exit 0;

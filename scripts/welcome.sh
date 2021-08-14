@@ -102,7 +102,7 @@ then
     releasesize=""
     while ! validate_releasesize "$releasesize"
     do
-      PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may be built in various sizes.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers.\n 2. normal - includes most common forensic tools, drivers, etc.\n 3. maximal - includes maximum forensic tools and frameworks.\n Your choice (1|2|3): "
+      PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may be built in various sizes.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers.\n 2. normal - includes most common forensic tools, drivers, etc.\n 3. maximal - includes maximum forensic tools and frameworks.\nYour choice (1|2|3): "
       read releasesize
       if ! validate_releasesize "$releasesize"
       then
@@ -279,41 +279,23 @@ CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
     fi
 fi
 
-if [ $EXTRA_CONFIG -eq 1 ]
-then
-    PRINTOPTIONS=n statusprint "Would you like to build custom target? [Y/n]: " 
-    read choice
-    if [ -z "$choice" -o "${choice^}" = "Y" ]; then
-        target=""
-        while ! validate_target "$target"
-        do
-          PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may build different target image formats.\nPlease choose your preference:\n iso - bootable LiveCD ISO image.\n raw - raw disk image with preinstalled system\n qcow2 - qemu/libvirt disk image with preinstalled system\n vmdk - VMware Workstation or VirtualBox disk image with preinstalled system\n Your choice [iso=default]: "
-          read target
-          if [ -z "$target" ]; then target="iso"; fi;
-          if ! validate_target "$target"
-          then
-            statusprint "Invalid input. Please try again.."
-            continue
-          fi
-        done
-        
-        case "$target" in
-          "raw" | "qcow2" | "vmdk")
-            while ! validate_partition_table "$partition_table"; do
-              PRINTOPTIONS=n statusprint "\nWhich partition table type to use?\n msdos - legacy MBR based system boot\n gpt - modern EFI based system boot.\nYour choice [msdos=default]: "
-              read partition_table
-              if [ -z "$partition_table" ]; then partition_table="msdos"; fi;
-              if ! validate_partition_table "$partition_table"
-              then
-                statusprint "Invalid input. Please try again.."
-                continue
-              fi
-            done 
-        esac
+if [ $EXTRA_CONFIG -eq 1 ]; then
+  target=""
+  while ! validate_target "$target"
+  do
+    PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may build different targets.\nPlease choose your preference:\n iso - bootable LiveCD ISO image.\n raw - raw disk image with preinstalled system\n qcow2 - qemu/libvirt disk image with preinstalled system\n vmdk - VMware Workstation or VirtualBox disk image with preinstalled system\nYour choice [default=iso]: "
+    read target
+    if [ -z "$target" ]; then target="iso"; fi;
+    if ! validate_target "$target"
+    then
+      statusprint "Invalid input. Please try again.."
+      continue
     fi
+  done
+fi
 
-    statusprint "\nUpdating basic configuration.."
-    echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
+statusprint "\nUpdating basic configuration.."
+echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
 GLOBAL_PERSISTSIZE=\"1GiB\" #persistence partition size for non-iso builds
 GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)
@@ -328,15 +310,14 @@ GLOBAL_CUSTOMKERNEL=\"$customkernel\"
 GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
 CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
 
-    EXTRA_CONFIG=0
-    PRINTOPTIONS=n statusprint "New configuration saved. Proceed to the building phase? [Y/n]: "
-    read choice
-    if [ -z "$choice" -o "${choice^}" = "Y" ]
-    then
-      exit 0;
-    else
-      exit 1;
-    fi
+EXTRA_CONFIG=0
+PRINTOPTIONS=n statusprint "New configuration saved. Proceed to the building phase? [Y/n]: "
+read choice
+if [ -z "$choice" -o "${choice^}" = "Y" ]
+then
+  exit 0;
+else
+  exit 1;
 fi
 
 exit 0;

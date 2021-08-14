@@ -1,6 +1,6 @@
 [Unit]
 Description=Host system setup
-BEfore=systemd-machined.service
+Before=systemd-machined.service
 After=local-fs.target
 
 [Service]

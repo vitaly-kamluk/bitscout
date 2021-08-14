@@ -1,0 +1,42 @@
+set timeout=5
+set default=0
+ 
+insmod part_msdos
+insmod iso9660
+insmod jpeg
+
+set gfxmode=1024x768x24
+set color_normal=white/black
+set color_highlight=red/black
+set theme=/boot/grub/theme/theme.txt
+
+insmod gfxmenu
+insmod gfxterm
+
+terminal_output gfxterm
+loadfont /boot/grub/font.pf2
+background_image /boot/grub/theme/background.jpg
+
+menuentry "Start <PROJECTCAPNAME>" {
+ linux /boot/vmlinuz boot=doublesword root=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX persist=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX net.ifnames=0 biosdevname=0 hostname=<PROJECTNAME>-host username=<CONTAINERUSERNAME> initrd=/boot/initrd.img noeject noprompt console=tty0 console=ttyS0,115200 vga=791 --
+ initrd /boot/initrd.img
+}
+
+menuentry "Start <PROJECTCAPNAME> (failsafe)" {
+ linux /boot/vmlinuz boot=doublesword root=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX persist=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX net.ifnames=0 biosdevname=0 hostname=<PROJECTNAME>-host username=<CONTAINERUSERNAME> initrd=/boot/initrd.img nomodeset nodma nomce noapm noapic nosplash vga=normal noeject console=tty0 console=ttyS0,115200 --
+ initrd /boot/initrd.img
+}
+
+menuentry "Integrity check" {
+ linux /boot/vmlinuz integrity-check boot=doublesword root=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX persist=UUID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX net.ifnames=0 biosdevname=0 hostname=<PROJECTNAME>-host username=<CONTAINERUSERNAME> initrd=/boot/initrd.img noprompt noeject console=tty0 console=ttyS0,115200 --
+ initrd /boot/initrd.img
+}
+
+menuentry "Memory Test x86+" {
+ linux16 /boot/memtest
+}
+ 
+#menuentry "Boot MBR on first hard drive!" {
+#  set root=(hd0)
+#  chainloader +1
+#} 
