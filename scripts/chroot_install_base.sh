@@ -16,7 +16,7 @@ chroot_exec build.$GLOBAL_BASEARCH/chroot 'locale-gen "'$LANG'"' || exit 1 &&
 
 statusprint "Updating system and installing essential packages.." &&
 
-COMMON_PACKAGES="binutils systemd-container netcat socat casper lupin-casper discover laptop-detect os-prober bindfs dialog tmux gawk grub-pc ntpdate ifupdown network-manager curl wget cryptsetup lvm2"
+COMMON_PACKAGES="binutils systemd-container netcat socat casper lupin-casper discover laptop-detect os-prober bindfs dialog tmux gawk ntpdate ifupdown network-manager curl wget cryptsetup lvm2"
 
 if [ $GLOBAL_RELEASESIZE -eq 1 ]
 then
@@ -24,7 +24,7 @@ then
 apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install $COMMON_PACKAGES  && exit 0 || exit 1" || exit 1
 else
   chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive
-  apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install $COMMON_PACKAGES file hdparm iptables lshw usbutils parted lsof psmisc strace ltrace time systemd-sysv man-db dosfstools cron busybox-static rsync dmidecode bash-completion command-not-found ntfs-3g uuid-runtime vim nano less pv ifupdown nbd-server grub-pc qemu-kvm fuse libfuse2 python3-fusepy samba && exit 0 || exit 1" || exit 1
+  apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install $COMMON_PACKAGES file hdparm iptables lshw usbutils parted lsof psmisc strace ltrace time systemd-sysv man-db dosfstools cron busybox-static rsync dmidecode bash-completion command-not-found ntfs-3g uuid-runtime vim nano less pv ifupdown nbd-server qemu-kvm fuse libfuse2 python3-fusepy samba && exit 0 || exit 1" || exit 1
 fi &&
 
 #statusprint "Installing LXD using snap.."
