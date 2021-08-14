@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Mark all available block devices as read-only (except loop devices, persistence and the parent)
+for device in /dev/* /dev/*/*; do
+	if [ ! -h "$device" ] && [ -b "$device" ] && [ ! -z ${device##/dev/loop*} ]; then
+		# Check if medium is present		
+		if blockdev --getsz "$device" > /dev/null 2>&1; then
+			blockdev --setro "$device" || logger "wrtblk: blockdev --setro $device failed!"
+		fi
+	fi
+done

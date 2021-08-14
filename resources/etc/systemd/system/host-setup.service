@@ -1,6 +1,7 @@
 [Unit]
 Description=Host system setup
-After=systemd-machined.service
+BEfore=systemd-machined.service
+After=local-fs.target
 
 [Service]
 Type=oneshot

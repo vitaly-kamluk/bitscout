@@ -1,0 +1,5 @@
+# Mark new block devices as read-only.
+ACTION=="add", SUBSYSTEM=="block", KERNEL!="ram*", RUN+="/usr/sbin/wrtblk $name"
+
+# A kernel marked a disk as read-write for some reason, we need to fix that.
+ACTION=="change", SUBSYSTEM=="block", KERNEL!="ram*", ENV{DISK_RO}=="0", RUN+="/usr/sbin/wrtblk-ioerr $name"

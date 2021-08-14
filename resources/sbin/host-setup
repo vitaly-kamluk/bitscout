@@ -30,6 +30,13 @@ fi
 
 if [ "$1" == "start" ]
 then
+  echo "Parsing kernel cmdline.."
+  for x in $(cat /proc/cmdline); do
+    case $x in
+     boot=*) export KERNEL_BOOTMODE="${x#boot=}";;
+    esac
+  done
+
   #set opened files ulimit, required for bindfs operation
   echo "Setting opened files ulimit value.."
   ulimit -n 200000
@@ -51,28 +58,33 @@ then
     systemctl start ssh.service
   fi
 
-  echo "Adding local user \"$LOCALUSER\" to \"lxd\" group to enable lxd interaction.."
-
-  usermod -a -G lxd $LOCALUSER
-
+  mkdir -p "$CONTAINERDIR/"{chroot,chroot.user,history}
   if ! mount | grep -q "$CONTAINERDIR/reflection"
   then
-    echo "Making and mounting tmpfs for reflective overlayfs"
-    mkdir -p "$CONTAINERDIR/"{reflection,chroot,chroot.user,history}
-    mount tmpfs -t tmpfs "$CONTAINERDIR/reflection"
-    mkdir -p "$CONTAINERDIR/reflection/"{upper,work}
-    
-    echo "Mounting /rofs (squashfs) to the chroot via overlayfs"
-    mount /rofs -t overlay -o "rw,relatime,lowerdir=/rofs,upperdir=$CONTAINERDIR/reflection/upper,workdir=$CONTAINERDIR/reflection/work" "$CONTAINERDIR/chroot"
+    if [ -n $KERNEL_BOOTMODE -a $KERNEL_BOOTMODE = "casper" ]; then
+			echo "Making and mounting tmpfs for reflective overlayfs.."
+			mkdir -p "$CONTAINERDIR/reflection"
+			mount tmpfs -t tmpfs "$CONTAINERDIR/reflection"
+			mkdir -p "$CONTAINERDIR/reflection/"{upper,work}
+			
+			echo "Mounting /rofs to the chroot via overlayfs.."
+			mount /rofs -t overlay -o "rw,relatime,lowerdir=/rofs,upperdir=$CONTAINERDIR/reflection/upper,workdir=$CONTAINERDIR/reflection/work" "$CONTAINERDIR/chroot"
+    elif [ -n $KERNEL_BOOTMODE -a $KERNEL_BOOTMODE = "doublesword" ]; then
+      mkdir -p /persistence/container/overlay/{upper,work} 2>/dev/null
+      echo "Mounting /rofs to the chroot via overlayfs on persistence partition.."
+      mount -t overlay overlay -o "rw,relatime,lowerdir=/rofs,upperdir=/persistence/container/overlay/upper,workdir=/persistence/container/overlay/work" "$CONTAINERDIR/chroot"
+    fi
     
     #the following is required to run userland container (mapping host uid/gid to container's uid/gid)
-    echo "Starting bindfs to allow unprivileged user access the reflected root"
+    echo "Starting bindfs to allow unprivileged user access the container chroot"
     #bindfs -u $USERSUBUID -g $USERSUBGID -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
     IDMAP=`( cat /etc/passwd | cut -d: -f3 | awk '{print $1"/"($1+100000)}'; cat /etc/group | cut -d: -f3 | awk '{print "@"$1"/@"($1+100000)}' ) | tr $'\n' ':'| sed 's/:$//'`
     bindfs --map=$IDMAP -o suid "$CONTAINERDIR/chroot" "$CONTAINERDIR/chroot.user"
 
-    #do necessary changes TO THE CONTAINER'S (GUEST) rootfs
+    #make necessary changes to the container rootfs
         touch "$CONTAINERDIR/chroot/this_is_container"
+        rm "$CONTAINERDIR/chroot/this_is_host"
+        rm -rf "$CONTAINERDIR/persistence"
 
         #enable lo/eth0 auto-configuration
         echo "Container chroot: enable lo/eth0 auto-configuration"

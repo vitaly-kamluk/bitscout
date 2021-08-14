@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# set -e
+
+export PATH=/usr/bin:/usr/sbin:/bin:/sbin
+
+echo "Doublesword is starting.."
+parse_cmdline()
+{
+  for x in $(cat /proc/cmdline); do
+    case $x in
+     root=*) export ROOTDEV="${x#root=}";;
+     persist=*) export PERSDEV="${x#persist=}";;
+    esac
+  done
+}
+
+mountroot()
+{
+  if [ -z "$ROOTDEV" ]; then
+    echo "root kernel argument is not specified."
+    exit 1
+  fi
+
+  if [ $( echo $ROOTDEV | cut -c1-5) = "UUID=" ]; then
+    ROOTDEV=$( blkid -t $ROOTDEV -l -o device )
+  fi
+
+  if [ $( echo $PERSDEV | cut -c1-5) = "UUID=" ]; then
+    PERSDEV=$( blkid -t $PERSDEV -l -o device )
+  fi
+
+  mkdir /rofs /persistence
+  mount -o rw $PERSDEV /persistence
+  mount -o ro $ROOTDEV /rofs
+  mount -t overlay overlay -o lowerdir=/rofs,upperdir=/persistence/host/overlay/upper,workdir=/persistence/host/overlay/work /root
+  mount --move /persistence /root/persistence
+  mount --move /rofs /root/rofs
+
+  echo "PERSISTENCE_DEVICE=$PERSDEV" > /root/etc/wrtblk.conf
+  /root/bin/chown 0:0 /root
+}
+
+parse_cmdline
+mountroot
+
+#/bin/sh -i

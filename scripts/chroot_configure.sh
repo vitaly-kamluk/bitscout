@@ -60,7 +60,7 @@ fi
 
 
 statusprint "Adding custom sysctl settings.."
-sudo mkdir -p /build.$GLOBAL_BASEARCH/chroot/etc/sysctl.d/ 2>&-
+sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/sysctl.d/ 2>&-
 sudo cp -v ./resources/etc/sysctl.d/* ./build.$GLOBAL_BASEARCH/chroot/etc/sysctl.d/
 
 exit 0;

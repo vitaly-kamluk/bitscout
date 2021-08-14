@@ -63,6 +63,23 @@ validate_buildarch()
     fi 
 }
 
+validate_target()
+{
+    case "$1" in
+      "iso" | "raw" | "qcow2" | "vmdk") return 0;;
+      *) return 1;
+    esac
+}
+
+validate_partition_table()
+{
+    case "$1" in
+      "gpt" | "msdos") return 0;;
+      *) return 1;
+    esac
+}
+
+
 msg_new_config_opt="\nSome new options were not found in your config file, please answer the following question(s)\nand it will be appended to your existing config file located in config/$PROJECTNAME-build.conf.\n"
 
 if ! [ -f "$BUILDCONFPATH" ]
@@ -101,7 +118,7 @@ if [ -z "$GLOBAL_CUSTOMKERNEL" ]
 then
     if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
     customkernel="0"
-    PRINTOPTIONS=n statusprint "\nIf you are going to deal with badly unmounted filesystems, software RAID or LVM, it is recommended to apply kernel write-blocker patch for extra care of the evidence. However, please note that this is experimental feature and may take 3-4 hours to rebuild the kernel on a single-core CPU.\nWould you like to build and use kernel with write-blocker? [y/N]: "
+    PRINTOPTIONS=n statusprint "\nWould you like to build Linux kernel from source (may take hours)? [y/N]: "
     read choice
     if [ -z "$choice" -o "${choice^}" = "N" ]
     then
@@ -232,10 +249,12 @@ then
 fi
 
 
+EXTRA_CONFIG=0
 if ! [ -f "$BUILDCONFPATH" ]
 then
     statusprint "\nSaving configuration.."
-    echo "GLOBAL_RELEASESIZE=\"$releasesize\"
+    echo "GLOBAL_TARGET=\"iso\" #target to build: iso, raw, qcow2, vmdk
+GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)
 GLOBAL_LANACCESS_ENABLED=0 #set to 1 to enable access from LAN after boot
 GLOBAL_VPNTYPE=\"$vpntype\"
@@ -248,7 +267,70 @@ GLOBAL_CUSTOMKERNEL=\"$customkernel\"
 GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
 CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
 
-    PRINTOPTIONS=n statusprint "Configuration saved. Continue? [Y/n]: "
+    EXTRA_CONFIG=0
+    PRINTOPTIONS=n statusprint "Basic configuration saved. Start build/Abort/Edit extra config? [S/a/e]: "
+    read choice
+    if [ -z "$choice" -o "${choice^}" = "S" ]
+    then
+        exit 0;
+    else
+        if [ -z "$choice" -o "${choice^}" = "A" ]; then  exit 1; fi;
+        if [ -z "$choice" -o "${choice^}" = "E" ]; then  EXTRA_CONFIG=1; fi;
+    fi
+fi
+
+if [ $EXTRA_CONFIG -eq 1 ]
+then
+    PRINTOPTIONS=n statusprint "Would you like to build custom target? [Y/n]: " 
+    read choice
+    if [ -z "$choice" -o "${choice^}" = "Y" ]; then
+        target=""
+        while ! validate_target "$target"
+        do
+          PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may build different target image formats.\nPlease choose your preference:\n iso - bootable LiveCD ISO image.\n raw - raw disk image with preinstalled system\n qcow2 - qemu/libvirt disk image with preinstalled system\n vmdk - VMware Workstation or VirtualBox disk image with preinstalled system\n Your choice [iso=default]: "
+          read target
+          if [ -z "$target" ]; then target="iso"; fi;
+          if ! validate_target "$target"
+          then
+            statusprint "Invalid input. Please try again.."
+            continue
+          fi
+        done
+        
+        case "$target" in
+          "raw" | "qcow2" | "vmdk")
+            while ! validate_partition_table "$partition_table"; do
+              PRINTOPTIONS=n statusprint "\nWhich partition table type to use?\n msdos - legacy MBR based system boot\n gpt - modern EFI based system boot.\nYour choice [msdos=default]: "
+              read partition_table
+              if [ -z "$partition_table" ]; then partition_table="msdos"; fi;
+              if ! validate_partition_table "$partition_table"
+              then
+                statusprint "Invalid input. Please try again.."
+                continue
+              fi
+            done 
+        esac
+    fi
+
+    statusprint "\nUpdating basic configuration.."
+    echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
+GLOBAL_PARTITION_TABLE=\"$partition_table\"
+GLOBAL_PERSISTSIZE=\"1GiB\" #persistence partition size for non-iso builds
+GLOBAL_RELEASESIZE=\"$releasesize\"
+GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)
+GLOBAL_LANACCESS_ENABLED=0 #set to 1 to enable access from LAN after boot
+GLOBAL_VPNTYPE=\"$vpntype\"
+GLOBAL_VPNSERVER=\"$vpnhost\"
+GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
+GLOBAL_VPNPORT=\"$vpnport\"
+GLOBAL_SYSLOGSERVER=\"$sysloghost\"
+GLOBAL_BUILDID=\"$buildid\"
+GLOBAL_CUSTOMKERNEL=\"$customkernel\" 
+GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
+CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
+
+    EXTRA_CONFIG=0
+    PRINTOPTIONS=n statusprint "New configuration saved. Proceed to the building phase? [Y/n]: "
     read choice
     if [ -z "$choice" -o "${choice^}" = "Y" ]
     then
@@ -256,7 +338,6 @@ CRYPTOKEYSIZE=2048" > "$BUILDCONFPATH"
     else
       exit 1;
     fi
-
-
 fi
+
 exit 0;

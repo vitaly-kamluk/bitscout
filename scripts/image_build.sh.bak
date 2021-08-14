@@ -1,0 +1,137 @@
+#!/bin/bash
+#Bitscout project
+#Copyright Kaspersky Lab
+
+. ./scripts/functions
+
+statusprint "Making sure package cache and other fs are detached.."
+chroot_unmount_fs "./build.$GLOBAL_BASEARCH/chroot"
+
+if [ "$GLOBAL_TARGET" = "iso" ]; then
+  statusprint "Preparing to build an ISO image.."
+  install_required_package squashfs-tools
+
+  statusprint "Compressing chroot.."
+  SQUASHFSIMG="./build.$GLOBAL_BASEARCH/image/casper/filesystem.squashfs"
+  if [ -f "$SQUASHFSIMG" ]
+  then
+   sudo rm -f "$SQUASHFSIMG"
+  fi
+
+  printf $(sudo du -sx --block-size=1 "build.$GLOBAL_BASEARCH" | cut -f1) | sudo tee ./build.$GLOBAL_BASEARCH/image/casper/filesystem.size >/dev/null
+
+  statusprint "Making squashfs image.."
+  sudo mksquashfs ./build.$GLOBAL_BASEARCH/chroot "$SQUASHFSIMG" -e boot -wildcards -ef ./resources/squashfs/exclude.list 
+
+  statusprint "Calculating files MD5 for integrity control.."
+  cd ./build.$GLOBAL_BASEARCH/image && find . -type f -print0 | xargs -0 sudo md5sum | grep -v "\./md5sum.txt" > md5sum.txt
+  cd ../../
+
+  statusprint "Creating grub-powered image..."
+  install_required_package grub-common
+  install_required_package grub-pc-bin
+  install_required_package grub-efi-ia32-bin
+  install_required_package grub-efi-amd64-bin
+  install_required_package mtools
+  install_required_package xorriso
+
+  sudo grub-mkrescue --modules="part_gpt iso9660 linux ext2 fshelp ls boot jpeg video_bochs video_cirrus" --output=./$PROJECTNAME-$PROJECTRELEASE-$GLOBAL_BASEARCH.iso ./build.$GLOBAL_BASEARCH/image -- -as mkisofs -r -volid "${PROJECTNAME}-${GLOBAL_BUILDID}" -J -l -joliet-long -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-alt-boot -no-emul-boot
+
+elif [ "$GLOBAL_TARGET" = "raw" ]; then
+  statusprint "Preparing to build an raw disk image.."
+  IMGSIZE=$( sudo du -h -s ./build.$GLOBAL_BASEARCH/chroot/ 2>&1 | awk '{printf(int($1*2));gsub(/^[^A-Za-z]*/,"",$1);print($1)}' )
+  IMGFILE=$PROJECTNAME-$PROJECTRELEASE-$GLOBAL_BASEARCH.$GLOBAL_TARGET
+
+  statusprint "Target disk image size: $IMGSIZE"
+  truncate -s $IMGSIZE "./$IMGFILE"
+  IMGSIZEBYTES=$(stat -c %s "./$IMGFILE")
+
+  if [ ! -f "./$IMGFILE" ]; then statusprint "Failed to create image file at $IMGFILE"; exit 1; fi; 
+
+  statusprint "Building partition table ($GLOBAL_PARTITION_TABLE).."
+  parted -s "./$IMGFILE" mklabel "$GLOBAL_PARTITION_TABLE"
+
+  if [ "$GLOBAL_PARTITION_TABLE" = "gpt" ]; then
+    statusprint "Adding EFI partition.."
+    EFIPART_START=1
+    EFIPART_SIZE=32 #MiB
+    EFIPART_END=$[$EFIPART_START + $EFIPART_SIZE]
+    parted -a optimal -s "./$IMGFILE" mkpart primary fat32 ${EFIPART_START}MiB ${EFIPART_END}MiB
+
+    ROOTPART_START=$[$EFIPART_START+$EFIPART_SIZE]
+    ROOTPART_END=$[($IMGSIZEBYTES/1048576)-$EFIPART_END]
+
+    statusprint "Formatting EFI partition.."
+    sudo mkfs -t fat32 -E offset=$[$EFIPART_START*1048576] -F -e remount-ro -L /boot/efi -U random "./$IMGFILE" ${EFIPART_SIZE}m
+  elif [ "$GLOBAL_PARTITION_TABLE" = "msdos" ]; then
+    statusprint "Adding boot partition.."
+    BOOTPART_START=1
+    BOOTPART_SIZE=256 #MiB
+    BOOTPART_END=$[$BOOTPART_START + $BOOTPART_SIZE]
+    parted -a optimal -s "./$IMGFILE" mkpart primary ext2 ${BOOTPART_START}MiB ${BOOTPART_END}MiB
+    ROOTPART_START=$[$BOOTPART_START+$BOOTPART_SIZE]
+    ROOTPART_END=$[($IMGSIZEBYTES/1048576)-$BOOTPART_END]
+
+    statusprint "Formatting and populating boot partition.."
+    sudo mkfs -t ext2 -E offset=$[$BOOTPART_START*1048576] -d ./build.$GLOBAL_BASEARCH/chroot/boot -F -e remount-ro -L /boot -U random "./$IMGFILE" ${BOOTPART_SIZE}m
+  fi
+
+  statusprint "Creating root partition.."
+  parted -a optimal -s "./$IMGFILE" mkpart primary ext4 ${ROOTPART_START}MiB ${ROOTPART_END}MiB
+
+  statusprint "Preparing loop devices.."
+  LOOPDEV_IMG=$(sudo losetup -f)
+  if [ ! -b $LOOPDEV_IMG ]; then statusprint "Couldn't find spare loop device for the image.."; exit 1; fi;
+  sudo losetup -o 0 --sizelimit $IMGSIZEBYTES $LOOPDEV_IMG "./$IMGFILE"
+
+  if [ "$GLOBAL_PARTITION_TABLE" = "gpt" ]; then
+    LOOPDEV_PART_EFI=$(sudo losetup -f)
+    if [ ! -b $LOOPDEV_PART_EFI ]; then statusprint "Couldn't find spare loop device for the EFI partition.."; exit 1; fi;
+    sudo losetup -o $[1048576*$EFIPART_START] --sizelimit $[$EFIPART_SIZE*1048576] $LOOPDEV_PART_EFI "./$IMGFILE"
+  elif [ "$GLOBAL_PARTITION_TABLE" = "msdos" ]; then
+    LOOPDEV_PART_BOOT=$(sudo losetup -f)
+    if [ ! -b $LOOPDEV_PART_BOOT ]; then statusprint "Couldn't find spare loop device for the boot partition.."; exit 1; fi;
+    sudo losetup -o $[1048576*$BOOTPART_START] --sizelimit $[$BOOTPART_SIZE*1048576] $LOOPDEV_PART_BOOT "./$IMGFILE"
+  fi
+
+  LOOPDEV_PART_ROOT=$(sudo losetup -f)
+  if [ ! -b $LOOPDEV_PART_ROOT ]; then statusprint "Couldn't find spare loop device for the root partition.."; exit 1; fi;
+  sudo losetup -o $[$ROOTPART_START*1048576] --sizelimit $[($ROOTPART_END-$ROOTPART_START)*1048576] $LOOPDEV_PART_ROOT "./$IMGFILE"
+
+  statusprint "Formatting and populating root partition via $LOOPDEV_PART.."
+  sudo mkfs -t ext4 -d ./build.$GLOBAL_BASEARCH/chroot/ -F -e remount-ro -L / -U random $LOOPDEV_PART_ROOT $[($ROOTPART_END-$ROOTPART_START)]m
+
+  statusprint "Mounting the target image rootfs.."
+  sudo mount -t ext4 $LOOPDEV_PART_ROOT ./build.$GLOBAL_BASEARCH/image
+
+  PROJDIR=$PWD
+  statusprint "Adding and mounting devices to the mounted rootfs.."
+  if [ "$GLOBAL_PARTITION_TABLE" = "gpt" ]; then
+    pushd /dev >/dev/null
+    tar -cpf- ${LOOPDEV_IMG##*/} ${LOOPDEV_PART_EFI##*/} ${LOOPDEV_PART_ROOT##*/} | sudo tar -xf- -C $PROJDIR/build.$GLOBAL_BASEARCH/image/dev
+    popd >/dev/null
+    sudo mount -t fat32 $LOOPDEV_PART_EFI ./build.$GLOBAL_BASEARCH/image/boot/efi
+  elif [ "$GLOBAL_PARTITION_TABLE" = "msdos" ]; then
+    pushd /dev >/dev/null
+    tar -cpf- ${LOOPDEV_IMG##*/} ${LOOPDEV_PART_BOOT##*/} ${LOOPDEV_PART_ROOT##*/} | sudo tar -xf- -C $PROJDIR/build.$GLOBAL_BASEARCH/image/dev
+    popd >/dev/null
+    sudo mount -t ext2 $LOOPDEV_PART_BOOT ./build.$GLOBAL_BASEARCH/image/boot
+  fi
+
+  statusprint "Adding new disk image loop device to the mounted rootfs.."
+  if [ ! -b "./build.$GLOBAL_BASEARCH/image/dev/${LOOPDEV_IMG##*/}" ]; then 
+    statusprint "Couldn't find loop device on the target rootfs."; 
+    sudo umount ./build.$GLOBAL_BASEARCH/image 
+    sudo losetup -d $LOOPDEV_PART_ROOT $LOOPDEV_IMG $LOOPDEV_BOOT $LOOPDEV_EFI
+    exit 1; 
+  fi;
+
+  if [ "$GLOBAL_PARTITION_TABLE" = "gpt" ]; then
+    chroot_exec build.$GLOBAL_BASEARCH/image "grub-install --modules=\"part_gpt fat\" --install-modules=\"part_gpt fat\" $LOOPDEV_IMG"
+  elif [ "$GLOBAL_PARTITION_TABLE" = "msdos" ]; then
+    chroot_exec build.$GLOBAL_BASEARCH/image "grub-install --modules=\"part_msdos ext2\" --install-modules=\"part_msdos ext2\" $LOOPDEV_IMG"
+  fi
+
+fi
+
+exit 0;

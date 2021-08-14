@@ -451,16 +451,16 @@ EOF
       if echo "$CHOICE1"| grep -q "evidence"; then LOOPCHOICE1=$[${CHOICE1##evidence}+8]; fi
       if echo "$CHOICE1"| grep -q "storage"; then LOOPCHOICE1=$[${CHOICE1##storage}+18]; fi; 
             
-            if machinectl shell root@$CONTAINERNAME /usr/bin/mount | grep -q "^/dev/host/$CHOICE1"  
+            if machinectl -q shell root@$CONTAINERNAME /usr/bin/mount | grep -q "^/dev/host/$CHOICE1"  
             then
-              MNTLINES=$( machinectl shell root@$CONTAINERNAME /usr/bin/mount | grep "^/dev/host/$CHOICE1" | awk '{print $1" is mounted on "$3}' );
+              MNTLINES=$( machinectl -q shell root@$CONTAINERNAME /usr/bin/mount | grep "^/dev/host/$CHOICE1" | awk '{print $1" is mounted on "$3}' );
               dialog --title "UNMAP DEVICE" --yesno "Device is currently mounted and used inside the container:\n$MNTLINES\n\nHowever, we can force unmapping. The processes using the device will be killed, it will be unmounted and unmapped from the container. Some work inside the container may be interrupted and lost.\n\nProceed with forced disk unmapping?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
               case $RETCODE in
                 $DIALOG_YES)
                   echo "$MNTLINES" | awk '{print $1" "$NF}' | while read src dst; 
                    do
-                     machinectl shell root@$CONTAINERNAME /bin/bash -c "lsof | grep \"$dst\" | awk '{print \$2}' | xargs kill -9 "
-                     machinectl shell root@$CONTAINERNAME /usr/bin/umount -lf "$dst"
+                     machinectl -q shell root@$CONTAINERNAME /bin/bash -c "lsof | grep \"$dst\" | awk '{print \$2}' | xargs kill -9 "
+                     machinectl -q shell root@$CONTAINERNAME /usr/bin/umount -lf "$dst"
                    done
                 ;;
                 $DIALOG_NO)
@@ -527,7 +527,7 @@ Privileged mount mode is currently $PMSTATE.";
 
      "CONTAINER-SHELL")
          clear;
-         machinectl shell root@$CONTAINERNAME /bin/bash --rcfile /etc/bash.bashrc -i
+         machinectl -q shell root@$CONTAINERNAME /bin/bash --rcfile /etc/bash.bashrc -i
          clear
          continue;
          ;;

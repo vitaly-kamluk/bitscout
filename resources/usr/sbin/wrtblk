@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Mark a specified block device as read-only
+[ $# -eq 1 ] || exit 0
+[ ! -z "$1" ] || exit 0
+bdev="$1"
+[ -b "/dev/$bdev" ] || exit 0
+[ -z ${bdev##loop*} ] && exit 0
+. /etc/wrtblk.conf
+[ -n $PERSISTENCE_DEVICE -a -z ${PERSISTENCE_DEVICE%%/dev/$bdev*} ] && exit 0
+blockdev --setro "/dev/$bdev" || logger "wrtblk: blockdev --setro /dev/$bdev failed!"
+
+# Mark a parent block device as read-only
+bdev=$(echo "$bdev" | sed 's/\//!/g')
+syspath=$(echo /sys/block/*/"$bdev")
+[ "$syspath" = "/sys/block/*/$bdev" ] && exit
+dir=${syspath%/*}
+parent=${dir##*/}
+parent=$(echo "$parent" | sed 's/!/\//g')
+[ -n $PERSISTENCE_DEVICE -a -z ${PERSISTENCE_DEVICE%%/dev/$parent*} ] && exit 0
+[ -b "/dev/$parent" ] || exit
+blockdev --setro "/dev/$parent" || logger "wrtblk: blockdev --setro /dev/$parent failed!"

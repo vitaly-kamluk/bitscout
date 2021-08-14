@@ -53,37 +53,39 @@ then
   KERNELDIR=\"/opt/kernel/\$KERNELVER\"
   cd \"\$KERNELDIR\" && [ ! -f debian_rules.cleaned ] && ( fakeroot debian/rules clean && touch debian_rules.cleaned ) || exit 0" || ( chrootdevel_unmount; exit 1 ) &&
 
-  statusprint "Patching kernel with write-blocker patch.." &&
-  KERNELVER=$(cat ./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/kernel.version) &&
-  PATCHFILE=$( ls -1 ./resources/kernel/writeblocker/kernel/*.patch | sed 's,^.*/,,'| sort -r | while read t
-  do
-    PKVER=$(echo "$t" | cut -d'-' -f1,2)
-    if verlte "$PKVER" "$KERNELVER"
-    then
-      echo "$t"
-      break;
-    fi
-  done ) &&
+#  Apply kernel patches here. See an example below.   
 
-  if [ -z "$PATCHFILE" ]
-  then
-    statusprint "No patch file selected. Aborting."
-    chrootdevel_unmount
-    exit 1
-  else
-    statusprint "Using the latest kernel patch file for current kernel: $PATCHFILE"
-  fi &&
-  ( PATCHMSG=$( sudo patch --forward --batch -b -d "./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/$KERNELVER" -p1 < "./resources/kernel/writeblocker/kernel/$PATCHFILE" 2>&1 | tail -n +2 )
-    if [ -n "$PATCHMSG" ]
-    then
-      if ! echo "$PATCHMSG" | grep -q 'Reversed (or previously applied) patch detected'
-      then
-        statusprint "Error applying kernel patch.\n$PATCHMSG"
-        chrootdevel_unmount
-        exit 1
-      fi
-    fi
-  ) &&
+#  statusprint "Patching kernel with write-blocker patch.." &&
+#  KERNELVER=$(cat ./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/kernel.version) &&
+#  PATCHFILE=$( ls -1 ./resources/kernel/writeblocker/kernel/*.patch | sed 's,^.*/,,'| sort -r | while read t
+#  do
+#    PKVER=$(echo "$t" | cut -d'-' -f1,2)
+#    if verlte "$PKVER" "$KERNELVER"
+#    then
+#      echo "$t"
+#      break;
+#    fi
+#  done ) &&
+#
+#  if [ -z "$PATCHFILE" ]
+#  then
+#    statusprint "No patch file selected. Aborting."
+#    chrootdevel_unmount
+#    exit 1
+#  else
+#    statusprint "Using the latest kernel patch file for current kernel: $PATCHFILE"
+#  fi &&
+#  ( PATCHMSG=$( sudo patch --forward --batch -b -d "./build.$GLOBAL_BASEARCH/chroot.devel/opt/kernel/$KERNELVER" -p1 < "./resources/kernel/writeblocker/kernel/$PATCHFILE" 2>&1 | tail -n +2 )
+#    if [ -n "$PATCHMSG" ]
+#    then
+#      if ! echo "$PATCHMSG" | grep -q 'Reversed (or previously applied) patch detected'
+#      then
+#        statusprint "Error applying kernel patch.\n$PATCHMSG"
+#        chrootdevel_unmount
+#        exit 1
+#      fi
+#    fi
+#  ) &&
 
   statusprint "Building kernel.." &&
   chroot_exec build.$GLOBAL_BASEARCH/chroot.devel "cd \"/opt/kernel/$KERNELVER\" && \
@@ -109,11 +111,8 @@ else
   fi
 fi
 
-statusprint "Copying write-blocker management tools.." &&
-sudo cp -v ./resources/kernel/writeblocker/userspace/tools/{wrtblk,wrtblk-ioerr,wrtblk-disable} ./build.$GLOBAL_BASEARCH/chroot/usr/sbin/ &&
-
 statusprint "Copying write-blocker udev rules.." &&
-sudo cp -v ./resources/kernel/writeblocker/userspace/udev/01-forensic-readonly.rules ./build.$GLOBAL_BASEARCH/chroot/lib/udev/rules.d/
+sudo cp -v ./resources/lib/udev/01-readonly-disks.rules ./build.$GLOBAL_BASEARCH/chroot/lib/udev/rules.d/
 
 statusprint "Removing older kernels in ./build.$GLOBAL_BASEARCH/chroot.."
 chroot_exec build.$GLOBAL_BASEARCH/chroot 'LATEST_KERNEL=`ls -1 /boot/vmlinuz-*-generic | sort | tail -n1 | cut -d"-" -f2-`

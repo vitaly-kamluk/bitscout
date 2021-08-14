@@ -43,15 +43,18 @@ scripts/chroot_add_managementtool.sh &&
 #prepare ISO files:
 scripts/image_prepare.sh &&
 
+#reduce size of the rootfs:
+scripts/image_prebuild_cleanup.sh &&
+
 #apply initrd/casper fixes: 
 scripts/initrd_unpack.sh &&
-scripts/casper_findlivefs_fix.sh &&
-scripts/casper_integritycheck_fix.sh &&
-scripts/casper_writeblocker.sh &&
+scripts/initrd_findlivefs_fix.sh &&
+scripts/initrd_integritycheck_fix.sh &&
+scripts/initrd_writeblocker.sh &&
+scripts/initrd_doublesword.sh &&
 scripts/initrd_pack.sh &&
 
-#reduce size of rootfs and build ISO:
-scripts/image_prebuild_cleanup.sh &&
+#buld the target iso or disk image
 scripts/image_build.sh &&
 
 #prepare exportable configs/certs/keys:

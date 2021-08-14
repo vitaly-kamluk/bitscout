@@ -27,7 +27,11 @@ HISTORIAN_ZRAM_SIZE=2048M
 
 [ -f "config/$PROJECTNAME-build.conf" ] && . "config/$PROJECTNAME-build.conf"
 
-INITRDPATH=build.$GLOBAL_BASEARCH/image/casper/initrd.img
+if [ $GLOBAL_TARGET == "iso" ]; then
+  INITRDPATH=build.$GLOBAL_BASEARCH/image/casper/initrd.img
+else
+  INITRDPATH=build.$GLOBAL_BASEARCH/chroot/boot/initrd.img
+fi
 RESERVEDIR=reserve
 SCREENNAME=${PROJECTNAME}_${GLOBAL_BASEARCH}_chroot #creates a screen session for interactive configuration. see scripts/chroot_enter.sh and scripts/chroot_leave.sh
 
@@ -186,8 +190,11 @@ nspawn_exec()
 
 unpackinitrd()
 {
-  statusprint "Unpacking initrd image from $INITRDPATH.."
-  if [ -f "./$INITRDPATH" ]
+  # unpackinitrd [initrd [dest dir]]
+  if [ -n "$1" ]; then SRCPATH=$1; else SRCPATH=$INITRDPATH; fi
+  if [ -n "$2" ]; then DSTPATH=$2; else DSTPATH=./build.$GLOBAL_BASEARCH/initrd; fi
+  statusprint "Unpacking initrd image from $SRCPATH to $DSTPATH.."
+  if [ -f "$SRCPATH" ]
   then
     if [ ! -f ./build.$GLOBAL_BASEARCH/usr/bin/unmkinitramfs ]
     then
@@ -199,27 +206,31 @@ unpackinitrd()
     echo "Unpacking $INITRD.."
     mkdir /tmp/initrd
     /tmp/unmkinitramfs /boot/$(ls -1 boot/ | grep -m1 "initrd.*-.*") /tmp/initrd'
-    [ -d ./build.$GLOBAL_BASEARCH/initrd ] && sudo rm -rf ./build.$GLOBAL_BASEARCH/initrd
-    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd ./build.$GLOBAL_BASEARCH/initrd
+    [ -n "$DSTPATH" -a -d $DSTPATH ] && sudo rm -rf $DSTPATH
+    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd $DSTPATH
   else
-    echo "[ERROR]: initrd image not found in ./$INITRDPATH."
+    echo "[ERROR]: initrd image not found in $SRCPATH."
   fi
 }
 
 packinitrd()
 {
-  statusprint "Packing initrd image into $INITRDPATH.."
-  if [ -d "./build.$GLOBAL_BASEARCH/initrd" ]
+  # packinitrd [initrd [src dir]]
+  if [ -n "$1" ]; then DSTPATH=$1; else DSTPATH=$INITRDPATH; fi
+  if [ -n "$2" ]; then SRCPATH=$2; else SRCPATH=./build.$GLOBAL_BASEARCH/initrd; fi
+  statusprint "Packing initrd image from $SRCPATH into $DSTPATH.."
+  if [ -d "$SRCPATH" ]
   then
-    sudo mv -v ./build.$GLOBAL_BASEARCH/initrd ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd
+    sudo mv -v "$SRCPATH" ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd
     chroot_exec build.$GLOBAL_BASEARCH/chroot 'cd /tmp/initrd
     ls -1 | grep "early" | while read d;
       do
         (cd "$d"; find . | cpio -o -H newc ) | tee -a /tmp/initrd.img.new >/dev/null
       done;
     (cd ./main; find . | cpio -o -H newc ) | lz4 -l -9 -c | tee -a "/tmp/initrd.img.new" >/dev/null'
-    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd.img.new "$INITRDPATH"
-    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd ./build.$GLOBAL_BASEARCH/initrd
+    cat ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd.img.new | sudo tee "$DSTPATH" >/dev/null
+    sudo rm ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd.img.new
+    sudo mv -v ./build.$GLOBAL_BASEARCH/chroot/tmp/initrd "$SRCPATH"
   else
     echo "[ERROR]: initrd directory not found. Aborting."
   fi
@@ -286,3 +297,25 @@ sudo_file_template_copy()
 {
   SUDO="sudo" file_template_copy "$1" "$2"
 }
+
+normalize_size()
+{
+  install_required_package gawk
+  if [ -z "$1" ]; then return; fi
+  echo "$1" | gawk '
+    {
+    v=$0; gsub(/[a-zA-Z]*$/,"",v); 
+    u=tolower($0); gsub(/^[0-9\.]*/,"",u); 
+    switch(u){ 
+      case "kib": c=1024; break; 
+      case "mib": c=1024*1024; break; 
+      case "gib": c=1024*1024*1024; break; 
+      case  "kb": c=1000; break; 
+      case  "mb": c=1000*1000; break; 
+      case  "gb": c=1000*1000*1000; break; 
+    };  
+    print v*c; 
+  }'
+}
+
+
