@@ -314,7 +314,6 @@ then
 
     statusprint "\nUpdating basic configuration.."
     echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
-GLOBAL_PARTITION_TABLE=\"$partition_table\"
 GLOBAL_PERSISTSIZE=\"1GiB\" #persistence partition size for non-iso builds
 GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)

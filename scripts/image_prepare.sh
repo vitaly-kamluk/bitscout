@@ -77,6 +77,8 @@ if [ "$GLOBAL_TARGET" = "iso" ]; then
   fi
   grub-mkfont -s $FONTSIZE -o ./build.$GLOBAL_BASEARCH/image/boot/grub/font.pf2 "$FONTPATH"
 else
+  statusprint "Installing grub package.."
+  chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive; apt-fast --yes install grub-efi"
   statusprint "Preparing persistence mount directories.."
   sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/persistence/{host,container}/overlay/{work,upper}
   sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/rofs
