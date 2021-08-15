@@ -52,7 +52,8 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
   EFIPART_SIZE_MB=128
 
   ROOTPART_START_MB=$[$EFIPART_START_MB + $EFIPART_SIZE_MB]
-  ROOTPART_SIZE_MB=$( sudo du -B $[1024*1024] -s ./build.$GLOBAL_BASEARCH/chroot/ 2>&1 | awk '{ print $1 + 256}' )
+  #ROOTPART_SIZE_MB=$( sudo du -B $[1024*1024] -s ./build.$GLOBAL_BASEARCH/chroot/ 2>&1 | awk '{ print $1 + 256}' ) #doesn't include fs metadata size
+  ROOTPART_SIZE_MB=$( sudo tar c ./build.$GLOBAL_BASEARCH/chroot/ 2>&1 | wc -c | awk '{ print(int($1/(1024*1024) + 256))}' ) # more accurate estimation
 
   PERSPART_START_MB=$[ $ROOTPART_START_MB + $ROOTPART_SIZE_MB ]
   PERSPART_SIZE_B=$( normalize_size $GLOBAL_PERSISTSIZE )
@@ -88,7 +89,11 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
   sudo mkfs -q -t ext4 -d ./build.${GLOBAL_BASEARCH}/chroot -F -e remount-ro -L / -U random $LOOPDEV_PART_ROOT
 
   statusprint "Formatting and populating persistence partition.."
-  sudo mkfs -q -t ext4 -d ./resources/persistence -F -L /persistence -U random $LOOPDEV_PART_PERS
+  if [ -d ./resources/persistence ]; then
+    sudo mkfs -q -t ext4 -d ./resources/persistence -F -L /persistence -U random $LOOPDEV_PART_PERS
+  else
+    sudo mkfs -q -t ext4 -F -L persistence -U random $LOOPDEV_PART_PERS
+  fi
 
   statusprint "Getting root partition UUID.."
   PART_ROOT_UUID=$(sudo blkid -o udev ${LOOPDEV_PART_ROOT} | awk -F= '/ID_FS_UUID=/{print $2}')
@@ -125,7 +130,7 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
     exit 1; 
   fi;
 
-  statusprint "Updating paritions UUID for grub.."
+  statusprint "Updating partitions UUID for grub.."
   sudo sed -i "s/root=UUID=[0-9a-zA-Z-]*/root=UUID=${PART_ROOT_UUID}/g; s/persist=UUID=[0-9a-zA-Z-]*/persist=UUID=${PART_PERS_UUID}/g;" ./build.$GLOBAL_BASEARCH/image/boot/grub/grub.cfg
 
   statusprint "Installing MBR grub.."
