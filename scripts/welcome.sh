@@ -98,19 +98,10 @@ else
   . "$BUILDCONFPATH"
 fi
 
-
-if [ -n "$GLOBAL_TARGET" ]; then
-  target=$GLOBAL_TARGET
-else
-  target="iso"
-fi
-
-if [ -n "$GLOBAL_PERSISTSIZE" ]; then
-  persistsize=$GLOBAL_PERSISTSIZE
-else
-  persistsize="1GiB"
-fi
-
+target=${GLOBAL_TARGET:-iso}
+persistsize=${GLOBAL_PERSISTSIZE:-1GiB}
+lanaccess=${GLOBAL_LANACCESS_ENABLED:-0}
+hostssh=${GLOBAL_HOSTSSH_ENABLED:-0}
 
 if [ -z "$GLOBAL_RELEASESIZE" ]
 then
@@ -270,8 +261,8 @@ statusprint "\nSaving basic configuration.."
 echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
 GLOBAL_PERSISTSIZE=\"$persistsize\" #persistence partition size for non-iso builds
 GLOBAL_RELEASESIZE=\"$releasesize\"
-GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)
-GLOBAL_LANACCESS_ENABLED=0 #set to 1 to enable access from LAN after boot
+GLOBAL_HOSTSSH_ENABLED=$hostssh #set to 1 to enable direct SSH access to the host system (port 23)
+GLOBAL_LANACCESS_ENABLED=$lanaccess #set to 1 to enable access from LAN after boot
 GLOBAL_VPNTYPE=\"$vpntype\"
 GLOBAL_VPNSERVER=\"$vpnhost\"
 GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
@@ -311,8 +302,8 @@ statusprint "\nUpdating basic configuration.."
 echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
 GLOBAL_PERSISTSIZE=\"$persistsize\" #persistence partition size for non-iso builds
 GLOBAL_RELEASESIZE=\"$releasesize\"
-GLOBAL_HOSTSSH_ENABLED=0 #set to 1 to enable direct SSH access to the host system (port 23)
-GLOBAL_LANACCESS_ENABLED=0 #set to 1 to enable access from LAN after boot
+GLOBAL_HOSTSSH_ENABLED=$hostssh #set to 1 to enable direct SSH access to the host system (port 23)
+GLOBAL_LANACCESS_ENABLED=$lanaccess #set to 1 to enable access from LAN after boot
 GLOBAL_VPNTYPE=\"$vpntype\"
 GLOBAL_VPNSERVER=\"$vpnhost\"
 GLOBAL_VPNPROTOCOL=\"$vpnprotocol\"
