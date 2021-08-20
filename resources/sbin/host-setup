@@ -181,7 +181,7 @@ then
 
 
     #remove privexec client from the host
-    echo "Remove provexec client" 
+    echo "Remove privexec client" 
     rm /usr/bin/privexec
 
 
