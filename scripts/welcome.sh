@@ -71,6 +71,14 @@ validate_target()
     esac
 }
 
+validate_ptabletype()
+{
+    case "$1" in
+      "msdos" | "gpt" | "hybrid") return 0;;
+      *) return 1;
+    esac
+}
+
 
 msg_new_config_opt="\nSome new options were not found in your config file, please answer the following question(s)\nand it will be appended to your existing config file located in config/$PROJECTNAME-build.conf.\n"
 
@@ -94,6 +102,7 @@ target=${GLOBAL_TARGET:-iso}
 persistsize=${GLOBAL_PERSISTSIZE:-1GiB}
 lanaccess=${GLOBAL_LANACCESS_ENABLED:-0}
 hostssh=${GLOBAL_HOSTSSH_ENABLED:-0}
+ptabletype=${GLOBAL_PARTITION_TABLE:hybrid}
 
 if [ -z "$GLOBAL_RELEASESIZE" ]
 then
@@ -251,6 +260,7 @@ read choice
 
 statusprint "\nSaving basic configuration.."
 echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
+GLOBAL_PARTITION_TABLE=\"$ptabletype\" #partition table type: msdos,gpt,hybrid
 GLOBAL_PERSISTSIZE=\"$persistsize\" #persistence partition size for non-iso builds
 GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_HOSTSSH_ENABLED=$hostssh #set to 1 to enable direct SSH access to the host system (port 23)
@@ -289,8 +299,25 @@ if [ $EXTRA_CONFIG -eq 1 ]; then
   done
 fi
 
+if [ $target != 'iso' ]; then
+  target=""
+  while ! validate_ptabletype "$ptabletype"
+  do
+    PRINTOPTIONS=n statusprint "\nChoose partition table type preference:\n msdos - used for MBR bootloaders (also used for the cloud instances).\n gpt - modern EFI systems\n hybrid - msdos+gpt on one disk, should be compatible with old and new systems\nYour choice [default=hybrid]: "
+    read ptabletype
+    if [ -z "$ptabletype" ]; then ptabletype="hybrid"; fi;
+    if ! validate_ptabletype "$ptabletype"
+    then
+      statusprint "Invalid input. Please try again.."
+      continue
+    fi
+  done
+fi
+
+
 statusprint "\nUpdating basic configuration.."
 echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
+GLOBAL_PARTITION_TABLE=\"$ptabletype\" #partition table type: msdos,gpt,hybrid
 GLOBAL_PERSISTSIZE=\"$persistsize\" #persistence partition size for non-iso builds
 GLOBAL_RELEASESIZE=\"$releasesize\"
 GLOBAL_HOSTSSH_ENABLED=$hostssh #set to 1 to enable direct SSH access to the host system (port 23)

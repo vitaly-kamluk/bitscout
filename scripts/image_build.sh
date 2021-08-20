@@ -10,10 +10,18 @@ sudo umount -l "./build.$GLOBAL_BASEARCH/image/persistence" 2>/dev/null
 sudo umount -l "./build.$GLOBAL_BASEARCH/image" 2>/dev/null
 
 install_required_package grub-common
-install_required_package grub-pc-bin
-install_required_package grub-efi-ia32-bin
-install_required_package grub-efi-amd64-bin
 
+case "$GLOBAL_PARTITION_TABLE" in
+  "msdos") install_required_package grub-pc-bin;;
+
+  "gpt") install_required_package grub-efi-ia32-bin;
+         install_required_package grub-efi-amd64-bin;;
+
+  "hybrid")
+         install_required_package grub-pc-bin;
+         install_required_package grub-efi-ia32-bin;
+         install_required_package grub-efi-amd64-bin;;
+esac
 
 if [ "$GLOBAL_TARGET" = "iso" ]; then
   statusprint "Preparing to build an ISO image.."
@@ -45,14 +53,24 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
   statusprint "Preparing to build a raw disk image.."
   install_required_package gdisk
 
-  BIOSGRUB_START_MB=1
-  BIOSGRUB_SIZE_MB=1
+  case "${GLOBAL_PARTITION_TABLE}" in
+    "msdos")
+      ROOTPART_START_MB=1
+     ;;
+    "gpt")
+      EFIPART_START_MB=1
+      EFIPART_SIZE_MB=128
+      ROOTPART_START_MB=$[$EFIPART_START_MB + $EFIPART_SIZE_MB]
+     ;;
+    "hybrid")
+      BIOSGRUB_START_MB=1
+      BIOSGRUB_SIZE_MB=1
+      EFIPART_START_MB=$[$BIOSGRUB_START_MB + $BIOSGRUB_SIZE_MB]
+      EFIPART_SIZE_MB=128
+      ROOTPART_START_MB=$[$EFIPART_START_MB + $EFIPART_SIZE_MB]
+     ;;
+  esac
 
-  EFIPART_START_MB=$[$BIOSGRUB_START_MB + $BIOSGRUB_SIZE_MB]
-  EFIPART_SIZE_MB=128
-
-  ROOTPART_START_MB=$[$EFIPART_START_MB + $EFIPART_SIZE_MB]
-  #ROOTPART_SIZE_MB=$( sudo du -B $[1024*1024] -s ./build.$GLOBAL_BASEARCH/chroot/ 2>&1 | awk '{ print $1 + 256}' ) #doesn't include fs metadata size
   ROOTPART_SIZE_MB=$( sudo tar c ./build.$GLOBAL_BASEARCH/chroot/ 2>&1 | wc -c | awk '{ print(int($1/(1024*1024) + 256))}' ) # more accurate estimation
 
   PERSPART_START_MB=$[ $ROOTPART_START_MB + $ROOTPART_SIZE_MB ]
@@ -68,22 +86,55 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
   truncate -s $IMG_SIZE_B "./$IMGFILE"
   if [ ! -f "./$IMGFILE" ]; then statusprint "Failed to create image file at $IMGFILE"; exit 1; fi; 
 
-  statusprint "Building hybrid MSDOS/GPT partition table.."
-  sgdisk -h "./$IMGFILE"
-  sgdisk -n 1::+${BIOSGRUB_SIZE_MB}M -t 1:EF02 -n 2::+${EFIPART_SIZE_MB}M -t 2:EF00 -n 3::+${ROOTPART_SIZE_MB}M -t 3:8300 -n 4::+${PERSPART_SIZE_MB}M -t 4:8300 "./$IMGFILE"
+
+  case "${GLOBAL_PARTITION_TABLE}" in
+    "msdos")
+      statusprint "Building MSDOS partition table.."
+      parted -s "./$IMGFILE" mklabel msdos
+      parted -a optimal -s "./$IMGFILE" mkpart primary ext4 ${ROOTPART_START_MB}MiB $[${ROOTPART_START_MB}+${ROOTPART_SIZE_MB}]MiB
+      parted -a optimal -s "./$IMGFILE" mkpart primary ext4 ${PERSPART_START_MB}MiB $[${PERSPART_START_MB}+${PERSPART_SIZE_MB}]MiB
+     ;;
+    "gpt")
+      statusprint "Building GPT partition table.."
+      #sgdisk -g "./$IMGFILE"
+      sgdisk -n 1::+${EFIPART_SIZE_MB}M -t 1:EF00 -n 2::+${ROOTPART_SIZE_MB}M -t 2:8300 -n 3::+${PERSPART_SIZE_MB}M -t 3:8300 "./$IMGFILE"
+     ;;
+    "hybrid")
+      statusprint "Building hybrid MSDOS+GPT partition table.."
+      sgdisk -h "./$IMGFILE"
+      sgdisk -n 1::+${BIOSGRUB_SIZE_MB}M -t 1:EF02 -n 2::+${EFIPART_SIZE_MB}M -t 2:EF00 -n 3::+${ROOTPART_SIZE_MB}M -t 3:8300 -n 4::+${PERSPART_SIZE_MB}M -t 4:8300 "./$IMGFILE"
+     ;;
+  esac
+
 
   statusprint "Preparing loop devices.."
   LOOPDEV_IMG=$(sudo losetup -f)
   if [ ! -b ${LOOPDEV_IMG} ]; then statusprint "Couldn't find spare loop device for the image.."; exit 1; fi;
   sudo losetup --partscan ${LOOPDEV_IMG} "./$IMGFILE"
 
-  LOOPDEV_PART_BIOS_GRUB=${LOOPDEV_IMG}p1
-  LOOPDEV_PART_EFI=${LOOPDEV_IMG}p2
-  LOOPDEV_PART_ROOT=${LOOPDEV_IMG}p3
-  LOOPDEV_PART_PERS=${LOOPDEV_IMG}p4
+  case "${GLOBAL_PARTITION_TABLE}" in
+    "msdos")
+      LOOPDEV_PART_ROOT=${LOOPDEV_IMG}p1
+      LOOPDEV_PART_PERS=${LOOPDEV_IMG}p2
+     ;;
+    "gpt")
+      LOOPDEV_PART_EFI=${LOOPDEV_IMG}p1
+      LOOPDEV_PART_ROOT=${LOOPDEV_IMG}p2
+      LOOPDEV_PART_PERS=${LOOPDEV_IMG}p3
+     ;;
+    "hybrid")
+      LOOPDEV_PART_BIOS_GRUB=${LOOPDEV_IMG}p1
+      LOOPDEV_PART_EFI=${LOOPDEV_IMG}p2
+      LOOPDEV_PART_ROOT=${LOOPDEV_IMG}p3
+      LOOPDEV_PART_PERS=${LOOPDEV_IMG}p4
+     ;;
+  esac
 
-  statusprint "Formatting EFI partition.."
-  sudo mkfs.fat -F32 -n EFI $LOOPDEV_PART_EFI
+
+  if [ -n "$LOOPDEV_PART_EFI" ]; then
+    statusprint "Formatting EFI partition.."
+    sudo mkfs.fat -F32 -n EFI $LOOPDEV_PART_EFI
+  fi
 
   statusprint "Formatting and populating root partition.."
   sudo mkfs -q -t ext4 -d ./build.${GLOBAL_BASEARCH}/chroot -F -e remount-ro -L / -U random $LOOPDEV_PART_ROOT
@@ -104,15 +155,14 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
   statusprint "Mounting target image rootfs.."
   sudo mount -t ext4 ${LOOPDEV_PART_ROOT} ./build.${GLOBAL_BASEARCH}/image
 
-  statusprint "Mounting EFI partition.."
-  [ ! -d "./build.${GLOBAL_BASEARCH}/image/boot/efi" ] && sudo mkdir -p ./build.${GLOBAL_BASEARCH}/image/boot/efi
-  sudo mount -t vfat ${LOOPDEV_PART_EFI} ./build.${GLOBAL_BASEARCH}/image/boot/efi
+  if [ -n "$LOOPDEV_PART_EFI" ]; then
+    statusprint "Mounting EFI partition.."
+    [ ! -d "./build.${GLOBAL_BASEARCH}/image/boot/efi" ] && sudo mkdir -p ./build.${GLOBAL_BASEARCH}/image/boot/efi
+    sudo mount -t vfat ${LOOPDEV_PART_EFI} ./build.${GLOBAL_BASEARCH}/image/boot/efi
+  fi
 
   statusprint "Mounting persistence partition.."
   sudo mount -t ext4 ${LOOPDEV_PART_PERS} ./build.${GLOBAL_BASEARCH}/image/persistence
-
-  statusprint "Fixing ownership on persistence partition.."
-  sudo chown root:root ./build.${GLOBAL_BASEARCH}/image/persistence/host ./build.${GLOBAL_BASEARCH}/image/persistence/container
 
   statusprint "Unmounting persistence filesystem.."
   sudo umount -l ./build.${GLOBAL_BASEARCH}/image/persistence
@@ -125,7 +175,7 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
 
   if [ ! -b "./build.$GLOBAL_BASEARCH/image/dev/${LOOPDEV_IMG##*/}" ]; then 
     statusprint "Couldn't find loop device on the target rootfs."; 
-    sudo umount ./build.$GLOBAL_BASEARCH/image/boot/efi ./build.$GLOBAL_BASEARCH/image/boot ./build.$GLOBAL_BASEARCH/image
+    sudo umount ./build.$GLOBAL_BASEARCH/image/boot/efi ./build.$GLOBAL_BASEARCH/image/boot ./build.$GLOBAL_BASEARCH/image 2>/dev/null
     sudo losetup -d $LOOPDEV_IMG
     exit 1; 
   fi;
@@ -133,22 +183,24 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
   statusprint "Updating partitions UUID for grub.."
   sudo sed -i "s/root=UUID=[0-9a-zA-Z-]*/root=UUID=${PART_ROOT_UUID}/g; s/persist=UUID=[0-9a-zA-Z-]*/persist=UUID=${PART_PERS_UUID}/g;" ./build.$GLOBAL_BASEARCH/image/boot/grub/grub.cfg
 
-  statusprint "Installing MBR grub.."
-  chroot_exec build.$GLOBAL_BASEARCH/image "grub-install --target i386-pc --boot-directory=/boot --modules=\"part_msdos ext2 vbe\" --install-modules=\"ahci all_video ata biosdisk cat disk drivemap ehci gfxmenu gfxterm halt hdparm help linux nativedisk ohci pata jpeg probe reboot scsi uhci usb_keyboard usb vbe videoinfo videotest part_msdos part_gpt fat ext2 normal\" $LOOPDEV_IMG"
+  if [ "$GLOBAL_PARTITION_TABLE" = "msdos" -o "$GLOBAL_PARTITION_TABLE" = "hybrid" ]; then
+    statusprint "Installing MBR grub.."
+    chroot_exec build.$GLOBAL_BASEARCH/image "grub-install --target i386-pc --boot-directory=/boot --modules=\"part_msdos ext2 vbe\" --install-modules=\"ahci all_video ata biosdisk cat disk drivemap ehci gfxmenu gfxterm halt hdparm help linux nativedisk ohci pata jpeg probe reboot scsi uhci usb_keyboard usb vbe videoinfo videotest part_msdos part_gpt fat ext2 normal\" $LOOPDEV_IMG"
+  fi;
 
-  statusprint "Installing EFI grub.."
-  chroot_exec build.$GLOBAL_BASEARCH/image "grub-install --target x86_64-efi --efi-directory=/boot/efi --modules=\"part_gpt fat\" --install-modules=\"ahci all_video ata boot cat disk echo ehci efi_gop efi_uga font gfxmenu gfxterm_background gfxterm_menu gfxterm halt hdparm help linux linuxefi ls msdospart nativedisk ohci pata jpeg probe reboot scsi uhci usb_keyboard usb videoinfo videotest part_msdos part_gpt fat ext2 normal\" $LOOPDEV_IMG"
-
+  if [ "$GLOBAL_PARTITION_TABLE" = "gpt" -o "$GLOBAL_PARTITION_TABLE" = "hybrid" ]; then
+    statusprint "Installing EFI grub.."
+    chroot_exec build.$GLOBAL_BASEARCH/image "grub-install --target x86_64-efi --efi-directory=/boot/efi --modules=\"part_gpt fat\" --install-modules=\"ahci all_video ata boot cat disk echo ehci efi_gop efi_uga font gfxmenu gfxterm_background gfxterm_menu gfxterm halt hdparm help linux linuxefi ls msdospart nativedisk ohci pata jpeg probe reboot scsi uhci usb_keyboard usb videoinfo videotest part_msdos part_gpt fat ext2 normal\" $LOOPDEV_IMG"
+  fi
 
   statusprint "Unmounting image rootfs filesystem and removing loop devices.."
-  sudo umount ./build.$GLOBAL_BASEARCH/image/boot/efi ./build.$GLOBAL_BASEARCH/image
+  sudo umount ./build.$GLOBAL_BASEARCH/image/boot/efi ./build.$GLOBAL_BASEARCH/image 2>/dev/null
   sudo losetup -d $LOOPDEV_IMG
 
-
-  if [ -n "$GLOBAL_TARGET" ]; then
+  if [ -n "$GLOBAL_TARGET" -a "$GLOBAL_TARGET" != "raw" ]; then
     statusprint "Converting image to $GLOBAL_TARGET format.."
     case ${GLOBAL_TARGET} in
-      qcow2) 
+      qcow2)
           qemu-img convert -f raw -O qcow2 $IMGFILE $PROJECTNAME-$PROJECTRELEASE-$GLOBAL_BASEARCH.qcow2
           rm "$IMGFILE"
         ;;
