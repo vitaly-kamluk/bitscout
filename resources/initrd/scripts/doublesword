@@ -9,26 +9,51 @@ parse_cmdline()
 {
   for x in $(cat /proc/cmdline); do
     case $x in
-     root=*) export ROOTDEV="${x#root=}";;
-     persist=*) export PERSDEV="${x#persist=}";;
+     root=*) export ROOTDEVID="${x#root=}";;
+     persist=*) export PERSDEVID="${x#persist=}";;
      persistmode=*) export PERSISTMODE="${x#persistmode=}";;
     esac
   done
 }
 
+emergency_shell() {
+  echo "Something bad happened. Starting emergency shell.."
+  /bin/sh -i
+}
+
 mountroot()
 {
+  if [ -z "$ROOTDEVID" ]; then
+    echo "Error: \"root\" kernel argument is not specified."
+    emergency_shell
+  fi
+
+	# Scan local devices for the image
+  echo "Searching for root device: $ROOTDEVID"
+	i=0
+	while [ "$i" -lt 60 ]; do
+    ROOTDEV=$( blkid -t $ROOTDEVID -l -o device )
+		if [ -n "$ROOTDEV" ]; then
+			break
+		fi
+    udevadm settle --timeout 1 2>/dev/null
+		sleep 1
+		i="$(($i + 1))"
+	done
+
   if [ -z "$ROOTDEV" ]; then
-    echo "root kernel argument is not specified."
-    exit 1
+    echo "Error: Failed to locate root device ($ROOTDEVID)."
+    emergency_shell
   fi
 
-  if [ $( echo $ROOTDEV | cut -c1-5) = "UUID=" ]; then
-    ROOTDEV=$( blkid -t $ROOTDEV -l -o device )
+  echo "Searching for persistence device: $PERSDEVID"
+  if [ $( echo $PERSDEVID | cut -c1-5) = "UUID=" ]; then
+    PERSDEV=$( blkid -t $PERSDEVID -l -o device )  
   fi
 
-  if [ $( echo $PERSDEV | cut -c1-5) = "UUID=" ]; then
-    PERSDEV=$( blkid -t $PERSDEV -l -o device )
+  if [ -z "$PERSDEV" ]; then
+    echo "Error: Failed to locate persistence device ($PERSDEVID)."
+    emergency_shell
   fi
 
   mkdir /rofs /persistence

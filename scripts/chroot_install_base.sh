@@ -16,7 +16,13 @@ chroot_exec build.$GLOBAL_BASEARCH/chroot 'locale-gen "'$LANG'"' || exit 1 &&
 
 statusprint "Updating system and installing essential packages.." &&
 
-COMMON_PACKAGES="binutils systemd-container netcat socat casper lupin-casper discover laptop-detect os-prober bindfs dialog tmux gawk ntpdate ifupdown network-manager curl wget cryptsetup lvm2"
+COMMON_PACKAGES="binutils systemd-container netcat socat discover laptop-detect os-prober bindfs dialog tmux gawk ntpdate ifupdown network-manager curl wget cryptsetup lvm2"
+
+if [ $GLOBAL_TARGET = "iso" ]; then
+  COMMON_PACKAGES="$COMMON_PACKAGES casper lupin-casper"
+else
+  COMMON_PACKAGES="$COMMON_PACKAGES systemd-sysv"
+fi
 
 if [ $GLOBAL_RELEASESIZE -eq 1 ]
 then

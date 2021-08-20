@@ -71,14 +71,6 @@ validate_target()
     esac
 }
 
-validate_partition_table()
-{
-    case "$1" in
-      "gpt" | "msdos") return 0;;
-      *) return 1;
-    esac
-}
-
 
 msg_new_config_opt="\nSome new options were not found in your config file, please answer the following question(s)\nand it will be appended to your existing config file located in config/$PROJECTNAME-build.conf.\n"
 
@@ -280,7 +272,6 @@ else
     if [ -z "$choice" -o "${choice^}" = "S" ]; then  exit 1; fi;
     if [ -z "$choice" -o "${choice^}" = "E" ]; then  EXTRA_CONFIG=1; fi;
 fi
-
 
 
 if [ $EXTRA_CONFIG -eq 1 ]; then

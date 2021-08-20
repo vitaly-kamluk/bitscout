@@ -108,7 +108,9 @@ else
     exit 1;
   fi
   sudo grub-mkfont -s $FONTSIZE -o ./build.$GLOBAL_BASEARCH/chroot/boot/grub/font.pf2 "$FONTPATH"
-
+  statusprint "Adding overlay module.."
+  echo "overlay" | sudo tee -a  ./build.$GLOBAL_BASEARCH/chroot/etc/initramfs-tools/modules
+  chroot_exec ./build.$GLOBAL_BASEARCH/chroot 'update-initramfs -u'
 fi
 
 exit 0;

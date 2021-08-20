@@ -27,7 +27,7 @@ HISTORIAN_ZRAM_SIZE=2048M
 
 [ -f "config/$PROJECTNAME-build.conf" ] && . "config/$PROJECTNAME-build.conf"
 
-if [ -n $GLOBAL_TARGET -a  $GLOBAL_TARGET = "iso" ]; then
+if [ -n "$GLOBAL_TARGET" -a "$GLOBAL_TARGET" = "iso" ]; then
   INITRDPATH=build.$GLOBAL_BASEARCH/image/casper/initrd.img
 else
   INITRDPATH=build.$GLOBAL_BASEARCH/chroot/boot/initrd.img
