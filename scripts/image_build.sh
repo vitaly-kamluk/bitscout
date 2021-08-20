@@ -10,7 +10,6 @@ sudo umount -l "./build.$GLOBAL_BASEARCH/image/persistence" 2>/dev/null
 sudo umount -l "./build.$GLOBAL_BASEARCH/image" 2>/dev/null
 
 install_required_package grub-common
-
 case "$GLOBAL_PARTITION_TABLE" in
   "msdos") install_required_package grub-pc-bin;;
 
@@ -21,6 +20,8 @@ case "$GLOBAL_PARTITION_TABLE" in
          install_required_package grub-pc-bin;
          install_required_package grub-efi-ia32-bin;
          install_required_package grub-efi-amd64-bin;;
+   *) statusprint "Unsupported partition table type: $GLOBAL_PARTITION_TABLE"
+     exit 1;;
 esac
 
 if [ "$GLOBAL_TARGET" = "iso" ]; then
