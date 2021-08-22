@@ -79,6 +79,13 @@ validate_ptabletype()
     esac
 }
 
+validate_automount()
+{
+    case "$1" in
+      "off" | "all") return 0;;
+      *) return 1;
+    esac
+}
 
 msg_new_config_opt="\nSome new options were not found in your config file, please answer the following question(s)\nand it will be appended to your existing config file located in config/$PROJECTNAME-build.conf.\n"
 
@@ -102,7 +109,8 @@ target=${GLOBAL_TARGET:-iso}
 persistsize=${GLOBAL_PERSISTSIZE:-1GiB}
 lanaccess=${GLOBAL_LANACCESS_ENABLED:-0}
 hostssh=${GLOBAL_HOSTSSH_ENABLED:-0}
-ptabletype=${GLOBAL_PARTITION_TABLE:hybrid}
+ptabletype=${GLOBAL_PARTITION_TABLE:-hybrid}
+automount=${GLOBAL_AUTO_MOUNT:-off}
 
 if [ -z "$GLOBAL_RELEASESIZE" ]
 then
@@ -273,6 +281,7 @@ GLOBAL_SYSLOGSERVER=\"$sysloghost\"
 GLOBAL_BUILDID=\"$buildid\"
 GLOBAL_CUSTOMKERNEL=\"$customkernel\" 
 GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
+GLOBAL_AUTOMOUNT=\"$automount\" #map and mount all available common filesystems: off or all 
 CRYPTOKEYSIZE=$cryptokeysize" > "$BUILDCONFPATH"
 
 if [ -z "$choice" -o "${choice^}" = "B" ]
@@ -284,23 +293,21 @@ else
 fi
 
 
-if [ $EXTRA_CONFIG -eq 1 ]; then
-  target=""
-  while ! validate_target "$target"
-  do
-    PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may build different targets.\nPlease choose your preference:\n iso - bootable LiveCD ISO image.\n raw - raw disk image with preinstalled system\n qcow2 - qemu/libvirt disk image with preinstalled system\n vmdk - VMware Workstation or VirtualBox disk image with preinstalled system\nYour choice [default=iso]: "
-    read target
-    if [ -z "$target" ]; then target="iso"; fi;
-    if ! validate_target "$target"
-    then
-      statusprint "Invalid input. Please try again.."
-      continue
-    fi
-  done
-fi
+target=""
+while ! validate_target "$target"
+do
+  PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may build different targets.\nPlease choose your preference:\n iso - bootable LiveCD ISO image.\n raw - raw disk image with preinstalled system\n qcow2 - qemu/libvirt disk image with preinstalled system\n vmdk - VMware Workstation or VirtualBox disk image with preinstalled system\nYour choice [default=iso]: "
+  read target
+  if [ -z "$target" ]; then target="iso"; fi;
+  if ! validate_target "$target"
+  then
+    statusprint "Invalid input. Please try again.."
+    continue
+  fi
+done
 
 if [ $target != 'iso' ]; then
-  target=""
+  ptabletype=""
   while ! validate_ptabletype "$ptabletype"
   do
     PRINTOPTIONS=n statusprint "\nChoose partition table type preference:\n msdos - used for MBR bootloaders (also used for the cloud instances).\n gpt - modern EFI systems\n hybrid - msdos+gpt on one disk, should be compatible with old and new systems\nYour choice [default=hybrid]: "
@@ -314,6 +321,18 @@ if [ $target != 'iso' ]; then
   done
 fi
 
+automount=""
+while ! validate_automount "$automount"
+do
+  PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may automatically discover, map and readonly-mount disk partitions to the expert container. \nPlease choose your preference:\n off - disable automount\n all - enable automount or all disks\nYour choice [default=off]: "
+  read automount
+  if [ -z "$automount" ]; then automount="off"; fi;
+  if ! validate_automount "$automount"
+  then
+    statusprint "Invalid input. Please try again.."
+    continue
+  fi
+done
 
 statusprint "\nUpdating basic configuration.."
 echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
@@ -330,6 +349,7 @@ GLOBAL_SYSLOGSERVER=\"$sysloghost\"
 GLOBAL_BUILDID=\"$buildid\"
 GLOBAL_CUSTOMKERNEL=\"$customkernel\" 
 GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
+GLOBAL_AUTOMOUNT=\"$automount\" #map and mount all available common filesystems: off or all 
 CRYPTOKEYSIZE=$cryptokeysize" > "$BUILDCONFPATH"
 
 EXTRA_CONFIG=0
