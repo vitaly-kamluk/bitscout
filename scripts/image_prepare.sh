@@ -55,6 +55,8 @@ if [ "$GLOBAL_TARGET" = "iso" ]; then
 
   statusprint "Copying boot configuration from resources.."
   cp -r ./resources/boot/ ./build.$GLOBAL_BASEARCH/image/
+  sudo rm ./build.$GLOBAL_BASEARCH/image/boot/grub/grub.cfg.doublesword
+  sudo mv ./build.$GLOBAL_BASEARCH/image/boot/grub/grub.cfg.casper ./build.$GLOBAL_BASEARCH/image/boot/grub/grub.cfg
   sed -i "s/<PROJECTNAME>/${PROJECTNAME}/g; s/<PROJECTCAPNAME>/${PROJECTCAPNAME}/g; s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<CONTAINERUSERNAME>/${CONTAINERUSERNAME}/g; s/<PROJECTRELEASE>/${PROJECTRELEASE}/g;" ./build.$GLOBAL_BASEARCH/image/boot/grub/grub.cfg
 
   statusprint "Altering boot splash image.."

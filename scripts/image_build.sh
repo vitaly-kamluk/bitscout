@@ -9,6 +9,10 @@ chroot_unmount_fs "./build.$GLOBAL_BASEARCH/chroot"
 sudo umount -l "./build.$GLOBAL_BASEARCH/image/persistence" 2>/dev/null
 sudo umount -l "./build.$GLOBAL_BASEARCH/image" 2>/dev/null
 
+if [ "$GLOBAL_TARGET" = "iso" ]; then
+  GLOBAL_PARTITION_TABLE="hybrid"
+fi
+
 install_required_package grub-common
 case "$GLOBAL_PARTITION_TABLE" in
   "msdos") install_required_package grub-pc-bin;;
