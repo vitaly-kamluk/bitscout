@@ -5,7 +5,7 @@ IPT="/sbin/iptables"
 I=0; while read INET_IFACE; do INET_IFACES[$I]="$INET_IFACE";((I++));done  < <(ls -1 /sys/class/net/ |grep -E '^(eth|wlan)' )
 CONTAINER_IFACE=<CONTAINERNET_NAME>
 CONTAINER_IP=<CONTAINERNET_GUEST_IP>
-VPN_IFACE=scout_vpn
+VPN_IFACE=<PROJECTSHORTNAME>
 
 if [ $# -eq 0 ]
 then  #default for no parameters. executed during system boot.
@@ -86,7 +86,7 @@ then  #default for no parameters. executed during system boot.
   done
   
   
-  #Setup CONTAINER_DNAT table for port forwadring
+  #Setup container port forwarding
   $IPT -t nat -A CONTAINER_INCOMING -p tcp --dport 22 -j DNAT --to-destination $CONTAINER_IP:22
   
   for((i=0;i<10;i++))
@@ -115,13 +115,14 @@ then  #default for no parameters. executed during system boot.
     $IPT -t nat -A POSTROUTING -o $INET_IFACE -j MASQUERADE
   done
 
+  $IPT -t nat -A POSTROUTING -o $VPN_IFACE -j MASQUERADE
+
   exit 0
 fi
 
 
 if [ "$1" = "enable-access-from-lan" ]
 then
-  $IPT -t nat -D PREROUTING -i $VPN_IFACE -j CONTAINER_INCOMING
   for INET_IFACE in ${INET_IFACES[*]}
   do
     $IPT -t nat -I PREROUTING -i $INET_IFACE -j CONTAINER_INCOMING
@@ -138,8 +139,6 @@ then
   do
     $IPT -t nat -D PREROUTING -i $INET_IFACE -j CONTAINER_INCOMING
   done
-
-  $IPT -t nat -I PREROUTING -i $VPN_IFACE -j CONTAINER_INCOMING
 
   $IPT -D INPUT -j HOST_INCOMING
   $IPT -I INPUT -i $VPN_IFACE -j HOST_INCOMING

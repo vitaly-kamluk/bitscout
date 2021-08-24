@@ -8,3 +8,6 @@ network:
       match:
         name: eth*
       dhcp4: yes
+    ve-container:
+      dhcp4: no
+      addresses: [10.3.0.1/24]

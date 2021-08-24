@@ -56,7 +56,7 @@ then
     echo "Enabling SSH access to the host system (using port 23).."
     rm /etc/ssh/sshd_not_to_be_run
     sed -i 's/Port 22/Port 23/' /etc/ssh/sshd_config
-    systemctl start ssh.service
+    systemctl enable ssh.service
   fi
 
   mkdir -p "$CONTAINERDIR/"{chroot,chroot.user,history}
@@ -87,21 +87,29 @@ then
         rm "$CONTAINERDIR/chroot/this_is_host"
         rm -rf "$CONTAINERDIR/persistence"
 
-        #enable lo/eth0 auto-configuration
-        echo "Container chroot: enable lo/eth0 auto-configuration"
-        echo -e "auto lo\niface lo inet loopback\nauto eth0\niface eth0 inet dhcp" >> "$CONTAINERDIR/chroot/etc/network/interfaces"
+        #recover netplan configurations after possible cloud VM-import
+        echo "Recovering *.vmimport netplan configurations (if they exist)"
+        for f in "$CONTAINERDIR"/chroot/etc/netplan/*.vmimport; do mv -v "$f" "${f%%.vmimport}"; done
+        
+        #Remove alien netplan configs (usually added by cloud VM-import process)
+        echo "Removing all unknown netplan configurations"
+        find "$CONTAINERDIR"/chroot/etc/netplan -type f | grep -v '/01-network-container\.yaml$' | xargs rm
 
-        #set default DNS servers (overrides dhclient settings)
-        echo "Container chroot: set default DNS servers (supersede for dhclient)" 
-        if ! grep -q "supersede domain-name-servers $CONTAINERNET_GUEST_DNS;" "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf"
-        then
-          echo "supersede domain-name-servers $CONTAINERNET_GUEST_DNS;" | sudo tee -a "$CONTAINERDIR/chroot/etc/dhcp/dhclient.conf" > /dev/null
+        #disable openvpn settings and files..
+        echo "Container chroot: disable openvpn auto-start"
+        if [ -f "$CONTAINERDIR/chroot/etc/default/openvpn" ]; then
+          sed -i '/^AUTOSTART="[^"]*"$/d' "$CONTAINERDIR/chroot/etc/default/openvpn"
+          echo "AUTOSTART=\"none\"" >> "$CONTAINERDIR/chroot/etc/default/openvpn"
+        fi
+        if [ -d "$CONTAINERDIR/chroot/etc/openvpn/client" ]; then
+          rm -rf "$CONTAINERDIR"/chroot/etc/openvpn/client/*
         fi
 
-        #disable openvpn auto-start
-        echo "Container chroot: disable openvpn auto-start"
-        sed -i '/^AUTOSTART="[^"]*"$/d' "$CONTAINERDIR/chroot/etc/default/openvpn"
-        echo "AUTOSTART=\"none\"" >> "$CONTAINERDIR/chroot/etc/default/openvpn"
+        #disable wireguard settings and files..
+        echo "Container chroot: removing wireguard files"
+        if [ -d "$CONTAINERDIR/chroot/etc/wireguard" ]; then
+          rm -rf "$CONTAINERDIR"/chroot/etc/wireguard/*
+        fi
 
         #re-enable ssh service
         echo "Container chroot: enable SSH service"
@@ -185,6 +193,13 @@ then
     echo "Remove privexec client" 
     rm /usr/bin/privexec
 
+    #recover netplan configurations after possible cloud VM-import
+    echo "Recovering *.vmimport netplan configurations (if they exist)"
+    for f in /etc/netplan/*.vmimport; do mv -v "$f" "${f%%.vmimport}"; done
+    
+    #Remove alien netplan configs (usually added by cloud VM-import process)
+    echo "Removing all unknown netplan configurations"
+    find /etc/netplan -type f | grep -v '/01-network-host\.yaml$' | xargs rm
 
     #create set of virtual mapping device for container:
     echo "Create evidence and storage loop block devices"

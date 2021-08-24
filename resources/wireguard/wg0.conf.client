@@ -1,0 +1,14 @@
+#Wireguard client config
+[Interface]
+Address = <WIREGUARD_VPNNET_CLIENT_IP>/24
+PrivateKey = <WIREGUARD_CLIENT_PRIVATE_KEY>
+DNS = 8.8.8.8
+
+#Bitscout server entry
+[Peer]
+PublicKey = <WIREGUARD_SERVER_PUBLIC_KEY>
+PresharedKey = <WIREGUARD_PRESHARED_KEY>
+AllowedIPs = <WIREGUARD_VPNNET>
+AllowedIPs = 0.0.0.0/0
+Endpoint = <WIREGUARD_SERVER_EXTIP>:<WIREGUARD_SERVER_PORT>
+PersistentKeepalive = 21

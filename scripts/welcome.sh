@@ -24,9 +24,15 @@ validate_hostaddr()
   fi
 }
 
+validate_vpntype()
+{
+  echo "$1" | grep -qE "^openvpn$|^wireguard$"
+  return $?
+}
+
 validate_vpnprotocol()
 {
-  echo "$1" | grep -qE "^udp$|^tcp$"
+  echo "$1" | grep -qE "^udp$|^tcp$|^wireguard$"
   return $?
 }
 
@@ -148,7 +154,7 @@ else
   customkernel=$GLOBAL_CUSTOMKERNEL
 fi
 
-if [ -z "$GLOBAL_VPNTYPE" -o "$GLOBAL_VPNTYPE" != 'none' ]
+if [ -z "$GLOBAL_VPNTYPE" ]
 then 
   if [ -z "$GLOBAL_VPNSERVER" ] || [ -z "$GLOBAL_VPNPROTOCOL" ] || [ -z "$GLOBAL_VPNPORT" ]
   then
@@ -159,20 +165,20 @@ then
       vpnport=""
       if [ "$GLOBAL_VPNTYPE" != 'none' ]
       then
-        while ! validate_hostaddr "$vpnhost" && ! validate_vpnprotocol "$vpnprotocol" && ! validate_portnum "$vpnport"
+        while ! validate_vpntype "$vpntype" && ! validate_hostaddr "$vpnhost" && ! validate_vpnprotocol "$vpnprotocol" && ! validate_portnum "$vpnport"
         do
           statusprint "\nTo use ${PROJECTNAME} over the internet you will likely need a VPN server."
-          PRINTOPTIONS=n statusprint "Just enter your protocol/host/port and we generate an OpenVPN config template for you. You can always change it later.\nExamples:\n udp://127.0.0.1:2222\n tcp://myvpnserver:8080\nYour input [connection string|<NONE>]: "
+          PRINTOPTIONS=n statusprint "Just enter your protocol/host/port and we generate a VPN config template for you. You can always change it later.\nExamples:\n openvpn-udp://127.0.0.1:1234\n openvpn-tcp://myvpnserver:8080\n wireguard://myvpnserver:2600\nYour input [connection string or <Enter> for none]: "
           read vpnuri
           if [ ! -z "$vpnuri" ]
           then
-            mapfile -t VPNCFG < <( echo "$vpnuri" | sed 's#^\(udp\|tcp\)://\([a-zA-Z0-9_.-]*\):\([0-9]\{1,5\}\)$#\2\n\1\n\3#' )
-            vpntype="openvpn"
+            mapfile -t VPNCFG < <( echo "$vpnuri" | sed 's#^\(openvpn-udp\|openvpn-tcp\|wireguard\)://\([a-zA-Z0-9_.-]*\):\([0-9]\{1,5\}\)$#\2\n\1\n\3#' )
+            vpntype=${VPNCFG[1]%%*-}
             vpnhost="${VPNCFG[0]}"
-            vpnprotocol="${VPNCFG[1]}"
+            vpnprotocol="${VPNCFG[1]##-*}"
             vpnport="${VPNCFG[2]}"
     
-            if ! validate_hostaddr "$vpnhost" && ! validate_vpnprotocol "$vpnprotocol" && ! validate_portnum "$vpnport"
+            if ! validate_vpntype "$vpntype" && ! validate_hostaddr "$vpnhost" && ! validate_vpnprotocol "$vpnprotocol" && ! validate_portnum "$vpnport"
             then
               statusprint "Invalid input data format. Please try again.."
             fi
@@ -324,7 +330,7 @@ fi
 automount=""
 while ! validate_automount "$automount"
 do
-  PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may automatically discover, map and readonly-mount disk partitions to the expert container. \nPlease choose your preference:\n off - disable automount\n all - enable automount or all disks\nYour choice [default=off]: "
+  PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may automatically discover, map and readonly-mount disk partitions to the expert container. \nPlease choose your preference:\n off - disable automount\n all - enable automount of all disks\nYour choice [default=off]: "
   read automount
   if [ -z "$automount" ]; then automount="off"; fi;
   if ! validate_automount "$automount"

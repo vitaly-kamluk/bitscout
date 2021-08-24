@@ -10,7 +10,5 @@ network:
      addresses: [10.3.0.2/24]
      gateway4: 10.3.0.1
      nameservers:
-       addresses: [8.8.8.8,8.8.4.4]
-    ve-container:
-     dhcp4: no
-     addresses: [10.3.0.1/24]
+       addresses: [8.8.8.8,1.1.1.1]
+

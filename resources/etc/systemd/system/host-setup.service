@@ -1,6 +1,7 @@
 [Unit]
 Description=Host system setup
-Before=systemd-machined.service
+Requires=local-fs.target network-pre.target
+Before=systemd-machined.service network-pre.target
 After=local-fs.target
 
 [Service]

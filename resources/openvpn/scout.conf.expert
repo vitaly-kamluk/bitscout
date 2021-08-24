@@ -2,7 +2,7 @@ remote <OPENVPN_SERVER_EXTIP> # set server's external IP here!
 port <OPENVPN_SERVER_PORT> #set server's listening port here!
 proto <OPENVPN_SERVER_PROTOCOL>
 dev-type tap
-dev scout_vpn
+dev <PROJECTSHORTNAME>
 
 client
 resolv-retry infinite

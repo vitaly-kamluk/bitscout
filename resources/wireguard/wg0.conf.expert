@@ -1,0 +1,13 @@
+#Wireguard expert config
+[Interface]
+Address = <WIREGUARD_VPNNET_EXPERT_IP>/24
+PrivateKey = <WIREGUARD_EXPERT_PRIVATE_KEY>
+Table = off
+
+#Bitscout server entry
+[Peer]
+PublicKey = <WIREGUARD_SERVER_PUBLIC_KEY>
+PresharedKey = <WIREGUARD_PRESHARED_KEY>
+AllowedIPs = <WIREGUARD_VPNNET>
+Endpoint = <WIREGUARD_SERVER_EXTIP>:<WIREGUARD_SERVER_PORT>
+PersistentKeepalive = 21

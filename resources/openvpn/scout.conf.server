@@ -5,7 +5,7 @@ proto <OPENVPN_SERVER_PROTOCOL>
 
 tun-mtu 1500
 daemon
-dev scout_vpn
+dev <PROJECTSHORTNAME>
 dev-type tap
 
 user nobody

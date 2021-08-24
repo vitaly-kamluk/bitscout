@@ -4,10 +4,6 @@
 
 . ./scripts/functions
 
-VPNCFGDIR="config/openvpn"
-VPNTEMPLATEDIR="resources/openvpn"
-SYSTEM_EASYRSADIR="/usr/share/easy-rsa"
-
 openvpn_template_copy()
 {
   SRCFILE="$1"
@@ -17,12 +13,37 @@ openvpn_template_copy()
   sed "s/<PROJECTSHORTNAME>/${PROJECTSHORTNAME}/g; s/<OPENVPN_SERVER_EXTIP>/${GLOBAL_VPNSERVER}/g; s/<OPENVPN_SERVER_PORT>/${GLOBAL_VPNPORT}/g; s/<OPENVPN_SERVER_PROTOCOL>/${OPENVPN_SERVERPROTOCOL}/g; s/<OPENVPN_CLIENT_PROTOCOL>/${OPENVPN_CLIENTPROTOCOL}/g; s/<CRYPTOKEYSIZE>/${CRYPTOKEYSIZE}/g; s/<OPENVPN_IPPOOL_START>/$VPNNET_IPPOOLSTART/g; s/<OPENVPN_IPPOOL_END>/$VPNNET_IPPOOLEND/g; s/<OPENVPN_SERVER_IP>/$VPNNET_SERVERIP/g; s/<OPENVPN_CLIENT_IP>/$VPNNET_CLIENTIP/g; s/<OPENVPN_EXPERT_IP>/$VPNNET_EXPERTIP/g;" "$SRCFILE" > "$DSTFILE"
 }
 
-if [ -n "${GLOBAL_VPNTYPE}" -a "${GLOBAL_VPNTYPE}" = "openvpn" ]
-then
+wireguard_template_copy()
+{
+  SRCFILE="$1"  
+  DSTFILE="$2"
+  [ ! -d "${DSTFILE%/*}" ] && $SUDO mkdir -p "${DSTFILE%/*}"
+  echo "'$SRCFILE' -> '$DSTFILE'"
+
+  #Escaping + and / in base64 values for sed embedding:
+  ESC_WIREGUARD_PRESHARED_KEY=$( echo "$WIREGUARD_PRESHARED_KEY" | sed 's#\([+/]\)#\\\1#g' )
+
+  ESC_WIREGUARD_SERVER_PRIVATE_KEY=$( echo "$WIREGUARD_SERVER_PRIVATE_KEY" | sed 's#\([+/]\)#\\\1#g' )
+  ESC_WIREGUARD_SERVER_PUBLIC_KEY=$( echo "$WIREGUARD_SERVER_PUBLIC_KEY" | sed 's#\([+/]\)#\\\1#g' )
+
+  ESC_WIREGUARD_CLIENT_PRIVATE_KEY=$( echo "$WIREGUARD_CLIENT_PRIVATE_KEY" | sed 's#\([+/]\)#\\\1#g' )
+  ESC_WIREGUARD_CLIENT_PUBLIC_KEY=$( echo "$WIREGUARD_CLIENT_PUBLIC_KEY" | sed 's#\([+/]\)#\\\1#g' )
+
+  ESC_WIREGUARD_EXPERT_PRIVATE_KEY=$( echo "$WIREGUARD_EXPERT_PRIVATE_KEY" | sed 's#\([+/]\)#\\\1#g' )
+  ESC_WIREGUARD_EXPERT_PUBLIC_KEY=$( echo "$WIREGUARD_EXPERT_PUBLIC_KEY" | sed 's#\([+/]\)#\\\1#g' )
+
+  sed "s#<PROJECTSHORTNAME>#${PROJECTSHORTNAME}#g; s#<WIREGUARD_SERVER_EXTIP>#${GLOBAL_VPNSERVER}#g; s#<WIREGUARD_SERVER_PORT>#${GLOBAL_VPNPORT}#g; s#<WIREGUARD_VPNNET>#$VPNNET#g; s#<WIREGUARD_VPNNET_SERVER_IP>#$VPNNET_SERVERIP#g; s#<WIREGUARD_VPNNET_CLIENT_IP>#$VPNNET_CLIENTIP#g; s#<WIREGUARD_VPNNET_EXPERT_IP>#$VPNNET_EXPERTIP#g; s#<WIREGUARD_SERVER_PRIVATE_KEY>#$ESC_WIREGUARD_SERVER_PRIVATE_KEY#g; s#<WIREGUARD_SERVER_PUBLIC_KEY>#$ESC_WIREGUARD_SERVER_PUBLIC_KEY#g; s#<WIREGUARD_CLIENT_PRIVATE_KEY>#$ESC_WIREGUARD_CLIENT_PRIVATE_KEY#g; s#<WIREGUARD_CLIENT_PUBLIC_KEY>#$ESC_WIREGUARD_CLIENT_PUBLIC_KEY#g; s#<WIREGUARD_EXPERT_PRIVATE_KEY>#$ESC_WIREGUARD_EXPERT_PRIVATE_KEY#g; s#<WIREGUARD_EXPERT_PUBLIC_KEY>#$ESC_WIREGUARD_EXPERT_PUBLIC_KEY#g; s#<WIREGUARD_PRESHARED_KEY>#$ESC_WIREGUARD_PRESHARED_KEY#g;" "$SRCFILE" > "$DSTFILE"
+}
+
+
+if [ -n "${GLOBAL_VPNTYPE}" -a "${GLOBAL_VPNTYPE}" = "openvpn" ]; then
+  VPNCFGDIR="config/openvpn"
+  VPNTEMPLATEDIR="resources/openvpn"
+  SYSTEM_EASYRSADIR="/usr/share/easy-rsa"
+
   statusprint "Configuring OpenVPN.."
 
-  if filelist_exists "$VPNCFGDIR/easy-rsa/pki/"{issued/client.crt,private/client.key,ca.crt,dh.pem,ta.key}
-  then
+  if filelist_exists "$VPNCFGDIR/easy-rsa/pki/"{issued/client.crt,private/client.key,ca.crt,dh.pem,ta.key}; then
     statusprint "Found existing keys. Using existing keys/config.."
   else
     statusprint "Preparing OpenVPN configs based on templates.."
@@ -41,14 +62,12 @@ then
     openvpn_template_copy "$VPNTEMPLATEDIR/ip_pool.lst" "$VPNCFGDIR/ip_pool.lst"
 
     statusprint "Setting up OpenVPN client.."
-    if ! [ -d "$VPNCFGDIR/easy-rsa" ]
-    then
+    if ! [ -d "$VPNCFGDIR/easy-rsa" ]; then
       statusprint "Couldn't find existing Easy-RSA directory in $VPNCFGDIR."
       install_required_package easy-rsa
     fi
 
-    if ! [ -d "$SYSTEM_EASYRSADIR"  ]
-    then
+    if ! [ -d "$SYSTEM_EASYRSADIR" ]; then
       statusprint "Couldn't find required easy-rsa directory.. Aborting."
       exit 1
     fi
@@ -87,8 +106,7 @@ then
 
   fi
 
-  if ! [ -f "$VPNCFGDIR/${PROJECTSHORTNAME}.conf" ]
-  then
+  if [ -f "$VPNCFGDIR/${PROJECTSHORTNAME}.conf" ]; then
     statusprint "Copying VPN client config to chroot.. Feel free to edit it in ./build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}.conf!"
     sudo cp -v "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}.conf"
   fi
@@ -101,8 +119,46 @@ then
   sudo sed -i '/^AUTOSTART="[^"]*"$/d' ./build.$GLOBAL_BASEARCH/chroot/etc/default/openvpn
   echo "AUTOSTART=\"${PROJECTSHORTNAME}\"" | sudo tee -a ./build.$GLOBAL_BASEARCH/chroot/etc/default/openvpn >/dev/null
   chroot_exec build.$GLOBAL_BASEARCH/chroot "systemctl enable openvpn-client@${PROJECTSHORTNAME}.service"
+elif [ -n "${GLOBAL_VPNTYPE}" -a "${GLOBAL_VPNTYPE}" = "wireguard" ]; then
+  VPNCFGDIR="config/wireguard"
+  VPNTEMPLATEDIR="resources/wireguard"
+
+  install_required_package "wireguard-tools"
+
+  if filelist_exists "$VPNCFGDIR/"{$PROJECTSHORTNAME.conf.server,$PROJECTSHORTNAME.conf.client,$PROJECTSHORTNAME.conf.expert}; then
+    statusprint "Found existing config files. Skipping config generation.."
+  else
+    statusprint "Preparing wireguard configs based on templates.."
+    mkdir -p "$VPNCFGDIR" 2>&-
+
+    statusprint "Configuring Wireguard.."
+    WIREGUARD_PRESHARED_KEY=$( wg genpsk )
+
+    WIREGUARD_SERVER_PRIVATE_KEY=$( wg genkey )
+    WIREGUARD_SERVER_PUBLIC_KEY=$( echo "$WIREGUARD_SERVER_PRIVATE_KEY" | wg pubkey )
+
+    WIREGUARD_CLIENT_PRIVATE_KEY=$( wg genkey )
+    WIREGUARD_CLIENT_PUBLIC_KEY=$( echo "$WIREGUARD_CLIENT_PRIVATE_KEY" | wg pubkey )
+
+    WIREGUARD_EXPERT_PRIVATE_KEY=$( wg genkey )
+    WIREGUARD_EXPERT_PUBLIC_KEY=$( echo "$WIREGUARD_EXPERT_PRIVATE_KEY" | wg pubkey )
+
+    wireguard_template_copy "$VPNTEMPLATEDIR/wg0.conf.expert" "$VPNCFGDIR/$PROJECTSHORTNAME.conf.expert"
+    wireguard_template_copy "$VPNTEMPLATEDIR/wg0.conf.client" "$VPNCFGDIR/$PROJECTSHORTNAME.conf.client"
+    wireguard_template_copy "$VPNTEMPLATEDIR/wg0.conf.server" "$VPNCFGDIR/$PROJECTSHORTNAME.conf.server"
+
+  fi
+  statusprint "Installing wireguard clienf configuration.."
+  if [ -f "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" ]; then
+    [ ! -d "./build.$GLOBAL_BASEARCH/chroot/etc/wireguard/" ] && sudo mkdir -p "./build.$GLOBAL_BASEARCH/chroot/etc/wireguard/"
+    statusprint "Copying VPN client config to chroot.. Feel free to edit it in ./build.$GLOBAL_BASEARCH/chroot/etc/wireguard/${PROJECTSHORTNAME}.conf"
+    sudo cp -v "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" "build.$GLOBAL_BASEARCH/chroot/etc/wireguard/${PROJECTSHORTNAME}.conf"
+  fi
+
+  statusprint "Enabling wireguard on system boot.."
+  chroot_exec build.$GLOBAL_BASEARCH/chroot "systemctl enable wg-quick@${PROJECTSHORTNAME}.service"
 else
-  statusprint "Skipped OpenVPN configuration. VPN type is set to \"$GLOBAL_VPNTYPE\"."
+  statusprint "Skipped VPN configuration. VPN type is set to \"$GLOBAL_VPNTYPE\"."
 fi
 
 exit 0;

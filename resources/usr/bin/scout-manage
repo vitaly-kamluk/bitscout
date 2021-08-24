@@ -214,7 +214,7 @@ __SYSLOG__
                 ;;
          "STATIC IP")
            declare -a IFACEMENU;
-           mapfile -t IFACEMENU < <( ip -o link show | awk '{if($2!~/ve-container.*|scout_vpn.*|lo:.*/){print $2}}'| while read dev; do echo -n "$dev"; ip -4 -o addr show "${dev%:}" | awk '{print $4}'; done; )
+           mapfile -t IFACEMENU < <( ip -o link show | awk '{if($2!~/ve-container.*|scout.*|lo:.*/){print $2}}'| while read dev; do echo -n "$dev"; ip -4 -o addr show "${dev%:}" | awk '{print $4}'; done; )
            IFACECHOICE=($( DIALOGOPTIONS=" " dialog_menu "NETWORK INTERFACE" "Select network interface to configure:" "$(declare -p IFACEMENU)")); RETCODE=$?
 
            if [ $RETCODE -eq $DIALOG_CANCEL ]; then continue; fi;

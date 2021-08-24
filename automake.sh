@@ -32,7 +32,7 @@ scripts/chroot_customize.sh &&
 scripts/chroot_create_user.sh &&
 scripts/chroot_create_container.sh &&
 scripts/chroot_configure.sh &&
-scripts/chroot_configure_openvpn.sh &&
+scripts/chroot_configure_vpn.sh &&
 scripts/chroot_configure_ssh.sh &&
 scripts/chroot_configure_irc.sh &&
 scripts/chroot_configure_syslog.sh &&

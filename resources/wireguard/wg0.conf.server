@@ -1,0 +1,22 @@
+#Wireguard server config
+#Make sure that `sysctl net.ipv4.ip_forward=1`
+[Interface]
+ListenPort = <WIREGUARD_SERVER_PORT>
+Address = <WIREGUARD_VPNNET_SERVER_IP>/24
+PrivateKey = <WIREGUARD_SERVER_PRIVATE_KEY>
+#replace eth0 with your internet interface name
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+#Bitscout client settings
+[Peer]
+PublicKey = <WIREGUARD_CLIENT_PUBLIC_KEY>
+PresharedKey = <WIREGUARD_PRESHARED_KEY>
+AllowedIPs = <WIREGUARD_VPNNET_CLIENT_IP>/32
+
+#Expert settings
+[Peer]
+PublicKey = <WIREGUARD_EXPERT_PUBLIC_KEY>
+PresharedKey = <WIREGUARD_PRESHARED_KEY>
+AllowedIPs = <WIREGUARD_VPNNET_EXPERT_IP>/32
+
