@@ -58,6 +58,10 @@ then
     echo "Enabling SSH access to the host system (using port 23).."
     rm /etc/ssh/sshd_not_to_be_run
     sed -i 's/Port 22/Port 23/' /etc/ssh/sshd_config
+
+    #customize ssh banner
+    echo "Customizing SSH banner.."
+    sed -i "s/^\(VersionAddendum.*\)$/\1 (host)/" "/etc/ssh/sshd_config.d/banner.conf"
     systemctl enable ssh.service
   fi
 
@@ -116,6 +120,9 @@ then
         #re-enable ssh service
         echo "Container chroot: enable SSH service"
         rm "$CONTAINERDIR/chroot/etc/ssh/sshd_not_to_be_run"
+
+        #customize ssh banner
+        sed -i "s/^\(VersionAddendum.*\)\( (host)\)?$/\1 (container)/" "$CONTAINERDIR/chroot/etc/ssh/sshd_config.d/banner.conf"
 
         #remove host iptables setup script
         echo "Container chroot: remove host-iptables script"
@@ -310,6 +317,8 @@ dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
       echo "Automounting finished."
     fi
 
+    #customize ssh banner
+    sed -i "s/^\(VersionAddendum.*\)$/\1 (container)/" "$CONTAINERDIR/chroot/etc/ssh/sshd_config.d/banner.conf"
 
     #start the container after all
     #SPAWNCMD="systemd-nspawn -M container --network-veth --private-users=100000:65536 --bind=/mnt/container:/mnt/host --bind=/dev/container:/dev/host --bind=/dev/fuse --property DeviceAllow='/dev/fuse rwm' $NSPAWN_EXTRA_OPTIONS -D /opt/container/chroot.user /sbin/init"

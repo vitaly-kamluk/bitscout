@@ -31,4 +31,10 @@ sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' ./build.
 statusprint "Uncommenting port option for SSH.."
 sudo sed -i 's/^#Port /Port /g' ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config
 
+statusprint "Setting custom SSH banner.."
+mkdir -p "./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config.d" 2>/dev/null
+if ! grep -q "^VersionAddendum" "./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config.d/banner.conf" 2>/dev/null; then
+  echo "VersionAddendum ${PROJECTCAPNAME} ${PROJECTRELEASE}" | sudo tee -a "./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config.d/banner.conf" >/dev/null
+fi
+
 exit 0;
