@@ -61,7 +61,7 @@ then
 
     #customize ssh banner
     echo "Customizing SSH banner.."
-    sed -i "s/^\(VersionAddendum.*\)$/\1 (host)/" "/etc/ssh/sshd_config.d/banner.conf"
+    sed -i 's/^\(VersionAddendum.*\)\( (host)\)?$/\1 (host)/' "/etc/ssh/sshd_config.d/banner.conf"
     systemctl enable ssh.service
   fi
 
@@ -122,7 +122,7 @@ then
         rm "$CONTAINERDIR/chroot/etc/ssh/sshd_not_to_be_run"
 
         #customize ssh banner
-        sed -i "s/^\(VersionAddendum.*\)\( (host)\)?$/\1 (container)/" "$CONTAINERDIR/chroot/etc/ssh/sshd_config.d/banner.conf"
+        sed -i 's/^\(VersionAddendum.*\)\( (host)\| (container)\)?$/\1 (container)/' "$CONTAINERDIR/chroot/etc/ssh/sshd_config.d/banner.conf"
 
         #remove host iptables setup script
         echo "Container chroot: remove host-iptables script"
