@@ -35,6 +35,8 @@ then
   for x in $(cat /proc/cmdline); do
     case $x in
      boot=*) export KERNEL_BOOTMODE="${x#boot=}";;
+     root=*) export ROOTDEVID="${x#root=}";;
+     persist=*) export PERSDEVID="${x#persist=}";;     
     esac
   done
 
@@ -263,6 +265,52 @@ dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
       chmod o+rw /dev/sr0
     fi
  
+    if [ "$AUTOMOUNT" != "off" ]; then
+      echo "Starting auto-mount procedure.."
+      if [ "$AUTOMOUNT" == "all" ]; then
+        IDMAP=`( cat /etc/passwd | cut -d: -f3 | awk '{print $1"/"($1+100000)}'; cat /etc/group | cut -d: -f3 | awk '{print "@"$1"/@"($1+100000)}' ) | tr $'\n' ':'| sed 's/:$//'`
+        i=0
+        ROOTDEV=$( blkid -t $ROOTDEVID -l -o device )
+        ROOTDEVSRC="/dev/$( lsblk -n -o PKNAME $ROOTDEV )"
+        lsblk --pair --paths -o MOUNTPOINT,NAME,FSTYPE | grep -vE "/dev/zram|${ROOTDEVSRC}" | while read blkline; do
+          eval "$blkline"
+          NAME=${NAME##*/}
+          echo -n "Attempting to map /dev/$NAME device to /dev/container/evidence$i.. "
+          if losetup -r /dev/loop$[8+$i] /dev/$NAME 2>/dev/null; then
+            echo "OK"
+            if echo "$FSTYPE" | grep -qE "(vfat|ext2|ext3|ext4|ntfs|exfat|iso9660)"; then
+              echo -n " Attempting to mount /dev/container/$NAME to /mnt/container/$NAME.. "
+	      mkdir -p /mnt/$NAME /mnt/container/$NAME 2>/dev/null;
+              case $FSTYPE in
+                'ext2') 
+                        mount -o ro,nosuid,noexec,nodev /dev/loop$[8+$i] /mnt/$NAME;;
+                'ext3'|'ext4') 
+                        mount -o ro,nosuid,noexec,nodev,noload /dev/loop$[8+$i] /mnt/$NAME;;
+                'ntfs') mount -o ro,show_sys_files,streams_interface=windows,norecover /dev/loop$[8+$i] /mnt/$NAME;;
+                *) mount -o ro /dev/loop$[8+$i] /mnt/$NAME;;
+              esac
+              bindfs --map=$IDMAP -o nosuid,noexec,nodev "/mnt/$NAME" "/mnt/container/$NAME";
+            fi
+            if mount | grep -q '^/dev/loop$[8+$i]'; then
+              echo "OK"
+            else
+              echo "Failed"
+            fi
+  
+            ((i++))
+            if [ $i -ge 10 ]; then 
+              echo "Reached max evidence device count. Cannot automount anymore.."
+              break
+            fi
+          else
+            echo "Failed"
+          fi
+        done
+      fi
+      echo "Automounting finished."
+    fi
+
+
     #start the container after all
     #SPAWNCMD="systemd-nspawn -M container --network-veth --private-users=100000:65536 --bind=/mnt/container:/mnt/host --bind=/dev/container:/dev/host --bind=/dev/fuse --property DeviceAllow='/dev/fuse rwm' $NSPAWN_EXTRA_OPTIONS -D /opt/container/chroot.user /sbin/init"
     #echo -e "Spawning container with the following commandline:\n$SPAWNCMD"

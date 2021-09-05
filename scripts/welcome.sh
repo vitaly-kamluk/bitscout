@@ -116,7 +116,7 @@ persistsize=${GLOBAL_PERSISTSIZE:-1GiB}
 lanaccess=${GLOBAL_LANACCESS_ENABLED:-0}
 hostssh=${GLOBAL_HOSTSSH_ENABLED:-0}
 ptabletype=${GLOBAL_PARTITION_TABLE:-hybrid}
-automount=${GLOBAL_AUTO_MOUNT:-off}
+automount=${GLOBAL_AUTOMOUNT:-off}
 
 if [ -z "$GLOBAL_RELEASESIZE" ]
 then
