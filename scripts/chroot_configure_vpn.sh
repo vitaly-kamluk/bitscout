@@ -106,7 +106,7 @@ if [ -n "${GLOBAL_VPNTYPE}" -a "${GLOBAL_VPNTYPE}" = "openvpn" ]; then
 
   fi
 
-  if [ -f "$VPNCFGDIR/${PROJECTSHORTNAME}.conf" ]; then
+  if [ -f "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" ]; then
     statusprint "Copying VPN client config to chroot.. Feel free to edit it in ./build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}.conf!"
     sudo cp -v "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}.conf"
   fi
