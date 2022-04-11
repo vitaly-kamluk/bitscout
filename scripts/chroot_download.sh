@@ -85,7 +85,7 @@ run_debootstrap_supervised_fast()
   pushd "./build.$GLOBAL_BASEARCH/tmp" &&
   DEBS=$(sudo debootstrap --include=distro-info,aria2,perl,libaria2-0,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge,python3-apt,python3-netifaces --print-debs --arch=$GLOBAL_BASEARCH $BASERELEASE chroot http://archive.ubuntu.com/ubuntu ) || exit 1 &&
   popd && rm -rf "./build.$GLOBAL_BASEARCH/tmp" &&
-  install_required_package aria2  &&
+  install_required_package aria2 &&
  
   chroot_mount_cache "$PWD/build.$GLOBAL_BASEARCH/chroot" &&
   apt_make_dirs &&

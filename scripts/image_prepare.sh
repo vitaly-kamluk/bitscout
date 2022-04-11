@@ -20,7 +20,7 @@ if [ "$GLOBAL_TARGET" = "iso" ]; then
   statusprint "Creating manifest.."
   sudo chroot ./build.$GLOBAL_BASEARCH/chroot dpkg-query -W --showformat='${Package} ${Version}\n' | sudo tee ./build.$GLOBAL_BASEARCH/image/casper/filesystem.manifest >/dev/null
   sudo cp -v ./build.$GLOBAL_BASEARCH/image/casper/filesystem.manifest ./build.$GLOBAL_BASEARCH/image/casper/filesystem.manifest-desktop
-  REMOVE='ubiquity ubiquity-frontend-gtk ubiquity-frontend-kde casper lupin-casper live-initramfs user-setup discover1 xresprobe os-prober libdebian-installer4'
+  REMOVE='ubiquity ubiquity-frontend-gtk ubiquity-frontend-kde casper live-initramfs user-setup discover1 xresprobe os-prober libdebian-installer4'
   for i in $REMOVE 
   do
     sudo sed -i "/${i}/d" ./build.$GLOBAL_BASEARCH/image/casper/filesystem.manifest-desktop

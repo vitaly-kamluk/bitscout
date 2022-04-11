@@ -14,12 +14,15 @@ fi &&
 statusprint "Generating locale.." &&
 chroot_exec build.$GLOBAL_BASEARCH/chroot 'locale-gen "'$LANG'"' || exit 1 &&
 
+statusprint "Updating CA certificates.." &&
+chroot_exec build.$GLOBAL_BASEARCH/chroot 'apt install ca-certificates && update-ca-certificates' || exit 1 &&
+
 statusprint "Updating system and installing essential packages.." &&
 
-COMMON_PACKAGES="binutils systemd-container netcat socat discover laptop-detect os-prober bindfs dialog tmux gawk ntpdate ifupdown network-manager curl wget cryptsetup lvm2"
+COMMON_PACKAGES="binutils systemd-container netcat socat discover laptop-detect os-prober bindfs dialog tmux gawk ntpdate ifupdown network-manager curl wget cryptsetup lvm2 lz4"
 
 if [ $GLOBAL_TARGET = "iso" ]; then
-  COMMON_PACKAGES="$COMMON_PACKAGES casper lupin-casper"
+  COMMON_PACKAGES="$COMMON_PACKAGES casper"
 else
   COMMON_PACKAGES="$COMMON_PACKAGES systemd-sysv"
 fi
@@ -30,7 +33,7 @@ then
 apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install $COMMON_PACKAGES  && exit 0 || exit 1" || exit 1
 else
   chroot_exec build.$GLOBAL_BASEARCH/chroot "export DEBIAN_FRONTEND=noninteractive
-  apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install $COMMON_PACKAGES file hdparm iptables lshw usbutils parted lsof psmisc strace ltrace time systemd-sysv man-db dosfstools cron busybox-static rsync dmidecode bash-completion command-not-found ntfs-3g uuid-runtime vim nano less pv ifupdown nbd-server qemu-kvm fuse libfuse2 python3-fusepy samba && exit 0 || exit 1" || exit 1
+  apt-fast -y -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" install $COMMON_PACKAGES file hdparm iptables lshw usbutils parted lsof psmisc strace ltrace time systemd-sysv man-db dosfstools cron busybox-static rsync dmidecode bash-completion command-not-found ntfs-3g uuid-runtime vim nano less pv ifupdown nbd-server qemu-kvm fuse3 libfuse3-3 libfuse2 python3-fusepy samba && exit 0 || exit 1" || exit 1
 fi &&
 
 #statusprint "Installing LXD using snap.."

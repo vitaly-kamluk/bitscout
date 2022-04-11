@@ -49,7 +49,7 @@ scripts/image_prebuild_cleanup.sh &&
 #apply initrd/casper fixes: 
 scripts/initrd_unpack.sh &&
 scripts/initrd_findlivefs_fix.sh &&
-scripts/initrd_integritycheck_fix.sh &&
+#scripts/initrd_integritycheck_fix.sh &&
 scripts/initrd_writeblocker.sh &&
 scripts/initrd_doublesword.sh &&
 scripts/initrd_pack.sh &&
