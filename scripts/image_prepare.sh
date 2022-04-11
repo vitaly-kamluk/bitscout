@@ -49,7 +49,7 @@ if [ "$GLOBAL_TARGET" = "iso" ]; then
   mkdir ./build.$GLOBAL_BASEARCH/image/.disk
   cd ./build.$GLOBAL_BASEARCH/image/.disk
   echo "live" > cd_type
-  echo "Ubuntu Remix 20.04 \"$PROJECTCAPNAME\"" > info  # Update version number to match your OS version
+  echo "Ubuntu Remix 22.04 \"$PROJECTCAPNAME\"" > info  # Update version number to match your OS version
   echo "A project by Vitaly Kamluk, Kaspersky Lab (www.kaspersky.com)." > release_notes_url
   cd ../../../
 
@@ -62,7 +62,7 @@ if [ "$GLOBAL_TARGET" = "iso" ]; then
   statusprint "Altering boot splash image.."
   install_required_package imagemagick
   convert -quiet ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.jpg +repage ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.tiff
-  convert ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.tiff \( -clone 0 -fill srgb\(255,255,255\) -colorize 100% -modulate 100,100,100 \) \( -clone 0 -blur 0x1 -fuzz 10% -fill none -draw "matte 580,630 floodfill" -channel rgba -fill black +opaque none -fill white -opaque none -blur 0x8 -auto-level -evaluate multiply 1 \) -compose over -composite -pointsize 22 -font /usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf -fill rgba\(255,255,255,0.8\) -annotate +750+580 20.04 ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.jpg
+  convert ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.tiff \( -clone 0 -fill srgb\(255,255,255\) -colorize 100% -modulate 100,100,100 \) \( -clone 0 -blur 0x1 -fuzz 10% -fill none -draw "matte 580,630 floodfill" -channel rgba -fill black +opaque none -fill white -opaque none -blur 0x8 -auto-level -evaluate multiply 1 \) -compose over -composite -pointsize 22 -font /usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf -fill rgba\(255,255,255,0.8\) -annotate +750+580 22.04 ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.jpg
   rm ./build.$GLOBAL_BASEARCH/image/boot/grub/theme/background.tiff
 
   statusprint "Preparing font for grub bootloader.."
@@ -94,7 +94,7 @@ else
   statusprint "Altering boot splash image.."
   install_required_package imagemagick
   sudo convert -quiet ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.jpg +repage ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.tiff
-  sudo convert ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.tiff \( -clone 0 -fill srgb\(255,255,255\) -colorize 100% -modulate 100,100,100 \) \( -clone 0 -blur 0x1 -fuzz 10% -fill none -draw "matte 580,630 floodfill" -channel rgba -fill black +opaque none -fill white -opaque none -blur 0x8 -auto-level -evaluate multiply 1 \) -compose over -composite -pointsize 22 -font /usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf -fill rgba\(255,255,255,0.8\) -annotate +750+580 20.04 ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.jpg
+  sudo convert ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.tiff \( -clone 0 -fill srgb\(255,255,255\) -colorize 100% -modulate 100,100,100 \) \( -clone 0 -blur 0x1 -fuzz 10% -fill none -draw "matte 580,630 floodfill" -channel rgba -fill black +opaque none -fill white -opaque none -blur 0x8 -auto-level -evaluate multiply 1 \) -compose over -composite -pointsize 22 -font /usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf -fill rgba\(255,255,255,0.8\) -annotate +750+580 22.04 ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.jpg
   sudo rm ./build.$GLOBAL_BASEARCH/chroot/boot/grub/theme/background.tiff 
   
   statusprint "Preparing font for grub bootloader.."

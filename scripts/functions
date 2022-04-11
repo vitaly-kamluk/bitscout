@@ -4,9 +4,9 @@
 
 PROJECTNAME="bitscout"
 PROJECTCAPNAME="Bitscout"
-PROJECTRELEASE="20.04"
+PROJECTRELEASE="24.04"
 PROJECTSHORTNAME="scout"
-BASERELEASE="focal"
+BASERELEASE="jammy"
 CONTAINERNET_NAME="ve-container"
 CONTAINERNET_HOST_IP="10.3.0.1"
 CONTAINERNET_HOST_IP_CIDR="10.3.0.1/24"
@@ -118,6 +118,7 @@ chroot_exec()
   chroot_mount_cache "$DIR" &&
   trap "chroot_unmount_fs \"$DIR\"" SIGINT SIGKILL SIGTERM &&
 
+  ( [ ! -d "$DIR/tmp" ] && sudo mkdir -p "$DIR/tmp" || true ) &&
   sudo chmod o+rwX "$DIR/tmp" &&
   statusprint "Executing command in chroot ($DIR):" &&
   statusprint "$CMD" &&

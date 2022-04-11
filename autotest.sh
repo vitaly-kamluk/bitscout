@@ -14,7 +14,7 @@ export SHELL=/bin/bash
 
 . ./scripts/functions
 
-ISONAME="${PROJECTNAME}-20.04-${GLOBAL_BASEARCH}.iso"
+ISONAME="${PROJECTNAME}-22.04-${GLOBAL_BASEARCH}.iso"
 TESTLOG="./autotest.log"
 VISIBLE=$(test -z $TERM && echo 0 || echo 1) #show tmux interface during testing
 VMRAM=1024 #Megabytes

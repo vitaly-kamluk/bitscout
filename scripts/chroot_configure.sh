@@ -18,7 +18,7 @@ then
 fi
 
 statusprint "Setting release name.."
-sudo sed -i "s#Ubuntu 20.04[^ ]\{0,3\} LTS#${PROJECTNAME}#" ./build.$GLOBAL_BASEARCH/chroot/etc/issue.net ./build.$GLOBAL_BASEARCH/chroot/etc/lsb-release ./build.$GLOBAL_BASEARCH/chroot/etc/os-release
+sudo sed -i "s#Ubuntu 22.04[^ ]\{0,3\} LTS#${PROJECTNAME}#" ./build.$GLOBAL_BASEARCH/chroot/etc/issue.net ./build.$GLOBAL_BASEARCH/chroot/etc/lsb-release ./build.$GLOBAL_BASEARCH/chroot/etc/os-release
 echo "${PROJECTNAME} (\m) \d \t \l" | sudo tee ./build.$GLOBAL_BASEARCH/chroot/etc/issue >/dev/null
 
 statusprint "Removing extra banners and motd.."

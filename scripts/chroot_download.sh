@@ -36,16 +36,16 @@ apt_make_dirs()
 apt_update()
 {
   if statusprint "Preparing repository PGP key(s).." &&
-    KEYS=( 40976EAF437D05B5 3B4FE6ACC0B21F32 ) &&
-    sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/apt &&
+    KEYS=( 871920D1991BC93C ) &&
+    ( [ ! -d ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings ] && sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings || true ) &&
+    ( [ ! -d ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg.d ] && sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg.d || true ) &&
+    ( [ -f ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ubuntu-archive-keyring.gpg ] && sudo rm ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ubuntu-archive-keyring.gpg || true ) && 
+    ( [ -f ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg.d/ubuntu-archive-keyring.gpg ] && sudo rm ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg.d/ubuntu-archive-keyring.gpg || true ) &&
     for KEY in ${KEYS[*]} 
     do
-      sudo apt-key --keyring ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg add ./resources/gpg/$KEY.asc
+      echo "Adding key $KEY.." &&
+      cat ./resources/gpg/$KEY.asc | gpg --dearmor | sudo tee -a ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ubuntu-archive-keyring.gpg | sudo tee -a ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg.d/ubuntu-archive-keyring.gpg >/dev/null
     done &&
-  
-    statusprint "Saving PGP key(s) to chroot system-wide keyring.." &&
-    sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ &&
-    sudo cp ./build.$GLOBAL_BASEARCH/chroot/etc/apt/trusted.gpg  ./build.$GLOBAL_BASEARCH/chroot/usr/share/keyrings/ubuntu-archive-keyring.gpg &&
   
     statusprint "Updating $BASERELEASE:$GLOBAL_BASEARCH indices for chroot.." &&
     sudo apt-get -y -o "Dir=$PWD/build.$GLOBAL_BASEARCH/chroot" -o "APT::Architecture=$GLOBAL_BASEARCH" -o "Acquire::Languages=$LANG" update
@@ -79,9 +79,12 @@ run_debootstrap_supervised_fast()
   statusprint "Building base root filesystem.." &&
   DEBDIR="./build.$GLOBAL_BASEARCH/cache/debootstrap.cache/dists/$BASERELEASE/main/binary-$GLOBAL_BASEARCH" &&
   mkdir -p "$DEBDIR" &&
+  if [ ! -d "./build.$GLOBAL_BASEARCH/tmp" ]; then mkdir -p "./build.$GLOBAL_BASEARCH/tmp"; fi &&
 
   statusprint "Fetching the list of essential packages.." &&
+  pushd "./build.$GLOBAL_BASEARCH/tmp" &&
   DEBS=$(sudo debootstrap --include=distro-info,aria2,perl,libaria2-0,libc-ares2,libssh2-1,libxml2,ca-certificates,zlib1g,localepurge,python3-apt,python3-netifaces --print-debs --arch=$GLOBAL_BASEARCH $BASERELEASE chroot http://archive.ubuntu.com/ubuntu ) || exit 1 &&
+  popd && rm -rf "./build.$GLOBAL_BASEARCH/tmp" &&
   install_required_package aria2  &&
  
   chroot_mount_cache "$PWD/build.$GLOBAL_BASEARCH/chroot" &&
@@ -102,11 +105,11 @@ run_debootstrap_supervised_fast()
   echo "Origin: Ubuntu
 Label: Ubuntu
 Suite: $BASERELEASE
-Version: 20.04
+Version: 22.04
 Codename: $BASERELEASE
 Architectures: $GLOBAL_BASEARCH
 Components: main restricted universe multiverse
-Description: Ubuntu Focal 20.04
+Description: Ubuntu Jammy 22.04
 
 MD5Sum:
 $(md5sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$GLOBAL_BASEARCH/Packages
