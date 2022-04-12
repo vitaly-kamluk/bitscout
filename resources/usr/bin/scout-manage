@@ -125,9 +125,9 @@ do
       
     case "$NETWORKCHOICE" in
         "WIFI SETTINGS")
-                dialog --title "NOT IMPLEMENTED" --msgbox "Sorry, this feature is not implemented yet." $BOXHEIGHT $BOXWIDTH
-    continue
-    ;;
+                TERM=vt220 nmtui
+                continue
+                ;;
          "ENABLE HOST CONTROL")
                 dialog --title "ENABLE HOST CONTROL" --yesno "This will provide remote expert with full control over the host system. Generally this is bad practice and shall be used only under exceptional case and full trust to the expert.\n\nAre you sure you want to enable full access to the host?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
                 case $RETCODE in
@@ -409,7 +409,7 @@ EOF
   do
     read DISKCHOICE <<< $(dialog_menu "DISK" "$DISKMENUTEXT" "$(declare -p DISKMENU)")
     if [ "$DISKCHOICE" == "VIEW" ]; then
-      dialog --title "BLOCK DEVICES VIEW" --msgbox "$(lsblk -f | grep -vE "sr0|loop[0-9]*|zram0"; echo "-----EXISTING MAPPINGS-----"; losetup -a| sed 's#/dev/loop\([^:]*\):.*(\([^)]*\))#\1 \2#'| awk '{if($1>=8 && $1<18){print $2" => evidence"($1-8)} else if($1>=18 && $1<28){print $2" => storage"($1-18)} }' ; )" $BOXHEIGHT $BOXWIDTH 
+      dialog --title "BLOCK DEVICES VIEW" --msgbox "$(lsblk -f | grep -vE "sr0|loop[0-9]*|zram[0-9]*|nbd[0-9]*"; echo "-----EXISTING MAPPINGS-----"; losetup -a| sed 's#/dev/loop\([^:]*\):.*(\([^)]*\))#\1 \2#'| awk '{if($1>=8 && $1<18){print $2" => evidence"($1-8)} else if($1>=18 && $1<28){print $2" => storage"($1-18)} }' ; )" $BOXHEIGHT $BOXWIDTH 
       continue
     fi 
 

@@ -4,6 +4,8 @@ DELAY=5
 COLS=`tput cols`
 LINES=`tput lines`
 
+VPNLOG=/var/log/openvpn.scout.log
+
 hr() {
   local start=$'\e(0' end=$'\e(B' line='q'
   local cols=${COLUMNS:-$(tput cols)}
@@ -77,8 +79,13 @@ do
   dmesg | tail -n10 |cut -c -$COLS
   hr
   echo "Latest OpenVPN messages:"
-  tail -n10 /var/log/openvpn.scout.log ) | awk '{printf("%s",$0); for(i=0;i<'$COLS'-length($0);i++){printf(" ");} printf("\n");}'
-
+  if [ -f "$VPNLOG" ]
+  then
+    tail -n10 "$VPNLOG" | awk '{printf("%s",$0); for(i=0;i<'$COLS'-length($0);i++){printf(" ");} printf("\n");}'
+  else
+    echo "No VPN log file found at $VPNLOG"
+  fi
+  )
   #clear; echo "$frame";
 
   monitor_new_sessions

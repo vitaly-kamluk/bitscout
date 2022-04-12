@@ -1,11 +1,9 @@
 #!/bin/sh
 
 # Mark all available block devices as read-only (except loop devices)
-for device in /dev/* /dev/*/*; do
-	if [ ! -h "$device" ] && [ -b "$device" ] && [ ! -z ${device##/dev/loop*} ]; then
-		# Check if medium is present		
-		if blockdev --getsz "$device" > /dev/null 2>&1; then
-			blockdev --setro "$device" || logger "wrtblk: blockdev --setro $device failed!"
-		fi
-	fi
+find /dev -type b | grep -vE "^/dev/loop[0-9]*|^/dev/nbd[0-9]*|^/dev/zram[0-9]*" | while read device; do
+  # Check if medium is present		
+  if blockdev --getsz "$device" > /dev/null 2>&1; then
+    blockdev --setro "$device" && logger "wrtblk: $device was set to readonly" || logger "wrtblk: blockdev --setro $device failed!"
+  fi
 done
