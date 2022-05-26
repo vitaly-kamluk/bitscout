@@ -116,6 +116,11 @@ $(sha256sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$GLOBAL_BAS
   statusprint "Building rootfs based on local deb cache.." &&
   sudo debootstrap --no-check-gpg --foreign --arch=$GLOBAL_BASEARCH $BASERELEASE ./build.$GLOBAL_BASEARCH/chroot "file:///$BASEDIR/build.$GLOBAL_BASEARCH/cache/debootstrap.cache" &&
 
+  #Workaround for a bug https://www.mail-archive.com/ubuntu-bugs@lists.ubuntu.com/msg6031260.html
+  sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/kernel/postinst.d &&
+  echo "#/bin/sh" | sudo tee ./build.$GLOBAL_BASEARCH/chroot/etc/kernel/postinst.d/apt-auto-removal &&
+  sudo chmod +x ./build.$GLOBAL_BASEARCH/chroot/etc/kernel/postinst.d/apt-auto-removal &&
+
   statusprint "Fixing keyboard-configuration GDM compatibility bug (divert kbd_mode).." &&
   TARGETDEB="./build.$GLOBAL_BASEARCH/chroot$(grep "^kbd " ./build.$GLOBAL_BASEARCH/chroot/debootstrap/debpaths | cut -d' ' -f2)" &&
   if [ "$TARGETDEB" == "./build.$GLOBAL_BASEARCH/chroot" ]
@@ -137,6 +142,9 @@ $(sha256sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$GLOBAL_BAS
 
   statusprint "Running debootstrap (stage 2).." &&
   chroot_exec build.$GLOBAL_BASEARCH/chroot "/debootstrap/debootstrap --second-stage && apt-mark hold kbd" &&
+
+  #Workaround rollback for a bug https://www.mail-archive.com/ubuntu-bugs@lists.ubuntu.com/msg6031260.html
+  sudo rm ./build.$GLOBAL_BASEARCH/chroot/etc/kernel/postinst.d/apt-auto-removal &&
 
   statusprint "Restoring apt lists after debootstrap (stage 2).." &&
   sudo rm -rf ./build.$GLOBAL_BASEARCH/cache/apt.lists/ &&
