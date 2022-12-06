@@ -37,4 +37,4 @@ if ! grep -q "^VersionAddendum" "./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_co
   echo "VersionAddendum ${PROJECTCAPNAME} ${PROJECTRELEASE}" | sudo tee -a "./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config.d/banner.conf" >/dev/null
 fi
 
-exit 0;
+sudo sed -i "s/^#PermitRootLogin prohibit-password/PermitRootLogin yes/g; s/^#PermitEmptyPasswords no/PermitEmptyPasswords yes/g" ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config
