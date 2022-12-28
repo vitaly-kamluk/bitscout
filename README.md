@@ -54,7 +54,7 @@ The expert's server shall be accessible from the network of the target system. I
   b. You may choose what packages you put on Bitscout ISO. This lets you decide which binaries you trust.  
   c. The owner can monitor what is going on in an expert's container live or via a recorded session, which can be replayed. This is useful for training or understanding of the forensic process in the court.  
 
-2. Forensics
+2. Forensics  
   a. Bitscout is designed to not modify hard drive data or other storage media attached to the system. This is essential for forensic analysis.  
   b. Bitscout contains most popular tools to acquire and analyze storage drives.  
   c. The owner of the system controls which disk devices are accessible to the expert in read-only (or read-write) mode.  
