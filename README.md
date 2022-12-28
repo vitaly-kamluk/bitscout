@@ -13,7 +13,6 @@ We recommend exploring the project home page first. However, if you are ready to
    ```
    $ ./automake.sh
    ```
-
 After running this command, you may need to answer some questions such as location of your VPN server, type of build, etc.
 
 Hint: if you are not running Linux and still want to try Bitscout, you can start Ubuntu from LiveCD and build an image there. It's better to attach an external storage in this case to make sure you don't run out of memory. But previously, we managed you to build Bitscout even with 2GB of RAM. To download Ubuntu LiveCD, please go here:
@@ -28,7 +27,7 @@ https://www.youtube.com/watch?v=knA0NS9tWsY
 
 Note: the automake.sh script runs some commands as root, such as mounting local cache directories and creating new root filesystem permissions. However, all changes shall affect only current directory and subdirectories, unless your system is missing some essential packages to build the ISO (in this case they will be installed).
 
-2. Test new ISO file:
+2. Test new ISO file:  
 	```
 	$ ./autotest.sh
 	```
@@ -50,40 +49,39 @@ Hint: let Bitscout generate new keys for you and populate ./config directory, wh
 The expert's server shall be accessible from the network of the target system. It shall run an instance of VPN software (i.e. OpenVPN or Wireguard), possibly a Syslog server for remote command logging, and IRC chat server for communication. Suggested server configuration files can be found in the ./exports directory after a successful build of ISO file.
 
 ### Bitscout Features:
-1. Transparency
-  a. You build your own live disk instead of using someone else's. The build process is rather straightforward and detailed. One of the core principles of Bitscout is to not use proprietary binary executables during the build process.
-  b. You may choose what packages you put on Bitscout ISO. This lets you decide which binaries you trust.
-  c. The owner can monitor what is going on in an expert's container live or via a recorded session, which can be replayed. This is useful for training or understanding of the forensic process in the court.
+1. Transparency  
+  a. You build your own live disk instead of using someone else's. The build process is rather straightforward and detailed. One of the core principles of Bitscout is to not use proprietary binary executables during the build process.  
+  b. You may choose what packages you put on Bitscout ISO. This lets you decide which binaries you trust.  
+  c. The owner can monitor what is going on in an expert's container live or via a recorded session, which can be replayed. This is useful for training or understanding of the forensic process in the court.  
 
 2. Forensics
-  a. Bitscout is designed to not modify hard drive data or other storage media attached to the system. This is essential for forensic analysis.
-  b. Bitscout contains most popular tools to acquire and analyze storage drives.
-  c. The owner of the system controls which disk devices are accessible to the expert in read-only (or read-write) mode.
-  d. Even running as root the expert cannot modify or reset access to the provided storage devices, which prevents potential data loss from the source disk. This is achieved via layers of virtualization.
+  a. Bitscout is designed to not modify hard drive data or other storage media attached to the system. This is essential for forensic analysis.  
+  b. Bitscout contains most popular tools to acquire and analyze storage drives.  
+  c. The owner of the system controls which disk devices are accessible to the expert in read-only (or read-write) mode.  
+  d. Even running as root the expert cannot modify or reset access to the provided storage devices, which prevents potential data loss from the source disk. This is achieved via layers of virtualization.  
 
-3. Customization
-  a. The set of tools available on Bitscout can be customized by editing respective scripts before running the build. You can add standard packages or your own tools. Make it available to experts, system owners or both.
-  b. Both system owner and expert can install additional software packages on an already running (booted) system. All changes will be done independently (experts cannot change the owner's environment). All installed software exists only in RAM and will be gone when the system is restarted. This doesn't apply to Bitscout with persistence feature.
-  c. If certain operations require more memory or a large disk which is not available on the system, the owner may attach a writable external storage device (such as fast USB flash memory) to be used for storage or swap by the expert.
+3. Customization  
+  a. The set of tools available on Bitscout can be customized by editing respective scripts before running the build. You can add standard packages or your own tools. Make it available to experts, system owners or both.  
+  b. Both system owner and expert can install additional software packages on an already running (booted) system. All changes will be done independently (experts cannot change the owner's environment). All installed software exists only in RAM and will be gone when the system is restarted. This doesn't apply to Bitscout with persistence feature.  
+  c. If certain operations require more memory or a large disk which is not available on the system, the owner may attach a writable external storage device (such as fast USB flash memory) to be used for storage or swap by the expert.  
 
-4. Compact
-  a. Bitscout project is designed to be a minimal yet universal tool to access remote systems. It contains a minimal set of packages, libraries and tools to start the system and provide most common forensic tools to the expert  immediately. Certain optimizations are yet to be added to reduce size even further. If you have a nice idea to reduce the size, please share it via the Github issues section.
-  b. The system uses no graphical interface on purpose. This reduces disk image size and RAM consumption.
-  c. The expert's runs inside an unprivileged Linux container, which saves from overhead of full virtualization. The container relies on the same kernel as the host system, but doesn't allow kernel module manipulation.
-  d. The container root filesystems are overlaid from the live CD rootfs. This enables us to reuse the system binaries and configuration and avoid data duplication. Yet, mapped with copy-on-write access it provides almost unlimited modification of the whole OS. The real limit is just the size of available memory and swap. As a matter of fact, fully running OS with a child OS inside the container used less than 200Mb of RAM in some of our tests in the past.
+4. Compact  
+  a. Bitscout project is designed to be a minimal yet universal tool to access remote systems. It contains a minimal set of packages, libraries and tools to start the system and provide most common forensic tools to the expert  immediately. Certain optimizations are yet to be added to reduce size even further. If you have a nice idea to reduce the size, please share it via the Github issues section.  
+  b. The system uses no graphical interface on purpose. This reduces disk image size and RAM consumption.  
+  c. The expert's runs inside an unprivileged Linux container, which saves from overhead of full virtualization. The container relies on the same kernel as the host system, but doesn't allow kernel module manipulation.  
+  d. The container root filesystems are overlaid from the live CD rootfs. This enables us to reuse the system binaries and configuration and avoid data duplication. Yet, mapped with copy-on-write access it provides almost unlimited modification of the whole OS. The real limit is just the size of available memory and swap. As a matter of fact, fully running OS with a child OS inside the container used less than 200Mb of RAM in some of our tests in the past.  
 
 ### F.A.Q:
 
 **Q: Why was the system created?**  
-**A:** There are a lot of commercial and rather expensive forensic software suites out there. We tried several of the most popular of them and always bumped into functionality limitations and lack of transparency. While some suites provide scriptability, they lack remote analysis features that do not modify the evidence disk. Most forensic tools are not designed for remote analysis, lack flexibility and cost a fortune. 
-We found that there was a niche for a new tool which is
-  1. trusted, transparent and open source (you build your own OS!)
-  2. customizable (you put your own tools!)
-  3. stable and reliable
-  4. rich in features and compact
-  5. fast and optimized for lower RAM usage
-  6. free of charge
-  7. runs on merely any hardware
+**A:** There are a lot of commercial and rather expensive forensic software suites out there. We tried several of the most popular of them and always bumped into functionality limitations and lack of transparency. While some suites provide scriptability, they lack remote analysis features that do not modify the evidence disk. Most forensic tools are not designed for remote analysis, lack flexibility and cost a fortune.  We found that there was a niche for a new tool which is  
+  1. trusted, transparent and open source (you build your own OS!)  
+  2. customizable (you put your own tools!)  
+  3. stable and reliable  
+  4. rich in features and compact  
+  5. fast and optimized for lower RAM usage  
+  6. free of charge  
+  7. runs on merely any hardware  
 
 **Q: How was the project developed?**  
 **A:** The project was initially developed as a hobby project. The first variant relied on full trust to the remote user, who was provided with root access to the live system. Soon we realized that the remote system owner is willing to track the progress, communicate with the expert and be able to approve access to storage media. To increase trust level between the system's owner and the remote expert we decided to isolate the expert within a virtualized container. This assured the owner of the system that the source disk information will never be tampered (unless it is permitted by the owner in case of system remediation request).
