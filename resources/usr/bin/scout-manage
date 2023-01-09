@@ -52,6 +52,7 @@ NETWORKMENU+=("STATIC IP:Setup static IP for LAN interface.")
 NETWORKMENU+=("HTTP PROXY:Configure internet access via HTTP proxy.")
 NETWORKMENU+=("SOCKS PROXY:Configure internet access via SOCKS proxy.")
 NETWORKMENU+=("SYSLOG:Configure a new Syslog forwarder.")
+NETWORKMENU+=("BACKGROUND COLOR:Enable Color changed based on network connectivity")
 NETWORKMENU+=("BACK:Return to previous menu.")
 #reverse array elements
 unset T; T=("${NETWORKMENU[@]}"); unset NETWORKMENU; declare -a NETWORKMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do NETWORKMENU[${#NETWORKMENU[@]}]=${T[i]}; done
@@ -172,6 +173,34 @@ do
          "BACK")
                 break;
                 ;;
+
+         "BACKGROUND COLOR")  # Created
+               dialog --title "BACKGROUND COLOR" --yesno "Are you sure to enable this feature?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
+               case $RETCODE in
+                   $DIALOG_YES)
+        
+                     {
+                     while true
+                     do
+                         if nc -zw1 google.com 443 2>/dev/null; then
+                             sed -i 's/screen_color = (CYAN,RED,ON)/screen_color = (CYAN,BLUE,ON)/g' /etc/dialogrc # Internet Connection Exist
+                         else
+                             sed -i 's/screen_color = (CYAN,BLUE,ON)/screen_color = (CYAN,RED,ON)/g' /etc/dialogrc # Internet Connection Dosen't exist
+                         fi
+                     done
+                     } &
+                    
+                     bkg_color_id=$!
+                     ;;
+
+                   $DIALOG_NO)
+                     sudo sed -i 's/screen_color = (CYAN,RED,ON)/screen_color = (CYAN,BLUE,ON)/g' /etc/dialogrc # Revert back to original format
+                     kill -9 $bkg_color_id
+                     ;;
+               esac               
+               continue
+               ;;
+                
          "SYSLOG")
                 declare -A SYSLOGCFG;
                 if [ -r "$SYSLOGCONFIG" ]; then
