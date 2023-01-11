@@ -12,7 +12,7 @@
 # Bitscout. If not, see <http://www.gnu.org/licenses/>.
 
 . ./scripts/functions
-builddirs=( $(ls $PWD | grep build. | cut -d "." -f 2) )
+builddirs=( $(find $PWD -maxdepth 1 -type d | grep 'build\.' | sed 's/^.*\.\([^.]*\)$/\1/' ) )
 
 statusprint "Unmounting filesystems from chroot environment.."
 chroot_unmount_fs "./build.$GLOBAL_BASEARCH/chroot"

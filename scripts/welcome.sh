@@ -11,7 +11,7 @@ statusprint "Welcome to $PROJECTCAPNAME builder!"
 HOSTUNAME=$(uname -srvi)
 HOSTDIST=$(lsb_release -idrc 2>&-)
 COMMIT=$(git log -1 2>&-|head -n1 | cut -d' ' -f2)
-statusprint "Host OS info: $HOSTUNAME\n$HOSTDIST\nBuild Target:\t$PROJECTCAPNAME $PROJECTRELEASE\nGit commit:\t$COMMIT\n"
+statusprint "Host OS info: $HOSTUNAME\n$HOSTDIST\nBuild Target:\t$PROJECTCAPNAME $PROJECTRELEASE\nUsing git commit:\t$COMMIT\n"
 
 validate_hostaddr()
 {
@@ -58,17 +58,6 @@ validate_releasesize()
   fi
 }
 
-validate_buildarch()
-{
-    if [ "$1" = "amd64" ] || [ "$1" = "i386" ]
-    then
-        return $?
-    else
-        return 1
-
-    fi 
-}
-
 validate_target()
 {
     case "$1" in
@@ -97,7 +86,7 @@ msg_new_config_opt="\nSome new options were not found in your config file, pleas
 
 if ! [ -f "$BUILDCONFPATH" ]
 then
-  statusprint "It seems that you are in a fresh build environment.\nWe need to populate the config with some essential data.\nPlease answer the following questions or put your existing build config to config/$PROJECTNAME-build.conf."
+  statusprint "Please answer some questions or place a build config in config/$PROJECTNAME-build.conf."
   PRINTOPTIONS=n statusprint "Proceed to interactive settings? [Y/n]: "
   read choice
   if [ ! -z "$choice" -a ! "${choice^}" = "Y" ] 
@@ -117,6 +106,7 @@ lanaccess=${GLOBAL_LANACCESS_ENABLED:-0}
 hostssh=${GLOBAL_HOSTSSH_ENABLED:-0}
 ptabletype=${GLOBAL_PARTITION_TABLE:-hybrid}
 automount=${GLOBAL_AUTOMOUNT:-off}
+buildarch="amd64"
 
 if [ -z "$GLOBAL_RELEASESIZE" ]
 then
@@ -124,11 +114,12 @@ then
     releasesize=""
     while ! validate_releasesize "$releasesize"
     do
-      PRINTOPTIONS=n statusprint "\n${PROJECTNAME} may be built in various sizes.\nPlease choose option number:\n 1. compact - minimal size, less tools and drivers.\n 2. normal - includes most common forensic tools, drivers, etc.\n 3. maximal - includes maximum forensic tools and frameworks.\nYour choice (1|2|3): "
+      PRINTOPTIONS=n statusprint "\n${PROJECTNAME} builds vary in size.\nPlease choose one you prefer:\n 1. compact - minimal size, less tools and drivers.\n 2. normal - some forensic tools, all drivers, etc.\n 3. maximal - includes maximum forensic tools and frameworks.\nYour choice (1|2|3): "
       read releasesize
       if ! validate_releasesize "$releasesize"
       then
-        statusprint "Invalid input data format. Please try again.."
+        releasesize=2
+        statusprint "Auto-selected normal build size."
       fi
     done
 else
@@ -199,29 +190,7 @@ else
   vpnport=$GLOBAL_VPNPORT
 fi
 
-if [ -z "$GLOBAL_SYSLOGSERVER" ]
-then
-    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
-    sysloghost=""
-    while ! validate_hostaddr "$sysloghost"
-    do
-        statusprint "\nYou may configure a remote syslog server to log shell history. To continue without a syslog server simply press Enter."
-        PRINTOPTIONS=n statusprint "Your input [host|<NONE>]: "
-        read sysloghost
-        if [ "$sysloghost" = "" ]
-        then
-            sysloghost="none"
-            statusprint "Remote syslog support disabled."
-            break
-        fi
-        if ! validate_hostaddr "$sysloghost"
-        then
-            statusprint "Invalid input data format. Please try again.."
-        fi
-    done
-else
-  sysloghost=$GLOBAL_SYSLOGSERVER
-fi
+sysloghost="none"
 
 if [ -z "$GLOBAL_BUILDID" ]
 then    
@@ -241,32 +210,7 @@ else
   cryptokeysize=$CRYPTOKEYSIZE
 fi
 
-if [ -z "$GLOBAL_BASEARCH" ] 
-then
-    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
-    buildarch=""
-    while ! validate_buildarch "$buildarch"
-    do
-        echo "$buildarch"
-        PRINTOPTIONS=n statusprint "\nWhat's the target system architecture?\n1. 64-bit (amd64)\n2. 32-bit (i386)\nPlease choose [1|2]: "
-        read choice
-        
-        if [ "$choice" = "1" ]
-        then
-            buildarch="amd64"
-        elif [ "$choice" = "2" ]
-        then
-            buildarch="i386"
-        fi
-    
-        if ! validate_buildarch "$buildarch"
-        then
-            statusprint "Invalid input choice. Please try again.."
-        fi
-    done
-else
-  buildarch=$GLOBAL_BASEARCH
-fi
+GLOBAL_BASEARCH=amd64
 
 EXTRA_CONFIG=0
 PRINTOPTIONS=n statusprint "Basic configuration complete. Build/Stop/Extra-config extra config? [B/s/e]: "
@@ -340,6 +284,30 @@ do
   fi
 done
 
+if [ -z "$GLOBAL_SYSLOGSERVER" ]
+then
+    if  [ -f "$BUILDCONFPATH" ]; then PRINTOPTIONS=n statusprint "$msg_new_config_opt"; fi
+    sysloghost=""
+    while ! validate_hostaddr "$sysloghost"
+    do
+        statusprint "\nA remote syslog server can keep your shell history. To continue without a syslog server simply press Enter."
+        PRINTOPTIONS=n statusprint "Your input [syslog-host|<NONE>]: "
+        read sysloghost
+        if [ "$sysloghost" = "" ]
+        then
+            sysloghost="none"
+            statusprint "Remote syslog support disabled."
+            break
+        fi
+        if ! validate_hostaddr "$sysloghost"
+        then
+            statusprint "Invalid input data format. Please try again.."
+        fi
+    done
+else
+  sysloghost=$GLOBAL_SYSLOGSERVER
+fi
+
 statusprint "\nUpdating basic configuration.."
 echo "GLOBAL_TARGET=\"$target\" #target to build: iso, raw, qcow2, vmdk
 GLOBAL_PARTITION_TABLE=\"$ptabletype\" #partition table type: msdos,gpt,hybrid
@@ -357,6 +325,8 @@ GLOBAL_CUSTOMKERNEL=\"$customkernel\"
 GLOBAL_BASEARCH=\"$buildarch\" #amd64 (64bit) or i386 (32-bit)
 GLOBAL_AUTOMOUNT=\"$automount\" #map and mount all available common filesystems: off or all 
 CRYPTOKEYSIZE=$cryptokeysize" > "$BUILDCONFPATH"
+
+
 
 EXTRA_CONFIG=0
 PRINTOPTIONS=n statusprint "New configuration saved. Proceed to the building phase? [Y/n]: "

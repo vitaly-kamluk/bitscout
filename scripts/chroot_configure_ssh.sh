@@ -19,14 +19,19 @@ fi
 
 statusprint "Adding SSH-key to the authorized keys in chroot for normal user.."
 sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/home/user/.ssh/
-sudo cp "config/ssh/${PROJECTSHORTNAME}.pub" ./build.$GLOBAL_BASEARCH/chroot/home/user/.ssh/authorized_keys
+cat config/ssh/*.pub | sudo tee ./build.$GLOBAL_BASEARCH/chroot/home/user/.ssh/authorized_keys > /dev/null
 
 statusprint "Adding SSH-key to the authorized keys in chroot for root.."
 sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/root/.ssh/
-sudo cp "config/ssh/${PROJECTSHORTNAME}.pub" ./build.$GLOBAL_BASEARCH/chroot/root/.ssh/authorized_keys
+cat config/ssh/*.pub | sudo tee ./build.$GLOBAL_BASEARCH/chroot/root/.ssh/authorized_keys > /dev/null
 
 statusprint "Disabling password authentication for SSH.."
 sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/g' ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config
+
+statusprint "Enabling support for SSH RSA keys.."
+if ! grep -q "PubkeyAcceptedKeyTypes=+ssh-rsa" ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config; then
+  echo "PubkeyAcceptedKeyTypes=+ssh-rsa" | sudo tee -a ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config
+fi
 
 statusprint "Uncommenting port option for SSH.."
 sudo sed -i 's/^#Port /Port /g' ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config
@@ -37,4 +42,4 @@ if ! grep -q "^VersionAddendum" "./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_co
   echo "VersionAddendum ${PROJECTCAPNAME} ${PROJECTRELEASE}" | sudo tee -a "./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config.d/banner.conf" >/dev/null
 fi
 
-exit 0;
+sudo sed -i "s/^#PermitRootLogin prohibit-password/PermitRootLogin yes/g; s/^#PermitEmptyPasswords no/PermitEmptyPasswords yes/g" ./build.$GLOBAL_BASEARCH/chroot/etc/ssh/sshd_config
