@@ -1,0 +1,13 @@
+#!/bin/sh
+
+[Unit]
+Description=internet_indicator on bitscout management tool
+Requires=internet-indicator.service
+
+[Timer]
+Unit=internet-indicator.service
+OnCalendar=*:*:0/30
+AccuracySec=1sec
+
+[Install]
+WantedBy=timers.target

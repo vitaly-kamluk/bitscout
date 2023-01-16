@@ -1,22 +1,22 @@
 #!/bin/bash
 
-
 function startIndicator() {
     while [ 1 ]
     do
-        if nc -zw1 google.com 443 2>/dev/null; then
-            sudo sed -i 's/screen_color = (CYAN,RED,ON)/screen_color = (CYAN,BLUE,ON)/g' /etc/dialogrc # Internet Connection Exist
+        ping -c1 bitscout-forensics.info
+        status=$?
+        if [ $status == 0 ] ; then
+            sudo sed -i 's/screen_color = (CYAN,RED,ON)/screen_color = (CYAN,BLUE,ON)/g' /etc/dialogrc
         else
-            sudo sed -i 's/screen_color = (CYAN,BLUE,ON)/screen_color = (CYAN,RED,ON)/g' /etc/dialogrc # Internet Connection Dosen't exist
+            sudo sed -i 's/screen_color = (CYAN,BLUE,ON)/screen_color = (CYAN,RED,ON)/g' /etc/dialogrc
         fi
     done
 }
 
 function stopIndicator() {
-    sudo sed -i 's/screen_color = (CYAN,RED,ON)/screen_color = (CYAN,BLUE,ON)/g' /etc/dialogrc # Internet Connection Exist
-    a=$(ps -ef | grep -v grep | grep <script_name> | awk '{print $2}')
+    sudo sed -i 's/screen_color = (CYAN,RED,ON)/screen_color = (CYAN,BLUE,ON)/g' /etc/dialogrc
+    a=$(ps -ef | grep -v grep | grep "internet-indicator" | awk '{print $2}')
     kill -9 $a
-    #sudo sed -i 's/screen_color = (CYAN,RED,ON)/screen_color = (CYAN,BLUE,ON)/g' /etc/dialogrc # Internet Connection Exist
 }
 
 case "$1" in

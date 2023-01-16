@@ -194,6 +194,7 @@ do
 
           "DISABLE INTERNET INDICATORS")
                 sudo systemctl stop internet-indicator && sudo systemctl disable interent-indicator
+                reset
                 NETWORKMENU[$[${#NETWORKMENU[@]}-8]]="ENABLE INTERNET INDICATORS:Identify internet connection easily."
                 continue
                 ;;
