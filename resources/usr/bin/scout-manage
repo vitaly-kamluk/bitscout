@@ -11,6 +11,7 @@ PRIVMODECONTROLFILE=/var/run/privexec.enabled
 PRIVMODELOG=/opt/container/history/log/privexecd.log
 SUPERVISEDBYPASS=/var/run/supervised/bypass
 SUPERVISEDAUTHPIPE=/var/run/supervised/auth.pipe
+export DIALOGRC=../../etc/internet.dialogrc
 
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
 
@@ -194,7 +195,6 @@ do
 
           "DISABLE INTERNET INDICATORS")
                 sudo systemctl stop internet-indicator && sudo systemctl disable interent-indicator
-                reset
                 NETWORKMENU[$[${#NETWORKMENU[@]}-8]]="ENABLE INTERNET INDICATORS:Identify internet connection easily."
                 continue
                 ;;
