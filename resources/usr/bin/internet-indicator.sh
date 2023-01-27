@@ -1,21 +1,21 @@
 #!/bin/bash
 
 function startIndicator() {
-    while [ 1 ]
-    do
-        ping -c1 bitscout-forensics.info
-        status=$?
-        if [ $status == 0 ] ; then
-            sudo sed -i 's/screen_color = (CYAN,RED,ON)/screen_color = (CYAN,BLUE,ON)/g' /etc/internet.dialogrc
+    ping -c1 bitscout-forensics.info
+    status=$?
+    if [ $status == 0 ] ; then
+        [[ ! -f /run/internetOn.status && ! -f /run/internetOff.status ]] && touch /run/internetOn.status
+        [ -f /run/internetOff.status ] && mv /run/internetOff.status /run/internetOn.status
+    else
+        [[ ! -f /run/internetOn.status && ! -f /run/internetOff.status ]] && touch /run/internetOff.status
+        [ -f /run/internetOn.status ] && mv /run/internetOn.status /run/internetOff.status
+    fi
 
-        else
-            sudo sed -i 's/screen_color = (CYAN,BLUE,ON)/screen_color = (CYAN,RED,ON)/g' /etc/internet.dialogrc
-        fi
-    done
 }
 
 function stopIndicator() {
-    sudo sed -i 's/screen_color = (CYAN,RED,ON)/screen_color = (CYAN,BLUE,ON)/g' /etc/internet.dialogrc
+    [ -f /run/internetOn.status ] && rm /run/internetOn.status
+    [ -f /run/internetOff.status ] && rm /run/internetOff.status
 }
 
 case "$1" in

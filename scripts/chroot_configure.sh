@@ -37,7 +37,10 @@ sudo cp -v ./resources/etc/vtrgb ./build.$GLOBAL_BASEARCH/chroot/etc/console-set
 sudo ln -fs /etc/console-setup/vtrgb.vga.${PROJECTSHORTNAME} ./build.$GLOBAL_BASEARCH/chroot/etc/alternatives/vtrgb
 sudo sed -i 's/^\(\s*\)PS1=.*/\1PS1='"'"'\${debian_chroot:\+(\$debian_chroot)}\\[\\e\[1;32m\\\]\\u\\\[\\033\[00m\\\]@\\\[\\e\[1;37;41m\\\]\\h\\\[\\033\[00m\\\]:\\\[\\033\[01;34m\\\]\\w\\\[\\033\[00m\\]\$ '"'"'/g' ./build.$GLOBAL_BASEARCH/chroot/etc/bash.bashrc ./build.$GLOBAL_BASEARCH/chroot/etc/skel/.bashrc
 sudo cp -v ./resources/etc/dialogrc ./build.$GLOBAL_BASEARCH/chroot/etc/dialogrc
-sudo cp -v ./resources/etc/internet.dialogrc ./build.$GLOBAL_BASEARCH/chroot/etc/internet.dialogrc
+
+sudo cp -v ./build.$GLOBAL_BASEARCH/chroot/etc/dialogrc ./build.$GLOBAL_BASEARCH/chroot/etc/internetOff.dialogrc
+sudo sed -i 's/screen_color = (CYAN,BLUE,ON)/screen_color = (CYAN,RED,ON)/g' ./build.$GLOBAL_BASEARCH/chroot/etc/internetOff.dialogrc
+
 sudo rm -f ./build.$GLOBAL_BASEARCH/chroot/root/.bashrc ./build.$GLOBAL_BASEARCH/chroot/user/.bashrc
 
 statusprint "Setting ulimit values.."

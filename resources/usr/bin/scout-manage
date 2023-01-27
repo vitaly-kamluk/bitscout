@@ -11,7 +11,7 @@ PRIVMODECONTROLFILE=/var/run/privexec.enabled
 PRIVMODELOG=/opt/container/history/log/privexecd.log
 SUPERVISEDBYPASS=/var/run/supervised/bypass
 SUPERVISEDAUTHPIPE=/var/run/supervised/auth.pipe
-export DIALOGRC=../../etc/internet.dialogrc
+DIALOGRC=/etc/dialogrc
 
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
 
@@ -53,7 +53,7 @@ NETWORKMENU+=("STATIC IP:Setup static IP for LAN interface.")
 NETWORKMENU+=("HTTP PROXY:Configure internet access via HTTP proxy.")
 NETWORKMENU+=("SOCKS PROXY:Configure internet access via SOCKS proxy.")
 NETWORKMENU+=("SYSLOG:Configure a new Syslog forwarder.")
-NETWORKMENU+=("DISABLE INTERNET INDICATORS:Identify internet connection easily.")
+NETWORKMENU+=("DISABLE INTERNET TEST:Shows red/blue bg when offline/online.")
 NETWORKMENU+=("BACK:Return to previous menu.")
 #reverse array elements
 unset T; T=("${NETWORKMENU[@]}"); unset NETWORKMENU; declare -a NETWORKMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do NETWORKMENU[${#NETWORKMENU[@]}]=${T[i]}; done
@@ -112,14 +112,21 @@ function feature_not_implemented()
   dialog --title "NOT IMPLEMENTED" --msgbox "Sorry, this feature is not implemented or was temporary disabled." $BOXHEIGHT $BOXWIDTH
 }
 
+function dialog_export()
+{
+  [ -f /run/internetTest.off ] && export DIALOGRC=/etc/dialogrc; [ -f /run/internetOn.status ] && export DIALOGRC=/etc/dialogrc ; [ -f /run/internetOff.status ] && export DIALOGRC=/etc/internetOff.dialogrc
+}
+
 while true
 do
+  dialog_export
   read MAINCHOICE <<< $(dialog_menu "MAIN MENU" "$MAINMENUTEXT" "$(declare -p MAINMENU)")
 
   case "$MAINCHOICE" in
     "NETWORK")
   while true
   do
+    dialog_export
     if /sbin/host-iptables check-access-from-lan | grep -q "ON$"; then NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."; fi;
     if systemctl status ssh > /dev/null; then NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."; fi;
 
@@ -175,27 +182,18 @@ do
                 break;
                 ;;
 
-         "ENABLE INTERNET INDICATORS") 
-               dialog --title "ENABLE INTERNET INDICATORS" --yesno "Are you sure to enable this feature?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
-               case $RETCODE in
-                   $DIALOG_YES)
-
-                      sudo systemctl enable internet-indicator && sudo systemctl start internet-indicator
-
-                      NETWORKMENU[$[${#NETWORKMENU[@]}-8]]="DISABLE INTERNET INDICATORS:Identify internet connection easily."
-        
-                     ;;
-
-                   $DIALOG_NO)
-                      continue;
-                     ;;
-               esac               
+         "ENABLE INTERNET TEST") 
+               sudo systemctl enable internet-indicator && sudo systemctl start internet-indicator
+               [ -f /run/internetTest.off ] && rm /run/internetTest.off
+               NETWORKMENU[$[${#NETWORKMENU[@]}-8]]="DISABLE INTERNET TEST:Shows red/blue bg when offline/online."
+                           
                continue
                ;;
 
-          "DISABLE INTERNET INDICATORS")
+          "DISABLE INTERNET TEST")
                 sudo systemctl stop internet-indicator && sudo systemctl disable interent-indicator
-                NETWORKMENU[$[${#NETWORKMENU[@]}-8]]="ENABLE INTERNET INDICATORS:Identify internet connection easily."
+                NETWORKMENU[$[${#NETWORKMENU[@]}-8]]="ENABLE INTERNET TEST:Shows red/blue bg when offline/online."
+                [ -f /run/internetOn.status ] && rm /run/internetOn.status ; [ -f /run/internetOff.status ] && rm /run/internetOff.status; touch /run/internetTest.off
                 continue
                 ;;
                 
@@ -212,6 +210,7 @@ do
                 DEFAULT_BUTTON=extra
                 while true
                 do
+                    dialog_export
                     CHOICE=`dialog --default-button $DEFAULT_BUTTON --extra-label "Edit" --title "SYSLOG" --inputmenu "Configuration of a Syslog forwarder:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "IP/FQDN" "${SYSLOGCFGNEW['IP/FQDN']}" 3>&2 2>&1 1>&3`
                     RETCODE=$?;
                     case $RETCODE in
@@ -259,6 +258,7 @@ __SYSLOG__
            DEFAULT_BUTTON=extra
            while true
            do
+             dialog_export
              CHOICE=`dialog --default-button $DEFAULT_BUTTON --extra-label "Edit" --title "STATIC IP" --inputmenu "Configuration of interface \"${IFACECFGNEW['Interface']}\":" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "IP/Mask" "${IFACECFGNEW['IP/Mask']}" "Gateway" "${IFACECFGNEW['Gateway']}" "DNS" "${IFACECFGNEW['DNS']}" 3>&2 2>&1 1>&3`
              RETCODE=$?;
              case $RETCODE in
@@ -343,6 +343,7 @@ EOF
 
                 while true
     do
+      dialog_export
       CHOICE=`dialog --extra-label "Edit" --cancel-label "Delete" --title "HTTP PROXY" --inputmenu "Configuration of HTTP proxy:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "Host" "${PROXYCFGNEW['Host']}" "Port" "${PROXYCFGNEW['Port']}" "User" "${PROXYCFGNEW['User']}" "Password" "${PROXYCFGNEW['Password']}" 3>&2 2>&1 1>&3`
       RETCODE=$?
       case $RETCODE in
@@ -390,6 +391,7 @@ EOF
       eval "${TMPVAR/PROXYCFG=/PROXYCFGNEW=}";
      while true
      do
+      dialog_export
       CHOICE=`dialog --extra-label "Edit" --cancel-label "Delete" --title "SOCKS PROXY" --inputmenu "Configuration of SOCKS proxy:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "Host" "${PROXYCFGNEW['Host']}" "Port" "${PROXYCFGNEW['Port']}" "User" "${PROXYCFGNEW['User']}" "Password" "${PROXYCFGNEW['Password']}" 3>&2 2>&1 1>&3`
       RETCODE=$?
       case $RETCODE in
@@ -435,6 +437,7 @@ EOF
     "DISK")
   while true
   do
+    dialog_export
     read DISKCHOICE <<< $(dialog_menu "DISK" "$DISKMENUTEXT" "$(declare -p DISKMENU)")
     if [ "$DISKCHOICE" == "VIEW" ]; then
       dialog --title "BLOCK DEVICES VIEW" --msgbox "$(lsblk -f | grep -vE "sr0|loop[0-9]*|zram[0-9]*|nbd[0-9]*"; echo "-----EXISTING MAPPINGS-----"; losetup -a| sed 's#/dev/loop\([^:]*\):.*(\([^)]*\))#\1 \2#'| awk '{if($1>=8 && $1<18){print $2" => evidence"($1-8)} else if($1>=18 && $1<28){print $2" => storage"($1-18)} }' ; )" $BOXHEIGHT $BOXWIDTH 
@@ -504,6 +507,7 @@ EOF
       then
         while true
         do
+          dialog_export
           PMSTATE="DISABLED"
           if [ -f "$PRIVMODECONTROLFILE" ]; then PMSTATE="ENABLED"; fi;
           _PRIVMODEMENUTEXT="$PRIVMODEMENUTEXT
@@ -586,6 +590,7 @@ Privileged mount mode is currently $PMSTATE.";
     "SUPERVISE")
   while true
   do
+    dialog_export
     read SUPERVISECHOICE <<< $(dialog_menu "SUPERVISE" "$SUPERVISEMENUTEXT" "$(declare -p SUPERVISEMENU)")
       
     case "$SUPERVISECHOICE" in
