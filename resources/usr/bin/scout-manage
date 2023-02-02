@@ -623,7 +623,7 @@ Privileged mount mode is currently $PMSTATE.";
                       option1=""
                       [ -f /opt/container/history/log/supervised.log ] && option1="/opt/container/history/log/supervised.log"; [ ! -f /opt/container/history/log/supervised.log ] && option1="Not Available" ;
                       
-                      logFiles=(dialog --separate-output --checklist "Select options:" $BOXHEIGHT $BOXWIDTH 44)
+                      logFiles=(dialog --separate-output --checklist "Select options:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2)
                       options=("$option1" "(Supervised Shell log)" off   
                               
                               )
