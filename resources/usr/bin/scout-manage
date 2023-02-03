@@ -610,25 +610,23 @@ Privileged mount mode is currently $PMSTATE.";
 
             case "$EXPORTLOGCHOICE" in
               "VIEW")
-                  if [ "VIEW" == "VIEW" ];
-                  then
+                  
                       dialog --title "Export Tool View" --msgbox " $( echo "\n" ;echo "\n") -----LOG FILE CHOSEN----- $( echo "\n" ; echo "\n") $( [ -z $logChoice ] && echo "No log file was selected"; [ ! -z $logChoice ] &&  echo "${logChoice[@]}" | tr ' ' '\n' | awk -F'/' '{print $NF}' )  $( echo "\n"; echo "\n") -----OUTPUT DIRECTORY----- $( echo "\n"; echo "\n") $( if [ $outputDirectory == "null" ]; then echo "Directory output is not set." ; else echo "$outputDirectory";fi;) " $BOXHEIGHT $BOXWIDTH
-                  fi
+                 
                   continue;
                   ;;
               "LOGS")
-                  if [ "LOGS" == "LOGS" ];
-                  then
+                  
                       declare -a listOfLog
                       option1=""
                       [ -f /opt/container/history/log/supervised.log ] && option1="/opt/container/history/log/supervised.log"; [ ! -f /opt/container/history/log/supervised.log ] && option1="Not Available" ;
                       
-                      logFiles=(dialog --separate-output --checklist "Select options:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2)
+                      logFiles=(dialog --separate-output --checklist "Select options:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2-5)
                       options=("$option1" "(Supervised Shell log)" off   
                               
                               )
                       choices=$("${logFiles[@]}" "${options[@]}" 3>&1 1>&2 2>&3)
-                  fi
+                 
 
                   for choice in $choices
                   do
@@ -643,17 +641,15 @@ Privileged mount mode is currently $PMSTATE.";
                   ;;
 
               "OUTPUT")
-                  if [ "OUTPUT" == "OUTPUT" ];
-                  then
+                  
                       outputDirectory=$(dialog --title "Select export directory target location" --fselect / $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
                       [ ! -d "$outputDirectory" ] && mkdir $outputDirectory;
-                  fi
+                  
                   continue;
                   ;;
 
               "EXPORT")
-                  if [ "EXPORT" == "EXPORT" ];
-                  then
+                  
                       [ -z $logChoice ] && dialog --title "Warning!" --msgbox 'Log file is not selected or invalid' $BOXHEIGHT $BOXWIDTH;
                       [ ! -d $outputDirectory ] && dialog --title "Warning!" --msgbox 'Output directory is not selected or invalid' $BOXHEIGHT $BOXWIDTH;
                       if [ ! -z $logChoice ] && [ -d $outputDirectory ];
@@ -664,15 +660,14 @@ Privileged mount mode is currently $PMSTATE.";
                           done
                           dialog --title "Status" --msgbox 'All log files is exported successfully' $BOXHEIGHT $BOXWIDTH;
                       fi
-                  fi
+                  
                   continue;
                   ;;
 
               "RESET")
-                  if [ "RESET" == "RESET" ]
-                  then
+                  
                       unset logChoice; outputDirectory="null"; dialog --title "Task status" --msgbox 'Log and output Directory options is reseted succesfully!' $BOXHEIGHT $BOXWIDTH;
-                  fi
+                  
                   continue;
                   ;;
 
