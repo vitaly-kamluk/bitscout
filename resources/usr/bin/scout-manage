@@ -67,6 +67,7 @@ DISKMENU+=("VIEW:View all available block devices.")
 DISKMENU+=("MAP:Map device to expert's container.")
 DISKMENU+=("UNMAP:Unmap device from expert's container.")
 DISKMENU+=("PRIVILEGED MODE:Allow expert to use kernel mount drivers.")
+DISKMENU+=("MEMWATCHDOG:Monitor system resources.")
 DISKMENU+=("BACK:Return to previous menu.")
 unset T; T=("${DISKMENU[@]}"); unset DISKMENU; declare -a DISKMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do DISKMENU[${#DISKMENU[@]}]=${T[i]}; done
 
@@ -101,6 +102,15 @@ EXPORTLOGMENU+=("RESET:Reset logs and output values.")
 EXPORTLOGMENU+=("BACK:Return to previous menu.")
 unset T; T=("${EXPORTLOGMENU[@]}"); unset EXPORTLOGMENU; declare -a EXPORTLOGMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do EXPORTLOGMENU[${#EXPORTLOGMENU[@]}]=${T[i]}; done
 
+MEMWATCHDOGMENUTEXT="This menu allows to check if the container is in a running or freeze state and allows
+system owners to view the application or processes status (release or freeze) within the container.
+"
+declare -a MEMWATCHDOGMENU
+MEMWATCHDOGMENU+=("CONTAINER STATUS:View container status")
+MEMWATCHDOGMENU+=("MAJOR PROCESS APP STATUS:View container (app) running status")
+MEMWATCHDOGMENU+=("QUICK FIX:Fix memory problem quickly")
+MEMWATCHDOGMENU+=("BACK:Return to previous menu.")
+unset T; T=("${MEMWATCHDOGMENU[@]}"); unset MEMWATCHDOGMENU; declare -a MEMWATCHDOGMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do MEMWATCHDOGMENU[${#MEMWATCHDOGMENU[@]}]=${T[i]}; done
 
 function dialog_menu()
 {
@@ -548,6 +558,53 @@ Privileged mount mode is currently $PMSTATE.";
         done
         continue;
       fi;
+    
+    if [ "$DISKCHOICE" == "MEMWATCHDOG" ];
+    then
+    while true
+    do
+      dialog_export
+      read MEMWATCHDOGCHOICE <<< $(dialog_menu "MEMORY WATCH DOG MENU" "${MEMWATCHDOGMENUTEXT}" "$(declare -p MEMWATCHDOGMENU)")
+      
+      case "$MEMWATCHDOGCHOICE" in
+        "CONTAINER STATUS")
+
+          machineStatus="CONTAINER_NAME|STATUS container|online"
+          
+          machinectl status container --no-pager | grep -q "Reached target Containers" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Finished Permit User Sessions" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Started Console Getty" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Created slice Slice" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Reached target Login Prompts" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && machineStatus=$(echo "$machineStatus" | sed 's/container|online/container|offline/g') ;
+
+          machineStatus=$(for i in ${machineStatus[@]}; do echo "$i"; done)
+          dialog --title "Container Status" --no-collapse --msgbox "$machineStatus" $BOXHEIGHT $BOXWIDTH  
+          continue;
+        ;;
+        "MAJOR PROCESS APP STATUS")
+
+          machineProcessStatus="No Process in the container has been freezed"
+
+          sudo [ ! -e /run/tmpContainerProcessStatus ] && sudo touch /run/tmpContainerProcessStatus
+          grep -q "1" /run/tmpContainerProcessStatus && machineProcessStatus=$(echo "$machineProcessStatus" | sed 's/No Process in the container has been freezed/One major process has been freezed in container machine/g' )
+          grep -q "0" /run/tmpContainerProcessStatus && machineProcessStatus=$(echo "$machineProcessStatus" | sed 's/One major process has been freezed in container machine/No Process in the container has been freezed/g' )
+
+          dialog --title "Container Process Status" --no-collapse --msgbox "$machineProcessStatus" $BOXHEIGHT $BOXWIDTH  
+          continue;
+        ;;
+        "QUICK FIX")
+        dialog --title "All Processes (Sort by consumption)" --ok-label "Next" --no-collapse --msgbox "$(ps aux --sort=-%mem | head)"  $BOXHEIGHT $BOXWIDTH 
+        processID=$(dialog --title "Enter the PID process to be terminated" --inputbox "Please enter the process ID value" $BOXHEIGHT $BOXWIDTH  3>&1 1>&2 2>&3)
+        kill -9 "$processID"
+        machinectl kill container --signal=CONT && machinectl kill container --signal=CONT && machinectl kill container --signal=CONT;
+        dialog --title "Status" --ok-label "Next" --no-collapse --msgbox "Process is done!" $BOXHEIGHT $BOXWIDTH 
+        continue
+        ;;
+
+        "BACK")
+          break;
+        ;;
+      esac
+    done
+
+    continue;
+    fi;
         
      
     if [ "$DISKCHOICE" == "BACK" ]; then break; fi;
@@ -621,7 +678,7 @@ Privileged mount mode is currently $PMSTATE.";
                       option1=""
                       [ -f /opt/container/history/log/supervised.log ] && option1="/opt/container/history/log/supervised.log"; [ ! -f /opt/container/history/log/supervised.log ] && option1="Not Available" ;
                       
-                      logFiles=(dialog --separate-output --checklist "Select options:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2-5)
+                      logFiles=(dialog --separate-output --checklist "Select options:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2)
                       options=("$option1" "(Supervised Shell log)" off   
                               
                               )
