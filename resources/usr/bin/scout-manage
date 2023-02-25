@@ -25,16 +25,20 @@ DIALOG_ESC=255
 MAINMENUTEXT="Welcome to Bitscout system!
 You can use this simple tool for most common operations on the system.
 Please choose one of the menu items below:" 
+
+
 declare -a MAINMENU;
 MAINMENU+=("INTRODUCTION:What is Bitscout and how to use it.")
 MAINMENU+=("NETWORK:Connect to WiFi, setup static IP or proxy.")
 MAINMENU+=("DISK:Manage attached disks (i.e. let expert work on it).")
 MAINMENU+=("STATUS:System status, and expert sessions monitoring.")
+MAINMENU+=("WATCH DOG:Monitor system resources.")
 MAINMENU+=("SUPERVISE:Supervise or enable elevated commands from the container.")
 MAINMENU+=("CHAT:Enter IRC chat with the expert.")
+MAINMENU+=("EXPORT:Easy tool to export data.")
 MAINMENU+=("CONTAINER-SHELL:Start a root shell inside guest container.")
 MAINMENU+=("SHELL:Start a root local shell.")
-MAINMENU+=("EXPORT LOGS:Tool to export log files.")
+
 
 if ! ps -p $(ps -p "$$" -o "ppid=") -o cmd= | grep -q '\.service'
 then
@@ -67,7 +71,6 @@ DISKMENU+=("VIEW:View all available block devices.")
 DISKMENU+=("MAP:Map device to expert's container.")
 DISKMENU+=("UNMAP:Unmap device from expert's container.")
 DISKMENU+=("PRIVILEGED MODE:Allow expert to use kernel mount drivers.")
-DISKMENU+=("MEMWATCHDOG:Monitor system resources.")
 DISKMENU+=("BACK:Return to previous menu.")
 unset T; T=("${DISKMENU[@]}"); unset DISKMENU; declare -a DISKMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do DISKMENU[${#DISKMENU[@]}]=${T[i]}; done
 
@@ -84,6 +87,16 @@ PRIVMODEMENU+=("LOG:View log of privileged mode commands.")
 PRIVMODEMENU+=("BACK:Return to previous menu.")
 unset T; T=("${PRIVMODEMENU[@]}"); unset PRIVMODEMENU; declare -a PRIVMODEMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do PRIVMODEMENU[${#PRIVMODEMENU[@]}]=${T[i]}; done
 
+WATCHDOGMENUTEXT="This menu allows system owner to manage the usage of disk and ram consumption in the container and the system it-self.
+Current status of the Container is FAILED.
+"
+
+declare -a WATCHDOGMENU
+WATCHDOGMENU+=("RAM CONSUMPTION:Check and manage ram consumption usage.")
+WATCHDOGMENU+=("DISK CONSUMPTION:Check and manage disk consumption usage.")
+WATCHDOGMENU+=("BACK:Return to previous menu.")
+unset T; T=("${WATCHDOGMENU[@]}"); unset WATCHDOGMENU; declare -a WATCHDOGMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do WATCHDOGMENU[${#WATCHDOGMENU[@]}]=${T[i]}; done
+
 SUPERVISEDBYPASSSTATUS=`test -f $SUPERVISEDBYPASS && echo "ENABLED" || echo "DISABLED"`
 SUPERVISEMENUTEXT="The expert may need to run commands on the host, with highest privileges. This menu is allows supervision of commands or permanent authorization for such commands.\n\nCurrent status of supervised commands approval bypass: $SUPERVISEDBYPASSSTATUS"
 declare -a SUPERVISEMENU
@@ -93,24 +106,19 @@ SUPERVISEMENU+=("ENABLE APPROVAL BYPASS:Use this in case of full trust to the ex
 SUPERVISEMENU+=("BACK:Return to previous menu.")
 unset T; T=("${SUPERVISORMENU[@]}"); unset SUPERVISORMENU; declare -a SUPERVISORMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do SUPERVISORMENU[${#SUPERVISORMENU[@]}]=${T[i]}; done
 
-declare -a EXPORTLOGMENU
-EXPORTLOGMENU+=("VIEW:View all selected logs and export location.")
-EXPORTLOGMENU+=("LOGS:Select logs to be exported.")
-EXPORTLOGMENU+=("OUTPUT:Select export destination.")
-EXPORTLOGMENU+=("EXPORT:Begin to export.")
-EXPORTLOGMENU+=("RESET:Reset logs and output values.")
-EXPORTLOGMENU+=("BACK:Return to previous menu.")
-unset T; T=("${EXPORTLOGMENU[@]}"); unset EXPORTLOGMENU; declare -a EXPORTLOGMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do EXPORTLOGMENU[${#EXPORTLOGMENU[@]}]=${T[i]}; done
 
-MEMWATCHDOGMENUTEXT="This menu allows to check if the container is in a running or freeze state and allows
-system owners to view the application or processes status (release or freeze) within the container.
+EXPORTMENUTEXT="This menu allows system owner to export logs file or directory into usb device ot external drive easily.
 "
-declare -a MEMWATCHDOGMENU
-MEMWATCHDOGMENU+=("CONTAINER STATUS:View container status")
-MEMWATCHDOGMENU+=("MAJOR PROCESS APP STATUS:View container (app) running status")
-MEMWATCHDOGMENU+=("QUICK FIX:Fix memory problem quickly")
-MEMWATCHDOGMENU+=("BACK:Return to previous menu.")
-unset T; T=("${MEMWATCHDOGMENU[@]}"); unset MEMWATCHDOGMENU; declare -a MEMWATCHDOGMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do MEMWATCHDOGMENU[${#MEMWATCHDOGMENU[@]}]=${T[i]}; done
+
+declare -a EXPORTMENU
+EXPORTMENU+=("MOUNT DRIVE:Mount external drive/device to bitscout.")
+EXPORTMENU+=("LOGS EXPORT:Easy tool to export logs to external drive/device.")
+EXPORTMENU+=("DIRECTORY EXPORT:Easy tool to export a directory to external drive/device.")
+EXPORTMENU+=("RESET LOGS:Reset the previous selected logs.")
+EXPORTMENU+=("EJECT DRIVE:Remove the external drive/device safely.")
+EXPORTMENU+=("BACK:Return to previous menu.")
+unset T; T=("${EXPORTMENU[@]}"); unset EXPORTMENU; declare -a EXPORTMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do EXPORTMENU[${#EXPORTMENU[@]}]=${T[i]}; done
+
 
 function dialog_menu()
 {
@@ -137,6 +145,15 @@ function feature_not_implemented()
 function dialog_export()
 {
   [ -f /run/internetTest.off ] && export DIALOGRC=/etc/dialogrc; [ -f /run/internetOn.status ] && export DIALOGRC=/etc/dialogrc ; [ -f /run/internetOff.status ] && export DIALOGRC=/etc/internetOff.dialogrc
+}
+
+function get_files() {
+  local dir="$1"
+  local files=()
+  while IFS= read -r -d '' file; do
+    files+=("$file" "$(basename "$file")" off)
+  done < <(find "$dir" -maxdepth 1 -type f -print0)
+  echo "${files[@]}"
 }
 
 while true
@@ -558,53 +575,6 @@ Privileged mount mode is currently $PMSTATE.";
         done
         continue;
       fi;
-    
-    if [ "$DISKCHOICE" == "MEMWATCHDOG" ];
-    then
-    while true
-    do
-      dialog_export
-      read MEMWATCHDOGCHOICE <<< $(dialog_menu "MEMORY WATCH DOG MENU" "${MEMWATCHDOGMENUTEXT}" "$(declare -p MEMWATCHDOGMENU)")
-      
-      case "$MEMWATCHDOGCHOICE" in
-        "CONTAINER STATUS")
-
-          machineStatus="CONTAINER_NAME|STATUS container|online"
-          
-          machinectl status container --no-pager | grep -q "Reached target Containers" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Finished Permit User Sessions" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Started Console Getty" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Created slice Slice" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Reached target Login Prompts" && machineStatus=$(echo "$machineStatus" | sed 's/container|offline/container|online/g') ; machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && machineStatus=$(echo "$machineStatus" | sed 's/container|online/container|offline/g') ;
-
-          machineStatus=$(for i in ${machineStatus[@]}; do echo "$i"; done)
-          dialog --title "Container Status" --no-collapse --msgbox "$machineStatus" $BOXHEIGHT $BOXWIDTH  
-          continue;
-        ;;
-        "MAJOR PROCESS APP STATUS")
-
-          machineProcessStatus="No Process in the container has been freezed"
-
-          sudo [ ! -e /run/tmpContainerProcessStatus ] && sudo touch /run/tmpContainerProcessStatus
-          grep -q "1" /run/tmpContainerProcessStatus && machineProcessStatus=$(echo "$machineProcessStatus" | sed 's/No Process in the container has been freezed/One major process has been freezed in container machine/g' )
-          grep -q "0" /run/tmpContainerProcessStatus && machineProcessStatus=$(echo "$machineProcessStatus" | sed 's/One major process has been freezed in container machine/No Process in the container has been freezed/g' )
-
-          dialog --title "Container Process Status" --no-collapse --msgbox "$machineProcessStatus" $BOXHEIGHT $BOXWIDTH  
-          continue;
-        ;;
-        "QUICK FIX")
-        dialog --title "All Processes (Sort by consumption)" --ok-label "Next" --no-collapse --msgbox "$(ps aux --sort=-%mem | head)"  $BOXHEIGHT $BOXWIDTH 
-        processID=$(dialog --title "Enter the PID process to be terminated" --inputbox "Please enter the process ID value" $BOXHEIGHT $BOXWIDTH  3>&1 1>&2 2>&3)
-        kill -9 "$processID"
-        machinectl kill container --signal=CONT && machinectl kill container --signal=CONT && machinectl kill container --signal=CONT;
-        dialog --title "Status" --ok-label "Next" --no-collapse --msgbox "Process is done!" $BOXHEIGHT $BOXWIDTH 
-        continue
-        ;;
-
-        "BACK")
-          break;
-        ;;
-      esac
-    done
-
-    continue;
-    fi;
         
      
     if [ "$DISKCHOICE" == "BACK" ]; then break; fi;
@@ -656,86 +626,170 @@ Privileged mount mode is currently $PMSTATE.";
          fi
          continue;
          ;;
-     "EXPORT LOGS")
-         declare -a logChoice
-         outputDIrectory="null"
-         while true
-         do
-            dialog_export
 
-            read EXPORTLOGCHOICE <<< $(dialog_menu "EXPORT TOOL" "Tool to export logs generated by the system easily" "$(declare -p EXPORTLOGMENU)")
+    "WATCH DOG")
+      while true
+      do
+        dialog_export
+          
 
-            case "$EXPORTLOGCHOICE" in
-              "VIEW")
-                  
-                      dialog --title "Export Tool View" --msgbox " $( echo "\n" ;echo "\n") -----LOG FILE CHOSEN----- $( echo "\n" ; echo "\n") $( [ -z $logChoice ] && echo "No log file was selected"; [ ! -z $logChoice ] &&  echo "${logChoice[@]}" | tr ' ' '\n' | awk -F'/' '{print $NF}' )  $( echo "\n"; echo "\n") -----OUTPUT DIRECTORY----- $( echo "\n"; echo "\n") $( if [ $outputDirectory == "null" ]; then echo "Directory output is not set." ; else echo "$outputDirectory";fi;) " $BOXHEIGHT $BOXWIDTH
-                 
-                  continue;
-                  ;;
-              "LOGS")
-                  
-                      declare -a listOfLog
-                      option1=""
-                      [ -f /opt/container/history/log/supervised.log ] && option1="/opt/container/history/log/supervised.log"; [ ! -f /opt/container/history/log/supervised.log ] && option1="Not Available" ;
+        machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/OFFLINE/g') ; # Online -> Offline
+        machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/OFFLINE/g') ; # Freeze -> Offline
+        machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/OFFLINE/g') ; # Failed -> Offline
+
+        machinectl status container --no-pager | grep -q "Failed to start Container" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/FAILED/g') ;          # Online -> Failed
+        machinectl status container --no-pager | grep -q "Failed to start Container" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/FAILED/g') ;         # Offline -> Failed
+        machinectl status container --no-pager | grep -q "Failed to start Container" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/FAILED/g') ;          # Freeze -> Failed
+
+        machinectl status container --no-pager | grep -q "Reached target Containers" &&  WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;        # Offline -> Online
+        machinectl status container --no-pager | grep -q "Reached target Containers" &&  WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;         # Failed -> Online
+        machinectl status container --no-pager | grep -q "Reached target Containers" &&  WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;         # Freeze -> Online
+
+        machinectl status container --no-pager | grep -q "Finished Permit User Sessions" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;     # Offline -> Online
+        machinectl status container --no-pager | grep -q "Finished Permit User Sessions" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;      # Failed -> Online
+        machinectl status container --no-pager | grep -q "Finished Permit User Sessions" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;      # FReeze -> Online
+
+        machinectl status container --no-pager | grep -q "Started Console Getty" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;             # Offline -> Online
+        machinectl status container --no-pager | grep -q "Started Console Getty" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;              # Failed -> Online
+        machinectl status container --no-pager | grep -q "Started Console Getty" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;              # Freeze -> Online 
+
+        machinectl status container --no-pager | grep -q "Created slice Slice" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;               # Offline -> Online
+        machinectl status container --no-pager | grep -q "Created slice Slice" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;                # Failed -> Online
+        machinectl status container --no-pager | grep -q "Created slice Slice" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;                # Freeze -> Online
+
+        machinectl status container --no-pager | grep -q "Reached target Login Prompts" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;      # Offline -> Online
+        machinectl status container --no-pager | grep -q "Reached target Login Prompts" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;       # Failed -> Online
+        machinectl status container --no-pager | grep -q "Reached target Login Prompts" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;       # Freeze -> Online
+
+        machinectl status container --no-pager | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/OFFLINE/g') ; # Online -> Offline
+        machinectl status container --no-pager | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/OFFLINE/g') ; # Freeze -> Offline
+        machinectl status container --no-pager | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/OFFLINE/g') ; # Failed -> Offline
+
+
+  
+
+        read WATCHDOGCHOICE <<< $(dialog_menu "WATCH DOG" "$WATCHDOGMENUTEXT" "$(declare -p WATCHDOGMENU)")
+
+        case "$WATCHDOGCHOICE" in
+          "RAM CONSUMPTION")
+              memConsumptionList=$(sudo ps aux --sort -%mem | head -n 11 | awk '{print $2, $11}' )
+              memPID=$(dialog --no-collapse --ok-label "Take Action" --menu "Top 10 Memory (RAM) Processes List" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $memConsumptionList  3>&2 2>&1 1>&3 )
+              killOption=$(dialog --title "Confirmation" --yesno "Are you sure to end $memPID process?" $BOXHEIGHT $BOXWIDTH 3>&2 2>&1 1>&3 )
+              killOption=$?
+              [ "$killOption" == "0" ] && sudo kill -9 $memPID;
+              [ "$killOption" == "1" ] && continue;
+              continue;
+              ;;
+          "DISK CONSUMPTION")
+              diskConsumptionList=$(sudo lsof | awk 'NR>1 {print $0}' | awk '{print $9, $7}' | awk '$2 ~ /^[0-9]*(\.[0-9]*)?$/ {print $2 " " $1}' | sort -rh | head -n 15 | awk '{print $2 " "  v++}')
+              diskPID=$(dialog --no-collapse --ok-label "Take Action" --menu "Top 10 Disk Processes List host and container" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $diskConsumptionList  3>&2 2>&1 1>&3 )
+              killOption=$(dialog --title "Confirmation" --yesno "Are you sure to end $diskPID process?" $BOXHEIGHT $BOXWIDTH 3>&2 2>&1 1>&3 )
+              killOption=$?
+              [ "$killOption" == "0" ] && sudo rm -r $diskPID;
+              [ "$killOption" == "1" ] && continue;
+              continue;
+              ;;
+          "BACK")
+              break;
+              ;;
+              *)
+              feature_not_implemented
+              ;;
+        esac
+      done
+      continue;
+
+      ;;
+
+
+      "EXPORT")
+      while true
+      do
+        dialog_export
+        read EXPORTCHOICE <<< $(dialog_menu "EXPORT" "$EXPORTMENUTEXT" "$(declare -p EXPORTMENU)")
+
+        case "$EXPORTCHOICE" in
+          "MOUNT DRIVE")
+
+              
+              deviceList=$(sudo fdisk -l | grep "/dev/" | awk '{print $1, $2}' | sed 's/://g' | grep -o '/dev/[^[:space:]]*' | tr "dev" "dev" | awk '{print $1, v++}' )
+              choosenDevice=$(dialog --menu "Please choose a mounted Partition" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $deviceList  3>&2 2>&1 1>&3 )
+              deviceName=$(echo "$choosenDevice" | sed 's/\/dev\///g' )
+              ExportDestination="/mnt/export/$deviceName"
+
+           
+              sudo blockdev --setrw $choosenDevice
+              [ ! -d $ExportDestination ] && sudo mkdir $ExportDestination && chmod +x $ExportDestination
+              sudo mount $choosenDevice $ExportDestination
+              EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="MOUNT DRIVE:$deviceName is mounted."
+
+              continue;
+              ;;
+          "LOGS EXPORT")
+
+              logSourceAll="/opt/container/history/log"
+
+              logSourceOption=$(dialog --menu "Choose source option..." 12 45 25 1 "Logs Directory" 2 "Files (Selected)"  3>&2 2>&1 1>&3 )
+              echo "$logSourceOption"
+
+              case "$logSourceOption" in
+                  "1")
+                      [ -z "$(ls -A $logSourceAll)" ] && dialog --title "Warning!" --msgbox "There is no log files in the directory/source folder..." 10 30 && break ;
+                      dialog --title "List of log files to be exported" --msgbox "$(ls -1 $logSourceAll)" $BOXHEIGHT $BOXWIDTH
+                    
+                      logDestination=$(dialog --title "Select export directory target location" --fselect "$ExportDestination" $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+                      [ ! -d "$logDestination" ] && mkdir $logDestination;
+
+                      sudo cp -r $logSourceAll $logDestination
+                      dialog --title "Status" --msgbox "Export is done..." $BOXHEIGHT $BOXWIDTH
+                      continue;
+                      ;;
+                  "2")
+                      [ -z "$(ls -A $logSourceAll)" ] && dialog --title "Warning!" --msgbox "There is no log files in the directory/source folder..." $BOXHEIGHT $BOXWIDTH && break ;
+                     
+                      logFiles=$(get_files "$logSourceAll")
+                      choosenDevice=$(dialog --clear --checklist "Please choose log(s) file to be exported" 200 100 100 $logFiles  3>&2 2>&1 1>&3 )
                       
-                      logFiles=(dialog --separate-output --checklist "Select options:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2)
-                      options=("$option1" "(Supervised Shell log)" off   
-                              
-                              )
-                      choices=$("${logFiles[@]}" "${options[@]}" 3>&1 1>&2 2>&3)
-                 
+                      logDestination=$(dialog --title "Select export directory target location" --fselect "$ExportDestination" 300 200 3>&1 1>&2 2>&3)
+                      [ ! -d "$logDestination" ] && mkdir $logDestination;
+                      for item_log in $choosenDevice
+                      do
+                          sudo cp "$item_log" "$logDestination"
+                      done
+                      dialog --title "Status" --msgbox "Export is done..." $BOXHEIGHT $BOXWIDTH
+                      continue;
+                      ;;
+              esac
+              continue;
+              ;;
+          "DIRECTORY EXPORT")
+              directoryChoice=$(dialog --title "Select directory to be exported" --fselect / $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+              directoryDestination=$(dialog --title "Select location for exporting directory" --fselect "$ExportDestination" $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+              sudo cp -r $directoryChoice $directoryDestination
+              dialog --title "Status" --msgbox "Export is done..." $BOXHEIGHT $BOXWIDTH
+              continue;
+              ;;
+          "RESET LOGS")
+              unset logFiles
+              continue;
+              ;;
+          "EJECT DRIVE")
+              umount $ExportDestination && sudo rm -r $ExportDestination
+              dialog --title "Status" --msgbox "Successfully unmounted..." $BOXHEIGHT $BOXWIDTH
+              EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="MOUNT DRIVE:Mount external drive/device to bitscout."
+              continue;
+              ;;
+          "BACK")
+              break;
+              ;;
+              *)
+              feature_not_implemented
+              ;;
+        esac
+      done
+      continue;
 
-                  for choice in $choices
-                  do
-                    case $choice in
-                    "/opt/container/history/log/supervised.log")
-                    logChoice+=("/opt/container/history/log/supervised.log")
-                    ;;
-                    esac
-                  done
-
-                  continue;
-                  ;;
-
-              "OUTPUT")
-                  
-                      outputDirectory=$(dialog --title "Select export directory target location" --fselect / $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
-                      [ ! -d "$outputDirectory" ] && mkdir $outputDirectory;
-                  
-                  continue;
-                  ;;
-
-              "EXPORT")
-                  
-                      [ -z $logChoice ] && dialog --title "Warning!" --msgbox 'Log file is not selected or invalid' $BOXHEIGHT $BOXWIDTH;
-                      [ ! -d $outputDirectory ] && dialog --title "Warning!" --msgbox 'Output directory is not selected or invalid' $BOXHEIGHT $BOXWIDTH;
-                      if [ ! -z $logChoice ] && [ -d $outputDirectory ];
-                      then
-                          for item in ${logChoice[@]};
-                          do
-                              cp $item $outputDirectory
-                          done
-                          dialog --title "Status" --msgbox 'All log files is exported successfully' $BOXHEIGHT $BOXWIDTH;
-                      fi
-                  
-                  continue;
-                  ;;
-
-              "RESET")
-                  
-                      unset logChoice; outputDirectory="null"; dialog --title "Task status" --msgbox 'Log and output Directory options is reseted succesfully!' $BOXHEIGHT $BOXWIDTH;
-                  
-                  continue;
-                  ;;
-
-              "BACK")
-                  break;
-                  ;;
-            esac
-
-         done
-         continue;
-         ;;
+      ;;
 
 
     "SUPERVISE")
