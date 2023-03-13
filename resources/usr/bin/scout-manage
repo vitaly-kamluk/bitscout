@@ -631,8 +631,7 @@ Privileged mount mode is currently $PMSTATE.";
       while true
       do
         dialog_export
-          
-
+        
         machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/OFFLINE/g') ; # Online -> Offline
         machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/OFFLINE/g') ; # Freeze -> Offline
         machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/OFFLINE/g') ; # Failed -> Offline
@@ -665,28 +664,81 @@ Privileged mount mode is currently $PMSTATE.";
         machinectl status container --no-pager | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/OFFLINE/g') ; # Freeze -> Offline
         machinectl status container --no-pager | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/OFFLINE/g') ; # Failed -> Offline
 
-
-  
-
         read WATCHDOGCHOICE <<< $(dialog_menu "WATCH DOG" "$WATCHDOGMENUTEXT" "$(declare -p WATCHDOGMENU)")
 
         case "$WATCHDOGCHOICE" in
           "RAM CONSUMPTION")
-              memConsumptionList=$(sudo ps aux --sort -%mem | head -n 11 | awk '{print $2, $11}' )
-              memPID=$(dialog --no-collapse --ok-label "Take Action" --menu "Top 10 Memory (RAM) Processes List" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $memConsumptionList  3>&2 2>&1 1>&3 )
-              killOption=$(dialog --title "Confirmation" --yesno "Are you sure to end $memPID process?" $BOXHEIGHT $BOXWIDTH 3>&2 2>&1 1>&3 )
-              killOption=$?
-              [ "$killOption" == "0" ] && sudo kill -9 $memPID;
-              [ "$killOption" == "1" ] && continue;
+              memConsumptionList=$(sudo ps aux --sort -%mem | head -n 11 | awk '{print $2, $11"~(",$4,"%)"}' | sed 's/~( /~(/g' | sed 's/ %/%/g' | awk '{print $1,$2}' | tail -n +2)
+              memTotal=$(free -h | awk '{print $2}' | head -n 2 | tail -n +2 | sed 's/Gi/GB/g' | sed 's/Mi/MB/g')
+              memAvailable=$(free -h | awk '{print $7}' | head -n 2 | tail -n +2 | sed 's/Gi/GB/g' | sed 's/Mi/MB/g')
+
+              memPID=$(dialog --no-collapse --ok-label "Take Action"  --menu "Top 10 Memory (RAM) Processes List \n System has a total ram of $memTotal, and currently avaialble ram is $memAvailable \n Below consist of PID, PATH and Percentage of memory usage of each processes." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $memConsumptionList  3>&2 2>&1 1>&3 )
+              [ "$?" == "1" ] && break;
+
+              dialog --title "Additional Options" --yesno "Do you like to remove the directory of the process as well?" $BOXHEIGHT $BOXWIDTH
+              additionalOptions=$?
+
+              if [ $additionalOptions == "0" ]
+              then
+                  if sudo lsof -p $memPID >/dev/null;
+                  then
+                      diskConsumptionList=$(sudo lsof 2>/dev/null | awk -v memPID="$memPID" '$2 == memPID' | sort -nrk 7 | awk '{print $9, "("$7/1024/1024"MB)~" $2}' | head -n 10 | awk '{print $1, $2}')
+                      diskTotalInfo=$(df -H | awk '$1 == "/opt/container/chroot"' | awk '{print "The container system has a total disk space of" $2 ", and has a total of " $4 " disk space available to be use"}')
+                      diskPID=$(dialog --no-collapse --ok-label "Select" --menu "Top 10 Disk Processes List related to Process with an ID of $memPID \n $diskTotalInfo \n Below consist of PATH, size of the open file and the PID." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $diskConsumptionList  3>&2 2>&1 1>&3 )
+                      [ "$?" == "1" ] && break;
+                      diskPIDDetails=$(sudo lsof 2>/dev/null | awk -v diskPID="$diskPID" '$9 == diskPID ' | awk -v memPID="$memPID" '$2 == memPID' | awk '{print "\n\nPROCESS (OPEN FILE) INFORMATION\n \n=============== \nCommand = " $1 "\nProcess ID = " $2 "\nExecuted By = " $3 "\nSize = " $7 "\nDirectory Path = " $9 "\n===============\n"}' )
+                      memPIDDetails1=$(ps -f $memPID | tail -n +2 | awk '{print "INFORMATION OF THE PROCESS \n \n=============== \nExecuted By = " $1 "\nProcess ID = " $2 "\nParent Process ID = " $3 "\nC = " $4 "\nStart Time = " $5 "\nTTY = " $6 "\nStatus = " $7 "\nTime = " $8 "\nCommand = " $9 }')
+                      memPIDDetails2=$(sudo ps aux --sort -%mem | head -n 11 | awk -v memPID="$memPID" '{print $2,$4}' | grep "$memPID" | awk '{print "\nMemory Usage (from Total Memory) = "$2 "%" "\n==============="}')
+                      dialog --no-collapse --title "Confirmation (Are you sure to end a process with an ID of $memPID and its disk process?)" --yesno "$memPIDDetails1 $memPIDDetails2 $diskPIDDetails" $BOXHEIGHT $BOXWIDTH
+                      killOption=$?
+                      [ "$killOption" == "0" ] && sudo kill -9 $memPID && sudo rm -r $diskPID && dialog --title "Confirmation Result" --msgbox "Process is done!" $BOXHEIGHT $BOXWIDTH;
+                      [ "$killOption" == "1" ] && continue;
+                  else
+                      dialog --title "Warning!" --ok-label "Continue" --msgbox "Process do not have an open file. Please proceed by entering the 'continue' button" $BOXHEIGHT $BOXWIDTH
+                      memPIDDetails1=$(ps -f $memPID | tail -n +2 | awk '{print "INFORMATION OF THE PROCESS \n \n=============== \nExecuted By = " $1 "\nProcess ID = " $2 "\nParent Process ID = " $3 "\nC = " $4 "\nStart Time = " $5 "\nTTY = " $6 "\nStatus = " $7 "\nTime = " $8 "\nCommand = " $9 }')
+                      memPIDDetails2=$(sudo ps aux --sort -%mem | head -n 11 | awk '{print $2,$4}' | grep "$memPID" | awk '{print "\nMemory Usage (from Total Memory) = "$2 "%" "\n===============\n"}')
+                      dialog --no-collapse --title "Confirmation (Are you sure to end a process with an ID of $memPID?)" --yesno "$memPIDDetails1 $memPIDDetails2" $BOXHEIGHT $BOXWIDTH
+                      killOption=$?
+                      [ "$killOption" == "0" ] && sudo kill -9 $memPID && dialog --title "Confirmation Result" --msgbox "Process is done!" $BOXHEIGHT $BOXWIDTH;
+                      [ "$killOption" == "1" ] && continue;
+                  fi
+              fi
+              
+              if [ $additionalOptions == "1" ]
+              then
+                  memPIDDetails1=$(ps -f $memPID | tail -n +2 | awk '{print "INFORMATION OF THE PROCESS \n \n=============== \nExecuted By = " $1 "\nProcess ID = " $2 "\nParent Process ID = " $3 "\nC = " $4 "\nStart Time = " $5 "\nTTY = " $6 "\nStatus = " $7 "\nTime = " $8 "\nCommand = " $9 }')
+                  memPIDDetails2=$(sudo ps aux --sort -%mem | head -n 11 | awk '{print $2,$4}' | grep "$memPID" | awk '{print "\nMemory Usage (from Total Memory) = "$2 "%" "\n===============\n"}')
+                  dialog --no-collapse --title "Confirmation (Are you sure to end a process with an ID of $memPID?)" --yesno "$memPIDDetails1 $memPIDDetails2" $BOXHEIGHT $BOXWIDTH
+                  killOption=$?
+                  [ "$killOption" == "0" ] && sudo kill -9 $memPID && dialog --title "Confirmation Result" --msgbox "Process is done!" $BOXHEIGHT $BOXWIDTH;
+                  [ "$killOption" == "1" ] && continue;
+              fi
               continue;
               ;;
           "DISK CONSUMPTION")
-              diskConsumptionList=$(sudo lsof | awk 'NR>1 {print $0}' | awk '{print $9, $7}' | awk '$2 ~ /^[0-9]*(\.[0-9]*)?$/ {print $2 " " $1}' | sort -rh | head -n 15 | awk '{print $2 " "  v++}')
-              diskPID=$(dialog --no-collapse --ok-label "Take Action" --menu "Top 10 Disk Processes List host and container" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $diskConsumptionList  3>&2 2>&1 1>&3 )
-              killOption=$(dialog --title "Confirmation" --yesno "Are you sure to end $diskPID process?" $BOXHEIGHT $BOXWIDTH 3>&2 2>&1 1>&3 )
-              killOption=$?
-              [ "$killOption" == "0" ] && sudo rm -r $diskPID;
+              diskConsumptionList=$(sudo lsof 2>/dev/null | sort -nrk 7 | awk '{print $2, "("$7/1024/1024"MB)~" $9}' | head -n 10 | awk '{print $1, $2}')
+              diskTotalInfo=$(df -H | awk '$1 == "/opt/container/chroot"' | awk '{print "The container system has a total disk space of" $2 ", and has a total of " $4 " disk space available to be use"}')
+              diskPID=$(dialog --no-collapse --ok-label "Select" --menu "Top 10 Disk Processes List  \n $diskTotalInfo \n Below consist of the PID, size of the open file and the PATH." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $diskConsumptionList  3>&2 2>&1 1>&3 )
+              [ "$?" == "1" ] && break;
+
+              diskPIDDetails1=$(ps aux | awk '$2 == '$diskPID' {print "\n\nPROCESS (OPEN FILE) INFORMATION\n \n=============== \nExecuted By = " $1}')
+              diskPIDDetails2=$(sudo lsof 2>/dev/null | awk '$2 == '$diskPID'' | awk '{print $1}' | uniq | awk '{print "\nCommand = " $1}' )
+              diskPIDDetails3=$(sudo lsof 2>/dev/null | sort -nrk 7 | awk '{print $2, "("$7/1024/1024"MB)~" $9}' | head -n 10 | awk '{print $1, $2}' | 
+              awk '$1 == '$diskPID'' | sed 's/[()~]/ /g' | awk '{print "\nProcess ID = " $1 "\nFile Size = " $2 "\nDirectory Path = " $3  "\n===============\n"}')
+
+              dialog --no-collapse --title "Confirmation (Are you sure to delete this disk process?)" --yesno "$diskPIDDetails1 $diskPIDDetails2 $diskPIDDetails3" 200 100
+
               [ "$killOption" == "1" ] && continue;
+              [ "$killOption" == "0" ] && sudo rm -r $diskPID ;
+
+              if [ $? == 1]
+              then
+                  dialog --title "Confirmation Result" --msgbox "Process Failed." $BOXHEIGHT $BOXWIDTH;
+              fi
+              if [ $? == 0]
+              then
+                  dialog --title "Confirmation Result" --msgbox "Process Success." $BOXHEIGHT $BOXWIDTH;
+              fi
               continue;
               ;;
           "BACK")
@@ -701,7 +753,6 @@ Privileged mount mode is currently $PMSTATE.";
 
       ;;
 
-
       "EXPORT")
       while true
       do
@@ -711,17 +762,25 @@ Privileged mount mode is currently $PMSTATE.";
         case "$EXPORTCHOICE" in
           "MOUNT DRIVE")
 
-              
-              deviceList=$(sudo fdisk -l | grep "/dev/" | awk '{print $1, $2}' | sed 's/://g' | grep -o '/dev/[^[:space:]]*' | tr "dev" "dev" | awk '{print $1, v++}' )
+              deviceList=$(sudo fdisk -l | grep "/dev/" | awk '{print $1, $2}' | sed 's/://g' | grep -o '/dev/[^[:space:]]*' | grep -E 'fd|sd' | awk '{print $1, v++}' )
               choosenDevice=$(dialog --menu "Please choose a mounted Partition" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $deviceList  3>&2 2>&1 1>&3 )
               deviceName=$(echo "$choosenDevice" | sed 's/\/dev\///g' )
               ExportDestination="/mnt/export/$deviceName"
 
-           
-              sudo blockdev --setrw $choosenDevice
-              [ ! -d $ExportDestination ] && sudo mkdir $ExportDestination && chmod +x $ExportDestination
+              [ ! -d $ExportDestination ] && sudo mkdir -p $ExportDestination && sudo chmod +x $ExportDestination
+              [ ! -d $ExportDestination ] && dialog --msgbox "Destination Folder failed to be created: $ExportDestination" $BOXHEIGHT $BOXWIDTH && sudo rm -r $ExportDestination && break 
+
+              sudo blockdev --setrw "$choosenDevice"
+
+              [ $? == "1" ] && dialog --msgbox "Failed to change permission in the device: $choosenDevice" $BOXHEIGHT $BOXWIDTH && break
+
               sudo mount $choosenDevice $ExportDestination
-              EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="MOUNT DRIVE:$deviceName is mounted."
+
+              mountStatus=$?
+
+              [ $mountStatus == "0" ] && dialog --msgbox "Device named $deviceName is successfully mounted at $ExportDestination" $BOXHEIGHT $BOXWIDTH && EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="UNMOUNT DRIVE:Remove $deviceName drive/device safely."
+              [ $mountStatus == "1" ] && dialog --msgbox "Device named $deviceName failed to mount at $ExportDestination" $BOXHEIGHT $BOXWIDTH && EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="MOUNT DRIVE:Mount external drive/device to bitscout." && break
+              [ $mountStatus == "32" ] && dialog --msgbox "Device named $deviceName is already mounted at $ExportDestination" $BOXHEIGHT $BOXWIDTH && EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="MOUNT DRIVE:Mount external drive/device to bitscout." && break
 
               continue;
               ;;
@@ -734,49 +793,71 @@ Privileged mount mode is currently $PMSTATE.";
 
               case "$logSourceOption" in
                   "1")
-                      [ -z "$(ls -A $logSourceAll)" ] && dialog --title "Warning!" --msgbox "There is no log files in the directory/source folder..." 10 30 && break ;
+                      [ -z "$(ls -A $logSourceAll)" ] && dialog --title "Warning!" --msgbox "There is no log files in the directory/source folder..." $BOXHEIGHT $BOXWIDTH && break ;
                       dialog --title "List of log files to be exported" --msgbox "$(ls -1 $logSourceAll)" $BOXHEIGHT $BOXWIDTH
                     
-                      logDestination=$(dialog --title "Select export directory target location" --fselect "$ExportDestination" $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+                      logDestination=$(dialog --title "Select destination \n Please use 'space' bar to select directory, use 'enter' to pick directory, and use the 'arrow keys' to navigate to each window screen" --fselect "$ExportDestination" $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+                      [ "$?" == "1" ] && break;
                       [ ! -d "$logDestination" ] && mkdir $logDestination;
 
                       sudo cp -r $logSourceAll $logDestination
-                      dialog --title "Status" --msgbox "Export is done..." $BOXHEIGHT $BOXWIDTH
+                      diffContent=$(diff -rq --no-dereference $logSourceAll $logDestination)
+                      copyStatus=$?
+                      [ $copyStatus != 0] && dialog --no-collapse --title "log Directory Export Failed..." --msgbox "$diffContent" $BOXHEIGHT $BOXWIDTH
                       continue;
                       ;;
                   "2")
                       [ -z "$(ls -A $logSourceAll)" ] && dialog --title "Warning!" --msgbox "There is no log files in the directory/source folder..." $BOXHEIGHT $BOXWIDTH && break ;
                      
                       logFiles=$(get_files "$logSourceAll")
-                      choosenDevice=$(dialog --clear --checklist "Please choose log(s) file to be exported" 200 100 100 $logFiles  3>&2 2>&1 1>&3 )
+                      choosenLog=$(dialog --clear --checklist "Please choose log(s) file to be exported" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $logFiles  3>&2 2>&1 1>&3 )
+                      [ "$?" == "1" ] && break;
                       
-                      logDestination=$(dialog --title "Select export directory target location" --fselect "$ExportDestination" 300 200 3>&1 1>&2 2>&3)
+                      logDestination=$(dialog --title "Select destination \n Please use 'space' bar to select directory, use 'enter' to pick directory, and use the 'arrow keys' to navigate to each window screen" --fselect "$ExportDestination" $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+                      [ "$?" == "1" ] && break;
                       [ ! -d "$logDestination" ] && mkdir $logDestination;
-                      for item_log in $choosenDevice
+                      for item_log in $choosenLog
                       do
                           sudo cp "$item_log" "$logDestination"
                       done
-                      dialog --title "Status" --msgbox "Export is done..." $BOXHEIGHT $BOXWIDTH
+                      
+                      for item_log in $choosenLog
+                      do
+                          [ ! -f $logDestination/$item_log ] && dialog --title "Information" --msgbox "Log copying failed. Please try again later..." $BOXHEIGHT $BOXWIDTH
+                      done
                       continue;
                       ;;
               esac
               continue;
               ;;
           "DIRECTORY EXPORT")
-              directoryChoice=$(dialog --title "Select directory to be exported" --fselect / $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
-              directoryDestination=$(dialog --title "Select location for exporting directory" --fselect "$ExportDestination" $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+              directoryChoice=$(dialog --title "Select directory to be exported \n Please use 'space' bar to select directory, use 'enter' to pick directory, and use the 'arrow keys' to navigate to each window screen" --fselect / $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+              [ "$?" == "1" ] && break;
+              directoryDestination=$(dialog --title "Select destination \n Please use 'space' bar to select directory, use 'enter' to pick directory, and use the 'arrow keys' to navigate to each window screen" --fselect "$ExportDestination" $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+              [ "$?" == "1" ] && break;
               sudo cp -r $directoryChoice $directoryDestination
-              dialog --title "Status" --msgbox "Export is done..." $BOXHEIGHT $BOXWIDTH
+              diffContent=$(diff -rq --no-dereference $directoryChoice $directoryDestination)
+              copyStatus=$?
+              [ $copyStatus != 0] && dialog --no-collapse --title "Directory Export Failed..." --msgbox "$diffContent" $BOXHEIGHT $BOXWIDTH
               continue;
               ;;
           "RESET LOGS")
               unset logFiles
+              [ $? != "0" ] && dialog --msgbox "Failed to reset log files. Try again...." $BOXHEIGHT $BOXWIDTH
               continue;
               ;;
-          "EJECT DRIVE")
-              umount $ExportDestination && sudo rm -r $ExportDestination
-              dialog --title "Status" --msgbox "Successfully unmounted..." $BOXHEIGHT $BOXWIDTH
-              EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="MOUNT DRIVE:Mount external drive/device to bitscout."
+          "UMOUNT DRIVE")
+              sudo umount $ExportDestination 
+
+              unmountStatus=$?
+
+              [ $unmountStatus == "0" ] && dialog --msgbox "Device named $deviceName is successfully unmounted at $ExportDestination" $BOXHEIGHT $BOXWIDTH && EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="MOUNT DRIVE:Mount external drive/device to bitscout."
+              [ $unmountStatus == "1" ] && dialog --msgbox "Device named $deviceName failed to unmount at $ExportDestination" $BOXHEIGHT $BOXWIDTH && EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="UNMOUNT DRIVE:Remove $deviceName drive/device safely." && break
+              [ $unmountStatus == "32" ] && dialog --msgbox "Device named $deviceName is already unmounted at $ExportDestination" $BOXHEIGHT $BOXWIDTH && EXPORTMENU[$[${#EXPORTMENU[@]}-1]]="UNMOUNT DRIVE:Remove $deviceName drive/device safely." && break
+
+              [ -d $ExportDestination ] && sudo rm -r $ExportDestination
+              [ -d $ExportDestination ] && dialog --msgbox "Directory failed to be removed: $ExportDestination" $BOXHEIGHT $BOXWIDTH && break 
+
               continue;
               ;;
           "BACK")
@@ -790,7 +871,6 @@ Privileged mount mode is currently $PMSTATE.";
       continue;
 
       ;;
-
 
     "SUPERVISE")
   while true

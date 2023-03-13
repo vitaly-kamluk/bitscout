@@ -157,6 +157,166 @@ elif [ -n "${GLOBAL_VPNTYPE}" -a "${GLOBAL_VPNTYPE}" = "wireguard" ]; then
 
   statusprint "Enabling wireguard on system boot.."
   chroot_exec build.$GLOBAL_BASEARCH/chroot "systemctl enable wg-quick@${PROJECTSHORTNAME}.service"
+
+elif [ -n "${GLOBAL_VPNTYPE}" -a "${GLOBAL_VPNTYPE}" = "tor" ]; then
+
+  statusprint "Installing TOR in main host..."
+  sudo apt install tor
+  [ $? == '0' ] && statusprint "[SUCCESS] Installing TOR in main host"
+
+  statusprint "CHECKING TOR CONFIGURATIONS DIRECTORY AND FILES...%."
+
+  while true
+  do
+      sleep 5
+      [ -f /etc/tor/torrc ] && statusprint "[SUCCESS] TORRC FILE CREATED!"
+      [ ! -f /etc/tor/torrc ] && statusprint "[FAILED] TORRC FILE NOT CREATED!"
+
+      sudo -s [ -f /var/lib/tor/cached-certs ] && statusprint "[SUCCESS] CACHED-CERTS FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/cached-certs ] && statusprint "[FAILED] CACHED-CERTS FILE NOT CREATED!"
+      
+      sudo -s [ -f /var/lib/tor/cached-microdesc-consensus ] && statusprint "[SUCCESS] CACHED-MICRODESC-CONSENSUS FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/cached-microdesc-consensus ] && statusprint "[FAILED] CACHED-MICRODESC-CONSENSUS FILE NOT CREATED!"
+
+      sudo -s [ -f /var/lib/tor/cached-microdescs.new ] && statusprint "[SUCCESS] CACHED-MICRODESCS.NEW FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/cached-microdescs.new ] && statusprint "[FAILED] CACHED-MICRODESCS.NEW FILE NOT CREATED!"
+
+      sudo -s [ -d /var/lib/tor/keys ] && statusprint "[SUCCESS] KEYS DIRECTORY CREATED!"
+      sudo -s [ ! -d /var/lib/tor/keys ] && statusprint "[FAILED] KEYS DIRECTORY NOT CREATED!"
+
+      sudo -s [ -f /var/lib/tor/lock ] && statusprint "[SUCCESS] LOCK FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/lock ] && statusprint "[FAILED] LOCK FILE NOT CREATED!"
+
+      sudo -s [ -f /var/lib/tor/state ] && statusprint "[SUCCESS] STATE FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/state ] && statusprint "[FAILED] STATE FILE NOT CREATED!"
+
+      echo "====================="
+
+      [ -f /etc/tor/torrc ] && sudo -s [ -f /var/lib/tor/cached-certs ] && sudo -s [ -f /var/lib/tor/cached-microdesc-consensus ] && sudo -s [ -f /var/lib/tor/cached-microdescs.new ] && sudo -s [ -d /var/lib/tor/keys ] && sudo -s [ -f /var/lib/tor/lock ] && sudo -s [ -f /var/lib/tor/state ] && statusprint "COMPLETED!" && break;
+  done
+
+  statusprint "Backup the main host tor directory to tmp..."
+
+  statusprint "Create a tmp directory for backup..."
+
+  [ -d /tmp/torBackup ] && statusprint "Folder exist, need to be purged and created new one" && rm -r /tmp/torBackup && mkdir -p /tmp/torBackup
+  [ $? == '0' ] && statusprint "[SUCCESS]Purging and creating a new folder is success..."
+  [ ! -d /tmp/torBackup ] && statusprint "Folder do not exist, need to created directory" && mkdir -p /tmp/torBackup
+  [ $? == '0' ] && statusprint "[SUCCESS] Creating a new folder..."
+
+  statusprint "Copying /var/lib/tor to backup location..."
+  sudo -s cp -r /var/lib/tor /tmp/torBackup/torVar
+  [ $? == '0' ] && statusprint "[SUCCESS] Copying /var/lib/tor to torBackup directory..."
+
+  statusprint "Copying /etc/tor to backup location..."
+  sudo cp -r /etc/tor /tmp/torBackup/torEtc
+  [ $? == '0' ] && statusprint "[SUCCESS] Copying /etc/tor to backup location..."
+
+  statusprint "Modify the TORRC file"
+
+  sudo echo "HiddenServiceDir /var/lib/tor/tor_hidden_service/
+  HiddenServicePort 22 10.3.0.2:22
+	HiddenServicePort 23 10.3.0.1:22 
+  HiddenServiceAuthorizeClient stealth tor_hidden_service" | sudo tee /etc/tor/torrc
+
+  [ $? == '0' ] && statusprint "[SUCCESS] modifying the torrc file"
+
+  statusprint "Change the owner for the /etc/tor directory..."
+  sudo chown -R debian-tor:debian-tor /etc/tor
+  [ $? == '0' ] && statusprint "[SUCCESS] changing the owner for the /etc/tor directory..."
+
+  statusprint "Change the owner for the /var/lib/tor directory..."
+  sudo -s chown -R debian-tor:debian-tor /var/lib/tor
+  [ $? == '0' ] && statusprint "[SUCCESS] Changeingthe owner for the /var/lib/tor directory..."
+
+  statusprint "Restart TOR service to generate the hostname and etc..."
+  sudo systemctl restart tor
+  [ $? == '0' ] && statusprint "[SUCCESS] Restart TOR service to generate the hostname and etc..."
+
+  echo "CHECKING TOR CONFIGURATIONS DIRECTORY AND FILES...%."
+
+  while true
+  do
+      sleep 5
+      [ -f /etc/tor/torrc ] && statusprint "[SUCCESS] TORRC FILE CREATED!"
+      [ ! -f /etc/tor/torrc ] && statusprint "[FAILED] TORRC FILE NOT CREATED!"
+
+      sudo -s [ -f /var/lib/tor/cached-certs ] && statusprint "[SUCCESS] CACHED-CERTS FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/cached-certs ] && statusprint "[FAILED] CACHED-CERTS FILE NOT CREATED!"
+      
+      sudo -s [ -f /var/lib/tor/cached-microdesc-consensus ] && statusprint "[SUCCESS] CACHED-MICRODESC-CONSENSUS FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/cached-microdesc-consensus ] && statusprint "[FAILED] CACHED-MICRODESC-CONSENSUS FILE NOT CREATED!"
+
+      sudo -s [ -f /var/lib/tor/cached-microdescs.new ] && statusprint "[SUCCESS] CACHED-MICRODESCS.NEW FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/cached-microdescs.new ] && statusprint "[FAILED] CACHED-MICRODESCS.NEW FILE NOT CREATED!"
+
+      sudo -s [ -d /var/lib/tor/keys ] && statusprint "[SUCCESS] KEYS DIRECTORY CREATED!"
+      sudo -s [ ! -d /var/lib/tor/keys ] && statusprint "[FAILED] KEYS DIRECTORY NOT CREATED!"
+
+      sudo -s [ -f /var/lib/tor/lock ] && statusprint "[SUCCESS] LOCK FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/lock ] && statusprint "[FAILED] LOCK FILE NOT CREATED!"
+
+      sudo -s [ -f /var/lib/tor/state ] && statusprint "[SUCCESS] STATE FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/state ] && statusprint "[FAILED] STATE FILE NOT CREATED!"
+
+      sudo -s [ -f /var/lib/tor/cached-microdescs ] && statusprint "[SUCCESS] CACHED-MICRODESCS FILE CREATED!"
+      sudo -s [ ! -f /var/lib/tor/cached-microdescs ] && statusprint "[FAILED] CACHED-MICRODESCS FILE NOT CREATED!"
+
+      sudo -s [ -d /var/lib/tor/tor_hidden_service ] && statusprint "[SUCCESS] TOR_HIDDEN_SERVICE FOLDER CREATED!"
+      sudo -s [ ! -d /var/lib/tor/tor_hidden_service ] && statusprint "[FAILED] TOR_HIDDEN_SERVICE FOLDER FILE NOT CREATED!"
+      
+      echo "====================="
+
+      [ -f /etc/tor/torrc ] && sudo -s [ -f /var/lib/tor/cached-certs ] && sudo -s [ -f /var/lib/tor/cached-microdesc-consensus ] && sudo -s [ -f /var/lib/tor/cached-microdescs.new ] && sudo -s [ -d /var/lib/tor/keys ] && sudo -s [ -f /var/lib/tor/lock ] && sudo -s [ -f /var/lib/tor/state ] && sudo -s [ -f /var/lib/tor/cached-microdescs ] && sudo -s [ -d /var/lib/tor/tor_hidden_service ] && statusprint "COMPLETED!" && break;
+  done
+
+  sudo -s [ -d ./build.$GLOBAL_BASEARCH/chroot/var/lib/tor ] && sudo -s rm -r ./build.$GLOBAL_BASEARCH/chroot/var/lib/tor;
+
+  statusprint "Copying TOR configuration files from /var/lib/tor  to bitscout build..."
+  sudo -s cp -r /var/lib/tor ./build.$GLOBAL_BASEARCH/chroot/var/lib/tor
+  [ $? == '0' ] && statusprint "[SUCCESS] Copying TOR configuration files from /var/lib/tor  to bitscout build..." 
+
+  sudo [ -d ./build.$GLOBAL_BASEARCH/chroot/etc/tor/ ] && sudo rm -r ./build.$GLOBAL_BASEARCH/chroot/etc/tor/
+
+  statusprint "Copying TOR configuration files from  /etc/tor to bitscout build..."
+  sudo -s cp -r /etc/tor ./build.$GLOBAL_BASEARCH/chroot/etc/tor
+  [ $? == '0' ] && statusprint "[SUCCESS] Copying TOR configuration files from  /etc/tor to bitscout build..." 
+
+  sudo -s [ ! -f ./build.$GLOBAL_BASEARCH/chroot/var/lib/tor/tor_hidden_service/hostname ] && statusprint "Failed to generate TOR service file"
+  sudo -s [ -f ./build.$GLOBAL_BASEARCH/chroot/var/lib/tor/tor_hidden_service/hostname ] && statusprint "[SUCCESS] Success to generate TOR service file"
+
+  statusprint "Removing the current TOR configurations from the main host with the backup in tmp directory"
+
+  statusprint "Replacing /etc/tor with backup file..."
+  sudo rm -r /etc/tor && sudo cp -r /tmp/torBackup/torEtc /etc/tor
+  [ $? == '0' ] && statusprint "[SUCCESS] Replacing /etc/tor"
+
+  statusprint "Replacing /var/lib/tor with backup file..."
+  sudo rm -r /var/lib/tor && sudo cp -r /tmp/torBackup/torVar /var/lib/tor
+  [ $? == '0' ] && statusprint "[SUCCESS] Replacing /var/lib/tor"
+
+  sudo_file_template_copy resources/usr/bin/torcustomconfig.sh ./build.$GLOBAL_BASEARCH/chroot/usr/bin/torcustomconfig.sh
+  sudo chmod +x ./build.$GLOBAL_BASEARCH/chroot/usr/bin/torcustomconfig.sh
+
+  echo "[Unit]
+  Description=custom configuration for tor
+  StartLimitIntervalSec=10
+  StartLimitBurst=5
+
+  [Service]
+  ExecStart=/usr/bin/torcustomconfig.sh
+  Restart=on-failure
+  RestartSec=2s
+
+  [Install]
+  WantedBy=multi-user.target" | sudo tee ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/torcustomconfig.service >/dev/null
+
+  sudo ln -s /etc/systemd/system/torcustomconfig.service ./build.$GLOBAL_BASEARCH/chroot/etc/systemd/system/multi-user.target.wants/torcustomconfig.service 2>/dev/null
+
+  statusprint "Removing tmp directory for tor..."
+  sudo [ -d /tmp/torBackup ] && sudo rm -r /tmp/torBackup
+  [ $? == '0' ] && statusprint "[SUCCESS] removing tor backup directory in tmp"
+
 else
   statusprint "Skipped VPN configuration. VPN type is set to \"$GLOBAL_VPNTYPE\"."
 fi
