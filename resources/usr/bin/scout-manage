@@ -231,9 +231,12 @@ do
                ;;
 
           "DISABLE INTERNET TEST")
-                sudo systemctl stop internet-indicator && sudo systemctl disable interent-indicator
+                sudo systemctl stop internet-indicator 2>/dev/null
+                sudo systemctl disable interent-indicator 2>/dev/null
                 NETWORKMENU[$[${#NETWORKMENU[@]}-8]]="ENABLE INTERNET TEST:Shows red/blue bg when offline/online."
-                [ -f /run/internetOn.status ] && rm /run/internetOn.status ; [ -f /run/internetOff.status ] && rm /run/internetOff.status; touch /run/internetTest.off
+                [ -f /run/internetOn.status ] && rm /run/internetOn.status ;
+                [ -f /run/internetOff.status ] && rm /run/internetOff.status;
+                touch /run/internetTest.off
                 continue
                 ;;
                 
@@ -716,26 +719,34 @@ Privileged mount mode is currently $PMSTATE.";
               continue;
               ;;
           "DISK CONSUMPTION")
-              diskConsumptionList=$(sudo lsof 2>/dev/null | sort -nrk 7 | awk '{print $2, "("$7/1024/1024"MB)~" $9}' | head -n 10 | awk '{print $1, $2}')
+              diskPIDDetails2List=""
+              diskConsumptionList=$(sudo lsof 2>/dev/null | sort -nrk 7 | awk '{print $9, "~("$7/1024/1024"MB)" $2}' | uniq | head -n 10 | awk '{print $1, $2}')
               diskTotalInfo=$(df -H | awk '$1 == "/opt/container/chroot"' | awk '{print "The container system has a total disk space of" $2 ", and has a total of " $4 " disk space available to be use"}')
               diskPID=$(dialog --no-collapse --ok-label "Select" --menu "Top 10 Disk Processes List  \n $diskTotalInfo \n Below consist of the PID, size of the open file and the PATH." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $diskConsumptionList  3>&2 2>&1 1>&3 )
               [ "$?" == "1" ] && break;
 
-              diskPIDDetails1=$(ps aux | awk '$2 == '$diskPID' {print "\n\nPROCESS (OPEN FILE) INFORMATION\n \n=============== \nExecuted By = " $1}')
-              diskPIDDetails2=$(sudo lsof 2>/dev/null | awk '$2 == '$diskPID'' | awk '{print $1}' | uniq | awk '{print "\nCommand = " $1}' )
-              diskPIDDetails3=$(sudo lsof 2>/dev/null | sort -nrk 7 | awk '{print $2, "("$7/1024/1024"MB)~" $9}' | head -n 10 | awk '{print $1, $2}' | 
-              awk '$1 == '$diskPID'' | sed 's/[()~]/ /g' | awk '{print "\nProcess ID = " $1 "\nFile Size = " $2 "\nDirectory Path = " $3  "\n===============\n"}')
+              diskPIDDetails1="\n\nPROCESS (OPEN FILE) INFORMATION\nBelow are all related running process towards the open file. \n \n=============== \nPATH: $diskPID \n" 
 
-              dialog --no-collapse --title "Confirmation (Are you sure to delete this disk process?)" --yesno "$diskPIDDetails1 $diskPIDDetails2 $diskPIDDetails3" 200 100
+              diskPIDDetails2=$(sudo lsof 2>/dev/null | uniq | grep  "$diskPID" | awk '{print $1, $2, $5, $9}' | grep -v "/" | uniq | awk '{print $1, $2, $3, "("$4/1024/1024"MB)"}' | sed 's/^\([^ ]*\) \([^ ]*\) \([^ ]*\) (\([^)]*\))/Application:\1\nProcess-ID:\2\nExecuted-By:\3\nSize:(\4)\n.\n.\n/')
 
-              [ "$killOption" == "1" ] && continue;
+              diskPIDDetails3="\n===============\n"
+
+              for i in $diskPIDDetails2;
+              do 
+                  diskPIDDetails2List+="$i\n"
+              done;
+
+              dialog --no-collapse --title "Confirmation (Are you sure to delete this disk process?)" --yesno "$diskPIDDetails1 $diskPIDDetails2List $diskPIDDetails3" $BOXHEIGHT $BOXWIDTH
+              killOption=$?
+              [ "$killOption" == "1" ] && dialog --title "Confirmation Result" --msgbox "Process Cancelled" $BOXHEIGHT $BOXWIDTH && break;
               [ "$killOption" == "0" ] && sudo rm -r $diskPID ;
+              killOptionStatus=$?
 
-              if [ $? == 1]
+              if [ $killOptionStatus == 1 ]
               then
                   dialog --title "Confirmation Result" --msgbox "Process Failed." $BOXHEIGHT $BOXWIDTH;
               fi
-              if [ $? == 0]
+              if [ $killOptionStatus == 0 ]
               then
                   dialog --title "Confirmation Result" --msgbox "Process Success." $BOXHEIGHT $BOXWIDTH;
               fi
@@ -761,20 +772,19 @@ Privileged mount mode is currently $PMSTATE.";
 
         case "$EXPORTCHOICE" in
           "MOUNT DRIVE")
+              deviceList=$(sudo lsblk -l | grep -e "2:" -e "8:" -e "65:" -e "66:" -e "67:" -e "68:" -e "69:" -e "70:" -e "71:" -e "128:" -e "129" -e "130:" -e "131:" -e "132:" -e "133:" -e "134:" -e "135:" -e "259:" | grep -v "252:" | grep -v "zram" |  awk '{print $1, v++}' )
+              choosenDevice=$(dialog --menu "Please choose a mounted Partition \nBelow are list of block devices and List order number" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $deviceList  3>&2 2>&1 1>&3 )
+              [ $? == "1" ] && dialog --title "Confirmation Result" --msgbox "Process Cancelled" $BOXHEIGHT $BOXWIDTH && break;
+              ExportDestination="/mnt/export/$choosenDevice"
 
-              deviceList=$(sudo fdisk -l | grep "/dev/" | awk '{print $1, $2}' | sed 's/://g' | grep -o '/dev/[^[:space:]]*' | grep -E 'fd|sd' | awk '{print $1, v++}' )
-              choosenDevice=$(dialog --menu "Please choose a mounted Partition" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $deviceList  3>&2 2>&1 1>&3 )
-              deviceName=$(echo "$choosenDevice" | sed 's/\/dev\///g' )
-              ExportDestination="/mnt/export/$deviceName"
-
-              [ ! -d $ExportDestination ] && sudo mkdir -p $ExportDestination && sudo chmod +x $ExportDestination
+              [ ! -d $ExportDestination ] && sudo mkdir -p $ExportDestination && sudo chmod +rwx $ExportDestination
               [ ! -d $ExportDestination ] && dialog --msgbox "Destination Folder failed to be created: $ExportDestination" $BOXHEIGHT $BOXWIDTH && sudo rm -r $ExportDestination && break 
 
-              sudo blockdev --setrw "$choosenDevice"
+              sudo blockdev --setrw "/dev/$choosenDevice"
 
               [ $? == "1" ] && dialog --msgbox "Failed to change permission in the device: $choosenDevice" $BOXHEIGHT $BOXWIDTH && break
 
-              sudo mount $choosenDevice $ExportDestination
+              sudo mount "/dev/$choosenDevice" $ExportDestination
 
               mountStatus=$?
 
@@ -846,7 +856,7 @@ Privileged mount mode is currently $PMSTATE.";
               [ $? != "0" ] && dialog --msgbox "Failed to reset log files. Try again...." $BOXHEIGHT $BOXWIDTH
               continue;
               ;;
-          "UMOUNT DRIVE")
+          "UNMOUNT DRIVE")
               sudo umount $ExportDestination 
 
               unmountStatus=$?
