@@ -115,7 +115,6 @@ EXPORTMENU+=("MOUNT DRIVE:Mount external drive/device to bitscout.")
 EXPORTMENU+=("LOGS EXPORT:Easy tool to export logs to external drive/device.")
 EXPORTMENU+=("DIRECTORY EXPORT:Easy tool to export a directory to external drive/device.")
 EXPORTMENU+=("RESET LOGS:Reset the previous selected logs.")
-EXPORTMENU+=("EJECT DRIVE:Remove the external drive/device safely.")
 EXPORTMENU+=("BACK:Return to previous menu.")
 unset T; T=("${EXPORTMENU[@]}"); unset EXPORTMENU; declare -a EXPORTMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do EXPORTMENU[${#EXPORTMENU[@]}]=${T[i]}; done
 
@@ -145,6 +144,14 @@ function feature_not_implemented()
 function dialog_export()
 {
   [ -f /run/internetTest.off ] && export DIALOGRC=/etc/dialogrc; [ -f /run/internetOn.status ] && export DIALOGRC=/etc/dialogrc ; [ -f /run/internetOff.status ] && export DIALOGRC=/etc/internetOff.dialogrc
+}
+
+function user_cancel_menu(){
+    dialog --title "Information Menu" --msgbox "User cancel the operations." $BOXHEIGHT $BOXWIDTH
+}
+
+function process_fail_menu(){
+    dialog --title "Information Menu" --msgbox "Process failed to complete its task." $BOXHEIGHT $BOXWIDTH
 }
 
 function get_files() {
@@ -635,121 +642,69 @@ Privileged mount mode is currently $PMSTATE.";
       do
         dialog_export
         
-        machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/OFFLINE/g') ; # Online -> Offline
-        machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/OFFLINE/g') ; # Freeze -> Offline
-        machinectl status container --no-pager | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/OFFLINE/g') ; # Failed -> Offline
+        machinectl status container --no-pager 2>/dev/null | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/OFFLINE/g') ; # Online -> Offline
+        machinectl status container --no-pager 2>/dev/null | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/OFFLINE/g') ; # Freeze -> Offline
+        machinectl status container --no-pager 2>/dev/null | grep -q "Sending signal SIGSTOP to process" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/OFFLINE/g') ; # Failed -> Offline
 
-        machinectl status container --no-pager | grep -q "Failed to start Container" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/FAILED/g') ;          # Online -> Failed
-        machinectl status container --no-pager | grep -q "Failed to start Container" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/FAILED/g') ;         # Offline -> Failed
-        machinectl status container --no-pager | grep -q "Failed to start Container" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/FAILED/g') ;          # Freeze -> Failed
+        machinectl status container --no-pager 2>/dev/null | grep -q "Failed to start Container" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/FAILED/g') ;          # Online -> Failed
+        machinectl status container --no-pager 2>/dev/null | grep -q "Failed to start Container" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/FAILED/g') ;         # Offline -> Failed
+        machinectl status container --no-pager 2>/dev/null | grep -q "Failed to start Container" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/FAILED/g') ;          # Freeze -> Failed
 
-        machinectl status container --no-pager | grep -q "Reached target Containers" &&  WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;        # Offline -> Online
-        machinectl status container --no-pager | grep -q "Reached target Containers" &&  WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;         # Failed -> Online
-        machinectl status container --no-pager | grep -q "Reached target Containers" &&  WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;         # Freeze -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Reached target Containers" &&  WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;        # Offline -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Reached target Containers" &&  WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;         # Failed -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Reached target Containers" &&  WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;         # Freeze -> Online
 
-        machinectl status container --no-pager | grep -q "Finished Permit User Sessions" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;     # Offline -> Online
-        machinectl status container --no-pager | grep -q "Finished Permit User Sessions" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;      # Failed -> Online
-        machinectl status container --no-pager | grep -q "Finished Permit User Sessions" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;      # FReeze -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Finished Permit User Sessions" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;     # Offline -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Finished Permit User Sessions" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;      # Failed -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Finished Permit User Sessions" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;      # FReeze -> Online
 
-        machinectl status container --no-pager | grep -q "Started Console Getty" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;             # Offline -> Online
-        machinectl status container --no-pager | grep -q "Started Console Getty" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;              # Failed -> Online
-        machinectl status container --no-pager | grep -q "Started Console Getty" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;              # Freeze -> Online 
+        machinectl status container --no-pager 2>/dev/null | grep -q "Started Console Getty" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;             # Offline -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Started Console Getty" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;              # Failed -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Started Console Getty" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;              # Freeze -> Online 
 
-        machinectl status container --no-pager | grep -q "Created slice Slice" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;               # Offline -> Online
-        machinectl status container --no-pager | grep -q "Created slice Slice" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;                # Failed -> Online
-        machinectl status container --no-pager | grep -q "Created slice Slice" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;                # Freeze -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Created slice Slice" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;               # Offline -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Created slice Slice" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;                # Failed -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Created slice Slice" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;                # Freeze -> Online
 
-        machinectl status container --no-pager | grep -q "Reached target Login Prompts" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;      # Offline -> Online
-        machinectl status container --no-pager | grep -q "Reached target Login Prompts" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;       # Failed -> Online
-        machinectl status container --no-pager | grep -q "Reached target Login Prompts" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;       # Freeze -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Reached target Login Prompts" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/OFFLINE/ONLINE/g') ;      # Offline -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Reached target Login Prompts" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/ONLINE/g') ;       # Failed -> Online
+        machinectl status container --no-pager 2>/dev/null | grep -q "Reached target Login Prompts" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/ONLINE/g') ;       # Freeze -> Online
 
-        machinectl status container --no-pager | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/OFFLINE/g') ; # Online -> Offline
-        machinectl status container --no-pager | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/OFFLINE/g') ; # Freeze -> Offline
-        machinectl status container --no-pager | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/OFFLINE/g') ; # Failed -> Offline
+        machinectl status container --no-pager 2>/dev/null | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/ONLINE/OFFLINE/g') ; # Online -> Offline
+        machinectl status container --no-pager 2>/dev/null | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FREEZE/OFFLINE/g') ; # Freeze -> Offline
+        machinectl status container --no-pager 2>/dev/null | grep -q "Deactivated successfully" && WATCHDOGMENUTEXT=$(echo "$WATCHDOGMENUTEXT" | sed 's/FAILED/OFFLINE/g') ; # Failed -> Offline
 
         read WATCHDOGCHOICE <<< $(dialog_menu "WATCH DOG" "$WATCHDOGMENUTEXT" "$(declare -p WATCHDOGMENU)")
 
         case "$WATCHDOGCHOICE" in
           "RAM CONSUMPTION")
-              memConsumptionList=$(sudo ps aux --sort -%mem | head -n 11 | awk '{print $2, $11"~(",$4,"%)"}' | sed 's/~( /~(/g' | sed 's/ %/%/g' | awk '{print $1,$2}' | tail -n +2)
-              memTotal=$(free -h | awk '{print $2}' | head -n 2 | tail -n +2 | sed 's/Gi/GB/g' | sed 's/Mi/MB/g')
-              memAvailable=$(free -h | awk '{print $7}' | head -n 2 | tail -n +2 | sed 's/Gi/GB/g' | sed 's/Mi/MB/g')
-
-              memPID=$(dialog --no-collapse --ok-label "Take Action"  --menu "Top 10 Memory (RAM) Processes List \n System has a total ram of $memTotal, and currently avaialble ram is $memAvailable \n Below consist of PID, PATH and Percentage of memory usage of each processes." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $memConsumptionList  3>&2 2>&1 1>&3 )
-              [ "$?" == "1" ] && break;
-
-              dialog --title "Additional Options" --yesno "Do you like to remove the directory of the process as well?" $BOXHEIGHT $BOXWIDTH
-              additionalOptions=$?
-
-              if [ $additionalOptions == "0" ]
-              then
-                  if sudo lsof -p $memPID >/dev/null;
-                  then
-                      diskConsumptionList=$(sudo lsof 2>/dev/null | awk -v memPID="$memPID" '$2 == memPID' | sort -nrk 7 | awk '{print $9, "("$7/1024/1024"MB)~" $2}' | head -n 10 | awk '{print $1, $2}')
-                      diskTotalInfo=$(df -H | awk '$1 == "/opt/container/chroot"' | awk '{print "The container system has a total disk space of" $2 ", and has a total of " $4 " disk space available to be use"}')
-                      diskPID=$(dialog --no-collapse --ok-label "Select" --menu "Top 10 Disk Processes List related to Process with an ID of $memPID \n $diskTotalInfo \n Below consist of PATH, size of the open file and the PID." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $diskConsumptionList  3>&2 2>&1 1>&3 )
-                      [ "$?" == "1" ] && break;
-                      diskPIDDetails=$(sudo lsof 2>/dev/null | awk -v diskPID="$diskPID" '$9 == diskPID ' | awk -v memPID="$memPID" '$2 == memPID' | awk '{print "\n\nPROCESS (OPEN FILE) INFORMATION\n \n=============== \nCommand = " $1 "\nProcess ID = " $2 "\nExecuted By = " $3 "\nSize = " $7 "\nDirectory Path = " $9 "\n===============\n"}' )
-                      memPIDDetails1=$(ps -f $memPID | tail -n +2 | awk '{print "INFORMATION OF THE PROCESS \n \n=============== \nExecuted By = " $1 "\nProcess ID = " $2 "\nParent Process ID = " $3 "\nC = " $4 "\nStart Time = " $5 "\nTTY = " $6 "\nStatus = " $7 "\nTime = " $8 "\nCommand = " $9 }')
-                      memPIDDetails2=$(sudo ps aux --sort -%mem | head -n 11 | awk -v memPID="$memPID" '{print $2,$4}' | grep "$memPID" | awk '{print "\nMemory Usage (from Total Memory) = "$2 "%" "\n==============="}')
-                      dialog --no-collapse --title "Confirmation (Are you sure to end a process with an ID of $memPID and its disk process?)" --yesno "$memPIDDetails1 $memPIDDetails2 $diskPIDDetails" $BOXHEIGHT $BOXWIDTH
-                      killOption=$?
-                      [ "$killOption" == "0" ] && sudo kill -9 $memPID && sudo rm -r $diskPID && dialog --title "Confirmation Result" --msgbox "Process is done!" $BOXHEIGHT $BOXWIDTH;
-                      [ "$killOption" == "1" ] && continue;
-                  else
-                      dialog --title "Warning!" --ok-label "Continue" --msgbox "Process do not have an open file. Please proceed by entering the 'continue' button" $BOXHEIGHT $BOXWIDTH
-                      memPIDDetails1=$(ps -f $memPID | tail -n +2 | awk '{print "INFORMATION OF THE PROCESS \n \n=============== \nExecuted By = " $1 "\nProcess ID = " $2 "\nParent Process ID = " $3 "\nC = " $4 "\nStart Time = " $5 "\nTTY = " $6 "\nStatus = " $7 "\nTime = " $8 "\nCommand = " $9 }')
-                      memPIDDetails2=$(sudo ps aux --sort -%mem | head -n 11 | awk '{print $2,$4}' | grep "$memPID" | awk '{print "\nMemory Usage (from Total Memory) = "$2 "%" "\n===============\n"}')
-                      dialog --no-collapse --title "Confirmation (Are you sure to end a process with an ID of $memPID?)" --yesno "$memPIDDetails1 $memPIDDetails2" $BOXHEIGHT $BOXWIDTH
-                      killOption=$?
-                      [ "$killOption" == "0" ] && sudo kill -9 $memPID && dialog --title "Confirmation Result" --msgbox "Process is done!" $BOXHEIGHT $BOXWIDTH;
-                      [ "$killOption" == "1" ] && continue;
-                  fi
-              fi
               
-              if [ $additionalOptions == "1" ]
-              then
-                  memPIDDetails1=$(ps -f $memPID | tail -n +2 | awk '{print "INFORMATION OF THE PROCESS \n \n=============== \nExecuted By = " $1 "\nProcess ID = " $2 "\nParent Process ID = " $3 "\nC = " $4 "\nStart Time = " $5 "\nTTY = " $6 "\nStatus = " $7 "\nTime = " $8 "\nCommand = " $9 }')
-                  memPIDDetails2=$(sudo ps aux --sort -%mem | head -n 11 | awk '{print $2,$4}' | grep "$memPID" | awk '{print "\nMemory Usage (from Total Memory) = "$2 "%" "\n===============\n"}')
-                  dialog --no-collapse --title "Confirmation (Are you sure to end a process with an ID of $memPID?)" --yesno "$memPIDDetails1 $memPIDDetails2" $BOXHEIGHT $BOXWIDTH
-                  killOption=$?
-                  [ "$killOption" == "0" ] && sudo kill -9 $memPID && dialog --title "Confirmation Result" --msgbox "Process is done!" $BOXHEIGHT $BOXWIDTH;
-                  [ "$killOption" == "1" ] && continue;
-              fi
+              total_ram=$(free -m | awk '/^Mem:/ {print int($2)}');
+              available_ram=$(free -m | grep '^Mem:' | awk '{print $7}' | xargs printf "%.0f\n");
+              list_of_process=$(ps aux --sort=-%mem | awk 'NR<=11{print $2,$11"("$4"%)"}' | sed -n '2,$p');
+              process_id=$(dialog --no-collapse --ok-label "Take Action" --menu "List of the ten processes with the highest RAM usage.\nSystem has a total ram of $total_ram MB, and currently avaialble ram is $available_ram MB.\nBelow consist of Process ID, Process path and Percentage of memory usage of each processes." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $list_of_process  3>&2 2>&1 1>&3 );
+              [ "$?" == "1" ] && user_cancel_menu && break ;
+              process_id_summary=$(ps -p "$process_id" -o pid,ppid,%mem,%cpu,user,cmd --no-headers | awk '{printf("Process ID: %s\nParent Process ID: %s\nMemory Usage: %s Percent of the total RAM\nCPU Usage: %s Percent of the total CPU\nProcess initiated by: %s\nCommand: %s\n", $1, $2, $3, $4, $5, $6)}');
+              process_action=$(dialog --title "Process Summary" --yesno "$process_id_summary" $BOXHEIGHT $BOXWIDTH 3>&2 2>&1 1>&3 );
+              [ $? == "1" ] && user_cancel_menu && break;
+              kill -9 $process_id;
+              [ $? == "1" ] && process_fail_menu && break;
+              
               continue;
               ;;
           "DISK CONSUMPTION")
-              diskPIDDetails2List=""
-              diskConsumptionList=$(sudo lsof 2>/dev/null | sort -nrk 7 | awk '{print $9, "~("$7/1024/1024"MB)" $2}' | uniq | head -n 10 | awk '{print $1, $2}')
-              diskTotalInfo=$(df -H | awk '$1 == "/opt/container/chroot"' | awk '{print "The container system has a total disk space of" $2 ", and has a total of " $4 " disk space available to be use"}')
-              diskPID=$(dialog --no-collapse --ok-label "Select" --menu "Top 10 Disk Processes List  \n $diskTotalInfo \n Below consist of the PID, size of the open file and the PATH." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $diskConsumptionList  3>&2 2>&1 1>&3 )
-              [ "$?" == "1" ] && break;
-
-              diskPIDDetails1="\n\nPROCESS (OPEN FILE) INFORMATION\nBelow are all related running process towards the open file. \n \n=============== \nPATH: $diskPID \n" 
-
-              diskPIDDetails2=$(sudo lsof 2>/dev/null | uniq | grep  "$diskPID" | awk '{print $1, $2, $5, $9}' | grep -v "/" | uniq | awk '{print $1, $2, $3, "("$4/1024/1024"MB)"}' | sed 's/^\([^ ]*\) \([^ ]*\) \([^ ]*\) (\([^)]*\))/Application:\1\nProcess-ID:\2\nExecuted-By:\3\nSize:(\4)\n.\n.\n/')
-
-              diskPIDDetails3="\n===============\n"
-
-              for i in $diskPIDDetails2;
-              do 
-                  diskPIDDetails2List+="$i\n"
-              done;
-
-              dialog --no-collapse --title "Confirmation (Are you sure to delete this disk process?)" --yesno "$diskPIDDetails1 $diskPIDDetails2List $diskPIDDetails3" $BOXHEIGHT $BOXWIDTH
-              killOption=$?
-              [ "$killOption" == "1" ] && dialog --title "Confirmation Result" --msgbox "Process Cancelled" $BOXHEIGHT $BOXWIDTH && break;
-              [ "$killOption" == "0" ] && sudo rm -r $diskPID ;
-              killOptionStatus=$?
-
-              if [ $killOptionStatus == 1 ]
-              then
-                  dialog --title "Confirmation Result" --msgbox "Process Failed." $BOXHEIGHT $BOXWIDTH;
-              fi
-              if [ $killOptionStatus == 0 ]
-              then
-                  dialog --title "Confirmation Result" --msgbox "Process Success." $BOXHEIGHT $BOXWIDTH;
-              fi
+              total_disk=$(df -h --total 2>/dev/null | awk '/total/{print $2}');
+              available_disk=$(df -h --output=avail / 2>/dev/null | awk 'NR==2 {print $1}');
+              list_of_open_file=$(sudo lsof 2>/dev/null| awk '{if($7 > 1048576) print $7/1048576 "MB", $9}' | sort -rn | head -n 10 | awk '{ printf "%s %5.1fMB\n", $2, $1 }');
+              disk_path=$(dialog --no-collapse --ok-label "Take Action" --menu "List of the ten open files with the highest DISK usage. \nSystem has a total disk space of $total_disk, and currently available disk space of $available_disk. \nBelow consist of Open file path, and open file disk usage size." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $list_of_open_file 3>&2 2>&1 1>&3 );
+              [ "$?" == "1" ] && user_cancel_menu && break;
+              disk_path_summary=$(lsof "$disk_path" 2>/dev/null | grep -v PID | awk '{ printf "Size: %s, Location: %s, Opened by: %s, Process ID: %s\n", $7, $9, $3, $2 }' | sed 's/ /_/g' );
+              disk_path_summary_formatted=""; for i in $disk_path_summary; do disk_path_summary_formatted+="$i\n"; done;
+              dialog --no-collapse --title "Open File Summary" --yesno "$disk_path_summary_formatted \nAre you sure to erase the open files? This will include stopping all related processes to the open file." $BOXHEIGHT $BOXWIDTH;
+              [ $? == "1" ] && user_cancel_menu && break;
+              lsof -t $disk_path 2>/dev/null | xargs -r kill;
+              [ "$?" == "1" ] && process_fail_menu && break;
+              rm $disk_path; [ "$?" == "1" ] && process_fail_menu && break;
               continue;
               ;;
           "BACK")
@@ -772,7 +727,7 @@ Privileged mount mode is currently $PMSTATE.";
 
         case "$EXPORTCHOICE" in
           "MOUNT DRIVE")
-              deviceList=$(sudo lsblk -l | grep -e "2:" -e "8:" -e "65:" -e "66:" -e "67:" -e "68:" -e "69:" -e "70:" -e "71:" -e "128:" -e "129" -e "130:" -e "131:" -e "132:" -e "133:" -e "134:" -e "135:" -e "259:" | grep -v "252:" | grep -v "zram" |  awk '{print $1, v++}' )
+              deviceList=$(lsblk -l -o NAME,TYPE,MOUNTPOINT | grep -E 'disk|part' | grep -v "zram0" | awk '{print $1}' | awk '{print $1, v++}' )
               choosenDevice=$(dialog --menu "Please choose a mounted Partition \nBelow are list of block devices and List order number" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $deviceList  3>&2 2>&1 1>&3 )
               [ $? == "1" ] && dialog --title "Confirmation Result" --msgbox "Process Cancelled" $BOXHEIGHT $BOXWIDTH && break;
               ExportDestination="/mnt/export/$choosenDevice"
