@@ -12,6 +12,7 @@ PRIVMODELOG=/opt/container/history/log/privexecd.log
 SUPERVISEDBYPASS=/var/run/supervised/bypass
 SUPERVISEDAUTHPIPE=/var/run/supervised/auth.pipe
 DIALOGRC=/etc/dialogrc
+#test
 
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
 
