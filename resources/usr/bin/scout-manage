@@ -13,7 +13,33 @@ SUPERVISEDBYPASS=/var/run/supervised/bypass
 SUPERVISEDAUTHPIPE=/var/run/supervised/auth.pipe
 DIALOGRC=/etc/dialogrc
 
+
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
+
+if test -f /etc/scout-manage.conf; then
+ source /etc/scout-manage.conf
+fi
+if [ -n "$ENABLE_LAN_ACCESS" -a $ENABLE_LAN_ACCESS -eq 1 ]; then
+ /sbin/host-iptables enable-access-from-lan
+else 
+ /sbin/host-iptables disable-access-from-lan
+fi
+
+if [ -n "$ENABLE_HOST_CONTROL" -a $ENABLE_HOST_CONTROL -eq 1 ]; then
+ rm /etc/ssh/sshd_not_to_be_run
+ sed -i 's/Port 22/Port 23/' /etc/ssh/sshd_config
+ systemctl start ssh.service
+else 
+ touch /etc/ssh/sshd_not_to_be_run
+ systemctl stop ssh.service
+fi
+
+
+function save_settings(){
+echo "ENABLE_LAN_ACCESS=\"$ENABLE_LAN_ACCESS\"" > /etc/scout-manage.conf
+echo "ENABLE_HOST_CONTROL=\"$ENABLE_HOST_CONTROL\"" >> /etc/scout-manage.conf 
+
+}
 
 DIALOG_OK=0; DIALOG_YES=0
 DIALOG_CANCEL=1; DIALOG_NO=1
@@ -21,7 +47,6 @@ DIALOG_HELP=2
 DIALOG_EXTRA=3
 DIALOG_ITEM_HELP=4
 DIALOG_ESC=255
-
 MAINMENUTEXT="Welcome to Bitscout system!
 You can use this simple tool for most common operations on the system.
 Please choose one of the menu items below:" 
@@ -193,6 +218,8 @@ do
                       rm /etc/ssh/sshd_not_to_be_run
                       sed -i 's/Port 22/Port 23/' /etc/ssh/sshd_config
                       systemctl start ssh.service
+                      ENABLE_HOST_CONTROL=1
+                      save_settings
                       NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."
                      ;;
                    $DIALOG_NO)
@@ -204,6 +231,8 @@ do
          "DISABLE HOST CONTROL")
                 touch /etc/ssh/sshd_not_to_be_run
                 systemctl stop ssh.service
+                ENABLE_HOST_CONTROL=0
+	        save_settings
                 NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="ENABLE HOST CONTROL:Let the expert control LiveCD host directly."
                 continue
                 ;;
@@ -213,6 +242,8 @@ do
                 case $RETCODE in
                   $DIALOG_YES)
                        /sbin/host-iptables enable-access-from-lan
+		       ENABLE_LAN_ACCESS=1
+		       save_settings	
                        NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."
                      ;;
                    $DIALOG_NO)
@@ -223,6 +254,8 @@ do
                 ;;
          "DISABLE ACCESS FROM LAN")
                 /sbin/host-iptables disable-access-from-lan
+		ENABLE_LAN_ACCESS=0
+		save_settings
                 NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="ENABLE ACCESS FROM LAN:Enable LAN access to LiveCD."
                 continue
                 ;;
