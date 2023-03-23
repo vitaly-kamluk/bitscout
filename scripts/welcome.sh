@@ -159,11 +159,12 @@ then
         while ! validate_vpntype "$vpntype" && ! validate_hostaddr "$vpnhost" && ! validate_vpnprotocol "$vpnprotocol" && ! validate_portnum "$vpnport"
         do
           statusprint "\nTo use ${PROJECTNAME} over the internet you will likely need a VPN server."
-          PRINTOPTIONS=n statusprint "Just enter your protocol/host/port and we generate a VPN config template for you. You can always change it later.\nExamples:\n openvpn-udp://127.0.0.1:1234\n openvpn-tcp://myvpnserver:8080\n wireguard://myvpnserver:2600\n tor://127.0.0.1:1234\nYour input [connection string or <Enter> for none]: "
+          PRINTOPTIONS=n statusprint "Just enter your protocol/host/port and we generate a VPN config template for you. You can always change it later.\nExamples:\n openvpn-udp://127.0.0.1:1234\n openvpn-tcp://myvpnserver:8080\n wireguard://myvpnserver:2600\n tor\nYour input [connection string or <Enter> for none]: "
           read vpnuri
+          [ "$vpnuri" == "tor" ] && vpntype="tor" && break;
           if [ ! -z "$vpnuri" ]
           then
-            mapfile -t VPNCFG < <( echo "$vpnuri" | sed 's#^\(openvpn-udp\|openvpn-tcp\|wireguard\|tor\)://\([a-zA-Z0-9_.-]*\):\([0-9]\{1,5\}\)$#\2\n\1\n\3#' )
+            mapfile -t VPNCFG < <( echo "$vpnuri" | sed 's#^\(openvpn-udp\|openvpn-tcp\|wireguard\)://\([a-zA-Z0-9_.-]*\):\([0-9]\{1,5\}\)$#\2\n\1\n\3#' )
             vpntype=${VPNCFG[1]%%*-}
             vpnhost="${VPNCFG[0]}"
             vpnprotocol="${VPNCFG[1]##-*}"
