@@ -5,9 +5,6 @@ COLS=`tput cols`
 LINES=`tput lines`
 
 OPENVPNUP=no
-if systemctl --no-pager status openvpn@scout.service; then
-  OPENVPNUP=yes
-fi
 OPENVPNLOG=/var/log/openvpn.scout.log
 
 WGVPNUP=no
@@ -66,6 +63,13 @@ COL_STOP="\x1b[00m"
 
 while true
 do
+  if systemctl --no-pager status openvpn-client@scout.service 2>/dev/null >/dev/null; then
+    if [ "$OPENVPNUP" == "no" ]; then
+      clear
+    fi;
+    OPENVPNUP=yes
+  fi
+
   printf '%s%s' "$ED" "$HOME"
 
   (
@@ -92,13 +96,14 @@ do
   echo "Latest kernel messages:"
   dmesg | tail -n10 |cut -c -$COLS
   hr
+
   if [ $OPENVPNUP = "yes" ]; then
     echo "Latest OpenVPN messages:"
-    if [ -f "$VPNLOG" ]
+    if [ -f "$OPENVPNLOG" ]
     then
-      tail -n10 "$VPNLOG" | awk '{printf("%s",$0); for(i=0;i<'$COLS'-length($0);i++){printf(" ");} printf("\n");}'
+      tail -n10 "$OPENVPNLOG" | awk '{printf("%s",$0); for(i=0;i<'$COLS'-length($0);i++){printf(" ");} printf("\n");}'
     else
-      echo "No VPN log file found at $VPNLOG"
+      echo "No VPN log file found at $OPENVPNLOG"
     fi
   elif [ $WGVPNUP = "yes" ]; then
     echo "Wireguard status:"
