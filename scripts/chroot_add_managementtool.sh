@@ -5,6 +5,10 @@
 . ./scripts/functions
 
 statusprint "Adding management tool for system owner with autostart.."
+statusprint "Installing remote access packages in chroot.."
+chroot_exec build.$GLOBAL_BASEARCH/chroot 'DEBIAN_FRONTEND=noninteractive;
+aria2c(){ /usr/bin/aria2c --console-log-level=warn "$@";}; export -f aria2c;
+apt-get --yes install pwgen'
 
 statusprint "Adding Text-UI management and monitoring scripts.."
 sudo_file_template_copy resources/usr/bin/${PROJECTSHORTNAME}-manage ./build.$GLOBAL_BASEARCH/chroot/usr/bin/${PROJECTSHORTNAME}-manage
