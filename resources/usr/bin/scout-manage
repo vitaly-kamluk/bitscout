@@ -60,6 +60,7 @@ NETWORKMENU+=("HTTP PROXY:Configure internet access via HTTP proxy.")
 NETWORKMENU+=("SOCKS PROXY:Configure internet access via SOCKS proxy.")
 NETWORKMENU+=("SYSLOG:Configure a new Syslog forwarder.")
 NETWORKMENU+=("DISABLE INTERNET TEST:Shows red/blue bg when offline/online.")
+NETWORKMENU+=("ENABLE SSH WITH PASSWORD:Allow password authentication for SSH.")
 NETWORKMENU+=("BACK:Return to previous menu.")
 #reverse array elements
 unset T; T=("${NETWORKMENU[@]}"); unset NETWORKMENU; declare -a NETWORKMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do NETWORKMENU[${#NETWORKMENU[@]}]=${T[i]}; done
@@ -176,7 +177,8 @@ do
     dialog_export
     if /sbin/host-iptables check-access-from-lan | grep -q "ON$"; then NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."; fi;
     if systemctl status ssh > /dev/null; then NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."; fi;
-
+    if grep -q "^PasswordAuthentication no" /etc/ssh/sshd_config; then NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="ENABLE SSH WITH PASSWORD:Allow password authentication for SSH."; fi;
+    if grep -q "^PasswordAuthentication yes" /etc/ssh/sshd_config; then P=$(cat /root/password.txt); NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="DISABLE SSH WITH PASSWORD:Disallow password authentication for SSH (pw=$P)."; fi;
     read NETWORKCHOICE <<< $(dialog_menu "NETWORK" "$NETWORKMENUTEXT" "$(declare -p NETWORKMENU)")
       
     case "$NETWORKCHOICE" in
@@ -224,11 +226,24 @@ do
                 NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="ENABLE ACCESS FROM LAN:Enable LAN access to LiveCD."
                 continue
                 ;;
-  
+         "ENABLE SSH WITH PASSWORD")
+                sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+                P=$(pwgen -s 12 -1)
+                echo $P > /root/password.txt
+                echo -e "$P\n$P" | passwd root
+                systemctl restart ssh
+                NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="DISABLE SSH WITH PASSWORD:Disallow password authentication for SSH (pw=$P)."
+                continue
+                ;;
+         "DISABLE SSH WITH PASSWORD")
+                sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
+                systemctl restart ssh 
+                NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="ENABLE SSH WITH PASSWORD:Allow password authentication for SSH."
+                continue
+                ;;  
          "BACK")
                 break;
                 ;;
-
          "ENABLE INTERNET TEST") 
                sudo systemctl enable internet-indicator && sudo systemctl start internet-indicator
                [ -f /run/internetTest.off ] && rm /run/internetTest.off

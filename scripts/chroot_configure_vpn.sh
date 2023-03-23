@@ -106,13 +106,14 @@ if [ -n "${GLOBAL_VPNTYPE}" -a "${GLOBAL_VPNTYPE}" = "openvpn" ]; then
 
   fi
 
+  sudo mkdir -p "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}"
+  
   if [ -f "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" ]; then
     statusprint "Copying VPN client config to chroot.. Feel free to edit it in ./build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}.conf!"
     sudo cp -v "$VPNCFGDIR/${PROJECTSHORTNAME}.conf.client" "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}.conf"
   fi
 
   statusprint "Copying essential files: certificates,keys.."
-  sudo mkdir -p "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}"
   sudo cp -v "$VPNCFGDIR/easy-rsa/pki/"{issued/client.crt,private/client.key,ca.crt,ta.key} "build.$GLOBAL_BASEARCH/chroot/etc/openvpn/client/${PROJECTSHORTNAME}/"
 
   statusprint "Enabling VPN client start on system boot.."
