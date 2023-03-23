@@ -1,6 +1,7 @@
-remote <OPENVPN_SERVER_EXTIP> # set server's external IP here!
-port <OPENVPN_SERVER_PORT> #set server's listening port here!
-proto <OPENVPN_SERVER_PROTOCOL>
+remote <OPENVPN_SERVER_EXTIP> #the server external IP
+port <OPENVPN_SERVER_PORT> #the server listening port
+proto <OPENVPN_CLIENT_PROTOCOL> #the protocol following the server configuration
+
 dev-type tap
 dev <PROJECTSHORTNAME>
 

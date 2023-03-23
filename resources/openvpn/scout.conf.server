@@ -1,12 +1,14 @@
 mode server
-local <OPENVPN_SERVER_EXTIP> #SET SERVER EXTERNAL IP HERE!
-port <OPENVPN_SERVER_PORT>
-proto <OPENVPN_SERVER_PROTOCOL>
+
+local <OPENVPN_SERVER_EXTIP> #the server external IP
+port <OPENVPN_SERVER_PORT> #the server listening port
+proto <OPENVPN_SERVER_PROTOCOL> #comms protocol: tcp-server or udp. udp is recommended as the fastest option!
 
 tun-mtu 1500
 daemon
-dev <PROJECTSHORTNAME>
+
 dev-type tap
+dev <PROJECTSHORTNAME>
 
 user nobody
 group nogroup
