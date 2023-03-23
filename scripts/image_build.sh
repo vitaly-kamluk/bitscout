@@ -204,6 +204,7 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
 
   if [ -n "$GLOBAL_TARGET" -a "$GLOBAL_TARGET" != "raw" ]; then
     statusprint "Converting image to $GLOBAL_TARGET format.."
+    install_required_package qemu-utils
     case ${GLOBAL_TARGET} in
       qcow2)
           qemu-img convert -f raw -O qcow2 $IMGFILE $PROJECTNAME-$PROJECTRELEASE-$GLOBAL_BASEARCH.qcow2
