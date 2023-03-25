@@ -263,7 +263,7 @@ do
                 sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
                 P=$(pwgen -s 12 -1)
                 echo $P > /root/password.txt
-                echo -e "$P\n$P" | passwd root
+                echo -e "$P\n$P" | passwd root 2>/dev/null
                 systemctl restart ssh
                 NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="DISABLE SSH WITH PASSWORD:Disallow password authentication for SSH (pw=$P)."
                 continue
