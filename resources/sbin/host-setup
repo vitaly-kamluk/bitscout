@@ -94,11 +94,16 @@ then
         rm -rf "$CONTAINERDIR/persistence"
 
         #recover netplan configurations after possible cloud VM-import
-        echo "Recovering *.vmimport netplan configurations (if they exist)"
+        echo "Container chroot: recovering *.vmimport netplan configurations (if they exist)"
         for f in "$CONTAINERDIR"/chroot/etc/netplan/*.vmimport; do mv -v "$f" "${f%%.vmimport}"; done
+
+        #remove internet-indicator service/timer from the container
+        echo "Container chroot: removing internet-indicator from the container"
+        rm -f "$CONTAINERDIR"/chroot/etc/systemd/system/multi-user.target.wants/internet-indicator.*
+        rm -f "$CONTAINERDIR"/chroot/etc/systemd/system/internet-indicator.*
         
         #Remove alien netplan configs (usually added by cloud VM-import process)
-        echo "Removing all unknown netplan configurations"
+        echo "Container chroot: removing all unknown netplan configurations"
         find "$CONTAINERDIR"/chroot/etc/netplan -type f | grep -v '/01-network-container\.yaml$' | xargs rm
 
         #disable openvpn settings and files..

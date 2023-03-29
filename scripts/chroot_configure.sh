@@ -37,6 +37,10 @@ sudo cp -v ./resources/etc/vtrgb ./build.$GLOBAL_BASEARCH/chroot/etc/console-set
 sudo ln -fs /etc/console-setup/vtrgb.vga.${PROJECTSHORTNAME} ./build.$GLOBAL_BASEARCH/chroot/etc/alternatives/vtrgb
 sudo sed -i 's/^\(\s*\)PS1=.*/\1PS1='"'"'\${debian_chroot:\+(\$debian_chroot)}\\[\\e\[1;32m\\\]\\u\\\[\\033\[00m\\\]@\\\[\\e\[1;37;41m\\\]\\h\\\[\\033\[00m\\\]:\\\[\\033\[01;34m\\\]\\w\\\[\\033\[00m\\]\$ '"'"'/g' ./build.$GLOBAL_BASEARCH/chroot/etc/bash.bashrc ./build.$GLOBAL_BASEARCH/chroot/etc/skel/.bashrc
 sudo cp -v ./resources/etc/dialogrc ./build.$GLOBAL_BASEARCH/chroot/etc/dialogrc
+
+sudo cp -v ./build.$GLOBAL_BASEARCH/chroot/etc/dialogrc ./build.$GLOBAL_BASEARCH/chroot/etc/internet_off.dialogrc
+sudo sed -i 's/screen_color = (CYAN,BLUE,ON)/screen_color = (CYAN,RED,ON)/g' ./build.$GLOBAL_BASEARCH/chroot/etc/internet_off.dialogrc
+
 sudo rm -f ./build.$GLOBAL_BASEARCH/chroot/root/.bashrc ./build.$GLOBAL_BASEARCH/chroot/user/.bashrc
 
 statusprint "Setting ulimit values.."
@@ -58,9 +62,13 @@ alias la='ls -A'
 alias l='ls -CF'" | sudo tee -a ./build.$GLOBAL_BASEARCH/chroot/etc/bash.bashrc >/dev/null
 fi
 
-
 statusprint "Adding custom sysctl settings.."
 sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/etc/sysctl.d/ 2>&-
 sudo cp -v ./resources/etc/sysctl.d/* ./build.$GLOBAL_BASEARCH/chroot/etc/sysctl.d/
+
+statusprint "Safe-copying system-wide VIM configuration.."
+[ ! -d "./build.$GLOBAL_BASEARCH/chroot/usr/share/vim" ] && sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/usr/share/vim
+chroot_safecopy_resources -v /resources/usr/share/vim/vimrc /usr/share/vim/vimrc
+alias
 
 exit 0;

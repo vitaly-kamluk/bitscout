@@ -39,6 +39,7 @@ scripts/chroot_configure_syslog.sh &&
 
 #adding management tool(s):
 scripts/chroot_add_managementtool.sh &&
+scripts/chroot_internet_indicator.sh &&
 
 #prepare ISO files:
 scripts/image_prepare.sh &&

@@ -12,6 +12,11 @@ if wg show scout >/dev/null; then
   WGVPNUP=yes
 fi
 
+TORHIDSERVUP=no
+if systemctl --no-pager status tor@default; then
+  TORHIDSERVUP=yes
+fi
+
 hr() {
   local start=$'\e(0' end=$'\e(B' line='q'
   local cols=${COLUMNS:-$(tput cols)}
@@ -103,6 +108,9 @@ do
   elif [ $WGVPNUP = "yes" ]; then
     echo "Wireguard status:"
     wg show scout | tail -n +7 | grep -v "(hidden)"
+  elif [ $TORHIDSERVUP = "yes" ]; then
+    echo "TOR Hidden Network status:"
+    journalctl -u tor@default -n 11 --no-pager
   fi
   )
   #clear; echo "$frame";

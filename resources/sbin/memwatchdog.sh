@@ -29,4 +29,3 @@ free -s $INTERVAL -b | stdbuf -i0 -o0 -e0 awk 'BEGIN{ state=1; prev_state=state;
      ;;
    esac
  done
-

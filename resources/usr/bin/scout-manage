@@ -11,8 +11,91 @@ PRIVMODECONTROLFILE=/var/run/privexec.enabled
 PRIVMODELOG=/opt/container/history/log/privexecd.log
 SUPERVISEDBYPASS=/var/run/supervised/bypass
 SUPERVISEDAUTHPIPE=/var/run/supervised/auth.pipe
+DIALOGRC=/etc/dialogrc
+SETTINGSFILE=/etc/scout-manage.conf
 
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
+
+#####
+# Settings activation and persistence related functions
+function save_settings(){
+  echo "ENABLE_LAN_ACCESS=\"$ENABLE_LAN_ACCESS\"" > "$SETTINGSFILE"
+  echo "ENABLE_HOST_CONTROL=\"$ENABLE_HOST_CONTROL\"" >> "$SETTINGSFILE"
+}
+
+function settings_lan_access_apply(){
+  if [ -n "$ENABLE_LAN_ACCESS" -a $ENABLE_LAN_ACCESS -eq 1 ]; then
+    if /sbin/host-iptables check-access-from-lan | grep -qi "Access from LAN is OFF"; then
+      /sbin/host-iptables enable-access-from-lan
+    fi
+  else 
+    if /sbin/host-iptables check-access-from-lan | grep -qi "Access from LAN is ON"; then
+      /sbin/host-iptables disable-access-from-lan
+    fi
+  fi
+  save_settings
+}
+
+function settings_host_control_apply(){
+  if [ -n "$ENABLE_HOST_CONTROL" -a $ENABLE_HOST_CONTROL -eq 1 ]; then
+    rm /etc/ssh/sshd_not_to_be_run 2>/dev/null
+    sed -i 's/Port 22/Port 23/' /etc/ssh/sshd_config
+    systemctl --quiet start ssh.service
+  else 
+    touch /etc/ssh/sshd_not_to_be_run
+    systemctl --quiet stop ssh.service
+  fi
+}
+
+function load_settings(){
+  if test -f "$SETTINGSFILE"; then
+    source "$SETTINGSFILE"
+  fi
+
+  settings_lan_access_apply
+  settings_host_control_apply
+}
+
+load_settings
+#####
+#Functions to lock/unlock devices for writing
+
+function blockdev_setrw(){
+  PARENTDEV=$(lsblk -dpno pkname $1)
+  if [ -n "$PARENTDEV" -a "$PARENTDEV" != "$1" ]; then
+    blockdev --setrw $PARENTDEV
+  fi
+  blockdev --setrw $1
+}
+
+function blockdev_setro(){
+  blockdev --setro $1
+  PARENTDEV=$(lsblk -dpno pkname $1)
+  if [ -n "$PARENTDEV" -a "$PARENTDEV" != "$1" ]; then
+    blockdev --setro $PARENTDEV
+  fi
+}
+
+#####
+# Other utilitary functions
+
+function remove_nonopen_files(){
+  #This function walks the directory in $1 and removes all files that are not currently opened by any process.
+  #It is used to delete log files after exporting them. Open files shall remain as the data will be appended to them later (even if they are deleted).
+
+  if [ -z "$1" -o "$1" == "/" ]; then
+    return 1
+  fi
+
+  TARGETDIR=$1
+  OPENEDFILES=$(lsof +D $TARGETDIR | awk '/REG/ { if(NR>1)print $9 }' | sort -u | awk '{print $0}' ORS='|' | sed 's/.$//')
+  if [ -n "$OPENEDFILES" ]; then
+    find $1 -type f | grep -vE "$OPENEDFILES" | xargs rm -f 2>/dev/null >/dev/null
+  else
+    find $1 -type f -delete 2>/dev/null >/dev/null
+  fi
+}
+#####
 
 DIALOG_OK=0; DIALOG_YES=0
 DIALOG_CANCEL=1; DIALOG_NO=1
@@ -20,19 +103,22 @@ DIALOG_HELP=2
 DIALOG_EXTRA=3
 DIALOG_ITEM_HELP=4
 DIALOG_ESC=255
-
 MAINMENUTEXT="Welcome to Bitscout system!
 You can use this simple tool for most common operations on the system.
 Please choose one of the menu items below:" 
+
 declare -a MAINMENU;
 MAINMENU+=("INTRODUCTION:What is Bitscout and how to use it.")
 MAINMENU+=("NETWORK:Connect to WiFi, setup static IP or proxy.")
 MAINMENU+=("DISK:Manage attached disks (i.e. let expert work on it).")
 MAINMENU+=("STATUS:System status, and expert sessions monitoring.")
+MAINMENU+=("WATCHDOG:Monitor and free system resources.")
 MAINMENU+=("SUPERVISE:Supervise or enable elevated commands from the container.")
-MAINMENU+=("CHAT:Enter IRC chat with the expert.")
+MAINMENU+=("CHAT:Start a chat with the expert.")
+MAINMENU+=("EXPORT:Export data to external USB drive.")
 MAINMENU+=("CONTAINER-SHELL:Start a root shell inside guest container.")
 MAINMENU+=("SHELL:Start a root local shell.")
+
 if ! ps -p $(ps -p "$$" -o "ppid=") -o cmd= | grep -q '\.service'
 then
  MAINMENU+=("EXIT:Return to previous environment.")
@@ -41,6 +127,7 @@ MAINMENU+=("SHUTDOWN:Shutdown current system.")
 
 #reverse array elements
 unset T; T=("${MAINMENU[@]}"); unset MAINMENU; declare -a MAINMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do MAINMENU[${#MAINMENU[@]}]=${T[i]}; done
+
 
 NETWORKMENUTEXT="The following menu should help you change network configuration 
 and connect to the Internet:"
@@ -52,6 +139,8 @@ NETWORKMENU+=("STATIC IP:Setup static IP for LAN interface.")
 NETWORKMENU+=("HTTP PROXY:Configure internet access via HTTP proxy.")
 NETWORKMENU+=("SOCKS PROXY:Configure internet access via SOCKS proxy.")
 NETWORKMENU+=("SYSLOG:Configure a new Syslog forwarder.")
+NETWORKMENU+=("DISABLE INTERNET TEST:Shows red/blue bg when offline/online.")
+NETWORKMENU+=("ENABLE SSH WITH PASSWORD:Allow password authentication for SSH.")
 NETWORKMENU+=("BACK:Return to previous menu.")
 #reverse array elements
 unset T; T=("${NETWORKMENU[@]}"); unset NETWORKMENU; declare -a NETWORKMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do NETWORKMENU[${#NETWORKMENU[@]}]=${T[i]}; done
@@ -79,6 +168,12 @@ PRIVMODEMENU+=("LOG:View log of privileged mode commands.")
 PRIVMODEMENU+=("BACK:Return to previous menu.")
 unset T; T=("${PRIVMODEMENU[@]}"); unset PRIVMODEMENU; declare -a PRIVMODEMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do PRIVMODEMENU[${#PRIVMODEMENU[@]}]=${T[i]}; done
 
+declare -a WATCHDOGMENU
+WATCHDOGMENU+=("MEMORY:List and manage processes by memory usage.")
+WATCHDOGMENU+=("DISK:List and manage processes by the largest open files.")
+WATCHDOGMENU+=("BACK:Return to previous menu.")
+unset T; T=("${WATCHDOGMENU[@]}"); unset WATCHDOGMENU; declare -a WATCHDOGMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do WATCHDOGMENU[${#WATCHDOGMENU[@]}]=${T[i]}; done
+
 SUPERVISEDBYPASSSTATUS=`test -f $SUPERVISEDBYPASS && echo "ENABLED" || echo "DISABLED"`
 SUPERVISEMENUTEXT="The expert may need to run commands on the host, with highest privileges. This menu is allows supervision of commands or permanent authorization for such commands.\n\nCurrent status of supervised commands approval bypass: $SUPERVISEDBYPASSSTATUS"
 declare -a SUPERVISEMENU
@@ -88,21 +183,36 @@ SUPERVISEMENU+=("ENABLE APPROVAL BYPASS:Use this in case of full trust to the ex
 SUPERVISEMENU+=("BACK:Return to previous menu.")
 unset T; T=("${SUPERVISORMENU[@]}"); unset SUPERVISORMENU; declare -a SUPERVISORMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do SUPERVISORMENU[${#SUPERVISORMENU[@]}]=${T[i]}; done
 
+
+EXPORTMENUTEXT="This menu allows system owner to export logs file or directory into usb device ot external drive easily.
+"
+
+declare -a EXPORTMENU
+EXPORTMENU+=("VIEW DRIVES:List drives suitable for data export.")
+EXPORTMENU+=("MOUNT DRIVE:Mount an external drive.")
+EXPORTMENU+=("LOGS EXPORT:Export logs to the external drive.")
+EXPORTMENU+=("DIRECTORY EXPORT:Export a directory to the external drive.")
+EXPORTMENU+=("RESET LOGS:Remove existing logs and free space.")
+EXPORTMENU+=("BACK:Return to the previous menu.")
+unset T; T=("${EXPORTMENU[@]}"); unset EXPORTMENU; declare -a EXPORTMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do EXPORTMENU[${#EXPORTMENU[@]}]=${T[i]}; done
+
+
 function dialog_menu()
 {
   DIALOGTITLE="$1"
   DIALOGTEXT="$2"
   DIALOGITEMS=""
   eval "declare -A ITEMS="${3#*=}
-  for i in ${!ITEMS[@]}
+  for((i=${#ITEMS[@]};i>=0;i--))
   do
     DIALOGITEMS="$DIALOGITEMS \"${ITEMS[$i]%:*}\" \"${ITEMS[$i]#*:}\""
   done
   if [ -z "$DIALOGOPTIONS" ]
   then
     DIALOGOPTIONS="--nocancel"
-  fi
-  eval "dialog $DIALOGOPTIONS --title \"$DIALOGTITLE\" --menu \"$DIALOGTEXT\" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $DIALOGITEMS 3>&2 2>&1 1>&3"
+  fi  
+  FIRSTITEM="${ITEMS[$[${#ITEMS[@]}-1]]%:*}"
+  eval "dialog $DIALOGOPTIONS --default-item \"$FIRSTITEM\" --title \"$DIALOGTITLE\" --menu \"$DIALOGTEXT\" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $DIALOGITEMS 3>&2 2>&1 1>&3"
 }
 
 function feature_not_implemented()
@@ -110,152 +220,205 @@ function feature_not_implemented()
   dialog --title "NOT IMPLEMENTED" --msgbox "Sorry, this feature is not implemented or was temporary disabled." $BOXHEIGHT $BOXWIDTH
 }
 
+function internet_status()
+{
+  [ -f /run/internet_test.disabled -o -f /run/internet_on.status ] && export DIALOGRC=/etc/dialogrc 
+  [ -f /run/internet_off.status ] && export DIALOGRC=/etc/internet_off.dialogrc
+}
+
+function user_cancel_menu(){
+    dialog --title "INFORMATION" --msgbox "Operation was canceled." $BOXHEIGHT $BOXWIDTH
+}
+
+function process_fail_menu(){
+    dialog --title "INFORMATION" --msgbox "Last operation failed." $BOXHEIGHT $BOXWIDTH
+}
+
+function get_files() {
+  local dir="$1"
+  local files=()
+  while IFS= read -r -d '' file; do
+    files+=("$file" "$(basename "$file")" off)
+  done < <(find "$dir" -maxdepth 1 -type f -print0)
+  echo "${files[@]}"
+}
+
 while true
 do
+  internet_status
+
   read MAINCHOICE <<< $(dialog_menu "MAIN MENU" "$MAINMENUTEXT" "$(declare -p MAINMENU)")
 
   case "$MAINCHOICE" in
     "NETWORK")
   while true
   do
+    internet_status
     if /sbin/host-iptables check-access-from-lan | grep -q "ON$"; then NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."; fi;
-    if systemctl status ssh > /dev/null; then NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."; fi;
-
+    if systemctl --quiet status ssh > /dev/null; then NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."; fi;
+    if grep -q "^PasswordAuthentication no" /etc/ssh/sshd_config; then NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="ENABLE SSH WITH PASSWORD:Allow password authentication for SSH."; fi;
+    if grep -q "^PasswordAuthentication yes" /etc/ssh/sshd_config; then P=$(cat /root/password.txt); NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="DISABLE SSH WITH PASSWORD:Disallow password authentication for SSH (pw=$P)."; fi;
     read NETWORKCHOICE <<< $(dialog_menu "NETWORK" "$NETWORKMENUTEXT" "$(declare -p NETWORKMENU)")
       
     case "$NETWORKCHOICE" in
-        "WIFI SETTINGS")
-                TERM=vt220 nmtui
-                continue
-                ;;
-         "ENABLE HOST CONTROL")
-                dialog --title "ENABLE HOST CONTROL" --yesno "This will provide remote expert with full control over the host system. Generally this is bad practice and shall be used only under exceptional case and full trust to the expert.\n\nAre you sure you want to enable full access to the host?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
-                case $RETCODE in
-                  $DIALOG_YES)
-                      rm /etc/ssh/sshd_not_to_be_run
-                      sed -i 's/Port 22/Port 23/' /etc/ssh/sshd_config
-                      systemctl start ssh.service
-                      NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."
-                     ;;
-                   $DIALOG_NO)
-                     continue;
-                     ;;
-                esac
-                continue
-                ;;
-         "DISABLE HOST CONTROL")
-                touch /etc/ssh/sshd_not_to_be_run
-                systemctl stop ssh.service
-                NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="ENABLE HOST CONTROL:Let the expert control LiveCD host directly."
-                continue
-                ;;
+      "WIFI SETTINGS")
+        TERM=vt220 nmtui
+        continue
+        ;;
+      "ENABLE HOST CONTROL")
+        dialog --title "ENABLE HOST CONTROL" --yesno "This will provide remote expert with full control over the host system. Generally this is bad practice and shall be used only under exceptional case and full trust to the expert.\n\nAre you sure you want to enable full access to the host?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
+        case $RETCODE in
+          $DIALOG_YES)
+            ENABLE_HOST_CONTROL=1
+            settings_host_control_apply
+            NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."
+            ;;
+          $DIALOG_NO)
+            continue;
+            ;;
+        esac
+        continue
+        ;;
+      "DISABLE HOST CONTROL")
+        ENABLE_HOST_CONTROL=0
+        settings_host_control_apply
+        NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="ENABLE HOST CONTROL:Let the expert control LiveCD host directly."
+        continue
+        ;;
 
-         "ENABLE ACCESS FROM LAN")
-                 dialog --title "ENABLE ACCESS FROM LAN" --yesno "This will enable access to SSH and other port(s) of this Bitscout instance from LAN. It's good for testing or if you want to enable local expert connect to the instance directly other than using VPN.\n\nAre you sure you want to do this?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
-                case $RETCODE in
-                  $DIALOG_YES)
-                       /sbin/host-iptables enable-access-from-lan
-                       NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."
-                     ;;
-                   $DIALOG_NO)
-                     continue;
-                     ;;
-                esac               
-                continue
-                ;;
-         "DISABLE ACCESS FROM LAN")
-                /sbin/host-iptables disable-access-from-lan
-                NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="ENABLE ACCESS FROM LAN:Enable LAN access to LiveCD."
-                continue
-                ;;
-  
-         "BACK")
-                break;
-                ;;
-         "SYSLOG")
-                declare -A SYSLOGCFG;
-                if [ -r "$SYSLOGCONFIG" ]; then
-                    SYSLOGCFG["IP/FQDN"]=`cat $SYSLOGCONFIG | awk -F '@' '{ print $2 }' | awk -F ':' '{ print $1 }'`
-                else
-                    SYSLOGCFG["IP/FQDN"]=""
-                fi
-                TMPVAR=$(declare -p SYSLOGCFG)
-                eval "${TMPVAR/SYSLOGCFG=/SYSLOGCFGNEW=}"
-                DEFAULT_BUTTON=extra
-                while true
-                do
-                    CHOICE=`dialog --default-button $DEFAULT_BUTTON --extra-label "Edit" --title "SYSLOG" --inputmenu "Configuration of a Syslog forwarder:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "IP/FQDN" "${SYSLOGCFGNEW['IP/FQDN']}" 3>&2 2>&1 1>&3`
-                    RETCODE=$?;
-                    case $RETCODE in
-                        $DIALOG_EXTRA)
-                         CHANGES=($CHOICE)
-                         if [ "${CHANGES[0]}" == "RENAMED" ]; then
-                           SYSLOGCFGNEW["${CHANGES[1]}"]="${CHANGES[2]}"
-                           DEFAULT_BUTTON="ok"
-                           continue;
-                         fi
-                    ;;
-                    $DIALOG_CANCEL)
-                    break;
-                    ;;
-                    $DIALOG_OK)
-                      if [ "${SYSLOGCFGNEW['IP/FQDN']}" != "" -a ! -z "${SYSLOGCFGNEW['IP/FQDN']}" ]; then
-                        cat >$SYSLOGCONFIG <<__SYSLOG__
+      "ENABLE ACCESS FROM LAN")
+        dialog --title "ENABLE ACCESS FROM LAN" --yesno "This will enable access to SSH and other port(s) of this Bitscout instance from LAN. It's good for testing or if you want to enable local expert connect to the instance directly other than using VPN.\n\nAre you sure you want to do this?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
+        case $RETCODE in
+          $DIALOG_YES)
+            ENABLE_LAN_ACCESS=1
+            settings_lan_access_apply
+            NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."
+            ;;
+          $DIALOG_NO)
+            continue;
+            ;;
+        esac               
+        continue
+        ;;
+      "DISABLE ACCESS FROM LAN")
+        ENABLE_LAN_ACCESS=0
+        settings_lan_access_apply
+        NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="ENABLE ACCESS FROM LAN:Enable LAN access to LiveCD."
+        continue
+        ;;
+      "ENABLE SSH WITH PASSWORD")
+        sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+        P=$(pwgen -s 12 -1)
+        echo $P > /root/password.txt
+        echo -e "$P\n$P" | passwd root 2>/dev/null
+        systemctl --quiet restart ssh
+        NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="DISABLE SSH WITH PASSWORD:Disallow password authentication for SSH (pw=$P)."
+        continue
+        ;;
+      "DISABLE SSH WITH PASSWORD")
+        sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
+        systemctl --quiet restart ssh 
+        NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="ENABLE SSH WITH PASSWORD:Allow password authentication for SSH."
+        continue
+        ;;  
+      "ENABLE INTERNET TEST") 
+        systemctl --quiet enable internet-indicator.timer && systemctl --quiet start internet-indicator.timer
+        [ -f /run/internet_test.disabled ] && rm /run/internet_test.disabled
+        NETWORKMENU[$[${#NETWORKMENU[@]}-8]]="DISABLE INTERNET TEST:Shows red/blue background when offline/online."
+        continue
+        ;;
+      "DISABLE INTERNET TEST")
+        systemctl --quiet stop internet-indicator.timer && systemctl --quiet disable internet-indicator.timer
+        NETWORKMENU[$[${#NETWORKMENU[@]}-8]]="ENABLE INTERNET TEST:Shows red/blue background when offline/online."
+        [ -f /run/internet_on.status ] && rm /run/internet_on.status ;
+        [ -f /run/internet_off.status ] && rm /run/internet_off.status;
+        touch /run/internet_test.disabled
+        continue
+        ;;
+      "SYSLOG")
+        declare -A SYSLOGCFG;
+        if [ -r "$SYSLOGCONFIG" ]; then
+          SYSLOGCFG["IP/FQDN"]=`cat $SYSLOGCONFIG | awk -F '@' '{ print $2 }' | awk -F ':' '{ print $1 }'`
+        else
+          SYSLOGCFG["IP/FQDN"]=""
+        fi
+        TMPVAR=$(declare -p SYSLOGCFG)
+        eval "${TMPVAR/SYSLOGCFG=/SYSLOGCFGNEW=}"
+        DEFAULT_BUTTON=extra
+        while true
+        do
+          internet_status
+          CHOICE=`dialog --default-button $DEFAULT_BUTTON --extra-label "Edit" --title "SYSLOG" --inputmenu "Configuration of a Syslog forwarder:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "IP/FQDN" "${SYSLOGCFGNEW['IP/FQDN']}" 3>&2 2>&1 1>&3`
+          RETCODE=$?;
+          case $RETCODE in
+            $DIALOG_EXTRA)
+             CHANGES=($CHOICE)
+             if [ "${CHANGES[0]}" == "RENAMED" ]; then
+               SYSLOGCFGNEW["${CHANGES[1]}"]="${CHANGES[2]}"
+               DEFAULT_BUTTON="ok"
+               continue;
+             fi
+            ;;
+            $DIALOG_CANCEL)
+            break;
+            ;;
+            $DIALOG_OK)
+              if [ "${SYSLOGCFGNEW['IP/FQDN']}" != "" -a ! -z "${SYSLOGCFGNEW['IP/FQDN']}" ]; then
+                cat >$SYSLOGCONFIG <<__SYSLOG__
 *.* @${SYSLOGCFGNEW['IP/FQDN']}:514
 __SYSLOG__
-                        systemctl --no-pager status rsyslog >/dev/null && systemctl restart --no-block rsyslog
-                        logger "New forwarder configured by the user: ${SYSLOGCFGNEW['IP/FQDN']}"
-                      fi
-                      break;
-                      ;;
-                    esac
-                done
-                continue
-                ;;
-         "STATIC IP")
-           declare -a IFACEMENU;
-           mapfile -t IFACEMENU < <( ip -o link show | awk '{if($2!~/ve-container.*|scout.*|lo:.*/){print $2}}'| while read dev; do echo -n "$dev"; ip -4 -o addr show "${dev%:}" | awk '{print $4}'; done; )
-           IFACECHOICE=($( DIALOGOPTIONS=" " dialog_menu "NETWORK INTERFACE" "Select network interface to configure:" "$(declare -p IFACEMENU)")); RETCODE=$?
+                systemctl --no-pager status rsyslog >/dev/null && systemctl restart --no-block rsyslog
+                logger "New forwarder configured by the user: ${SYSLOGCFGNEW['IP/FQDN']}"
+              fi
+              break;
+              ;;
+            esac
+        done
+        continue
+        ;;       
+      "STATIC IP")
+        declare -a IFACEMENU;
+        mapfile -t IFACEMENU < <( ip -o link show | awk '{if($2!~/ve-container.*|scout.*|lo:.*/){print $2}}'| while read dev; do echo -n "$dev"; ip -4 -o addr show "${dev%:}" | awk '{print $4}'; done; )
+        IFACECHOICE=($( DIALOGOPTIONS=" " dialog_menu "NETWORK INTERFACE" "Select network interface to configure:" "$(declare -p IFACEMENU)")); RETCODE=$?
 
-           if [ $RETCODE -eq $DIALOG_CANCEL ]; then continue; fi;
+        if [ $RETCODE -eq $DIALOG_CANCEL ]; then continue; fi;
 
-           declare -A IFACECFG;
-           IFACECFG["Interface"]="$IFACECHOICE"
-           IFACECFG["IP/Mask"]=`ip -4 -o addr show "$IFACECHOICE" | awk '{print $4}' | head -n1`
-           IFACECFG["Gateway"]=`ip route show default dev "$IFACECHOICE"|grep "^default via"| cut -d" " -f3 | head -n1`
-           IFACECFG["DNS"]=`systemd-resolve --status --no-pager | grep "DNS Servers" | awk '{ print $NF }' | paste -sd "," -`
-           #cloning array with the next two lines:
-           TMPVAR=$(declare -p IFACECFG)
-           eval "${TMPVAR/IFACECFG=/IFACECFGNEW=}"
-           
-           DEFAULT_BUTTON=extra
-           while true
-           do
-             CHOICE=`dialog --default-button $DEFAULT_BUTTON --extra-label "Edit" --title "STATIC IP" --inputmenu "Configuration of interface \"${IFACECFGNEW['Interface']}\":" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "IP/Mask" "${IFACECFGNEW['IP/Mask']}" "Gateway" "${IFACECFGNEW['Gateway']}" "DNS" "${IFACECFGNEW['DNS']}" 3>&2 2>&1 1>&3`
-             RETCODE=$?;
-             case $RETCODE in
-               $DIALOG_EXTRA)
-                 CHANGES=($CHOICE)
-                   if [ "${CHANGES[0]}" == "RENAMED" ]; then
-                     IFACECFGNEW["${CHANGES[1]}"]="${CHANGES[2]}"
-                     DEFAULT_BUTTON="ok"
-                     continue;
-                   fi
-             ;;
-             $DIALOG_CANCEL)
-               break;
-             ;;
-             $DIALOG_OK)
-               IFACE="${IFACECFG['Interface']}"
-               if [ -z "${IFACECFGNEW['IP/Mask']}" ]; then IFACECFGNEW['IP/Mask']="0.0.0.0"; fi;
-               if [ -z "${IFACECFGNEW['DNS']}" ]; then IFACECFGNEW['DNS']="8.8.8.8"; fi;
-               if [ "${IFACECFGNEW['IP/Mask']}" == '0.0.0.0' ] 
-               then
-                 #enable DHCP for $IFACE
-                 systemctl --no-pager status ifup@$IFACE.service >/dev/null && systemctl --no-block stop ifup@$IFACE.service
-                 ip address flush dev "$IFACE"
-                 ip link set dev "$IFACE" down
-                 cat >/etc/netplan/02-network-eth0.yaml <<EOF
+        declare -A IFACECFG;
+        IFACECFG["Interface"]="$IFACECHOICE"
+        IFACECFG["IP/Mask"]=`ip -4 -o addr show "$IFACECHOICE" | awk '{print $4}' | head -n1`
+        IFACECFG["Gateway"]=`ip route show default dev "$IFACECHOICE"|grep "^default via"| cut -d" " -f3 | head -n1`
+        IFACECFG["DNS"]=`systemd-resolve --status --no-pager | grep "DNS Servers" | awk '{ print $NF }' | paste -sd "," -`
+        #cloning array with the next two lines:
+        TMPVAR=$(declare -p IFACECFG)
+        eval "${TMPVAR/IFACECFG=/IFACECFGNEW=}"
+        
+        DEFAULT_BUTTON=extra
+        while true; do
+          internet_status
+          CHOICE=`dialog --default-button $DEFAULT_BUTTON --extra-label "Edit" --title "STATIC IP" --inputmenu "Configuration of interface \"${IFACECFGNEW['Interface']}\":" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "IP/Mask" "${IFACECFGNEW['IP/Mask']}" "Gateway" "${IFACECFGNEW['Gateway']}" "DNS" "${IFACECFGNEW['DNS']}" 3>&2 2>&1 1>&3`
+          RETCODE=$?;
+          case $RETCODE in
+            $DIALOG_EXTRA)
+              CHANGES=($CHOICE)
+                if [ "${CHANGES[0]}" == "RENAMED" ]; then
+                  IFACECFGNEW["${CHANGES[1]}"]="${CHANGES[2]}"
+                  DEFAULT_BUTTON="ok"
+                  continue;
+                fi
+              ;;
+            $DIALOG_CANCEL)
+              break;
+              ;;
+            $DIALOG_OK)
+              IFACE="${IFACECFG['Interface']}"
+              if [ -z "${IFACECFGNEW['IP/Mask']}" ]; then IFACECFGNEW['IP/Mask']="0.0.0.0"; fi;
+              if [ -z "${IFACECFGNEW['DNS']}" ]; then IFACECFGNEW['DNS']="8.8.8.8"; fi;
+              if [ "${IFACECFGNEW['IP/Mask']}" == '0.0.0.0' ]; then
+                #enable DHCP for $IFACE
+                systemctl --no-pager status ifup@$IFACE.service >/dev/null && systemctl --no-block stop ifup@$IFACE.service
+                ip address flush dev "$IFACE"
+                ip link set dev "$IFACE" down
+                cat >/etc/netplan/02-network-eth0.yaml <<EOF
 network:
   version: 2
   renderer: networkd
@@ -266,16 +429,16 @@ network:
         addresses: [${IFACECFGNEW['DNS']}]
 EOF
 
-                 netplan apply
-                 systemctl --no-block start ifup@$IFACE.service
-                 break;
-               else
-                 #set static IP for $IFACE
-                 systemctl --no-pager status ifup@$IFACE.service >/dev/null && systemctl stop --no-block ifup@$IFACE.service
-                 [ -n "${IFACECFG['IP/Mask']}" ] && eval "ip addr delete ${IFACECFG['IP/Mask']} dev $IFACE 2>/dev/null"
-                 pkill dhclient
-                 ip address flush dev "$IFACE"
-                 cat >/etc/netplan/02-network-eth0.yaml <<EOF
+                netplan apply
+                systemctl --no-block start ifup@$IFACE.service
+                break;
+              else
+                #set static IP for $IFACE
+                systemctl --no-pager status ifup@$IFACE.service >/dev/null && systemctl stop --no-block ifup@$IFACE.service
+                [ -n "${IFACECFG['IP/Mask']}" ] && eval "ip addr delete ${IFACECFG['IP/Mask']} dev $IFACE 2>/dev/null"
+                pkill dhclient
+                ip address flush dev "$IFACE"
+                cat >/etc/netplan/02-network-eth0.yaml <<EOF
 network:
   version: 2
   renderer: networkd
@@ -288,276 +451,407 @@ network:
       nameservers:
         addresses: [${IFACECFGNEW['DNS']}]
 EOF
-                 netplan apply
-                 systemctl --no-block start ifup@$IFACE.service
-               fi
+               netplan apply
+               systemctl --no-block start ifup@$IFACE.service
+             fi
 
-               [ -n "${IFACECFG['Gateway']}" ] && eval "ip route del default via ${IFACECFG['Gateway']} dev $IFACE 2>/dev/null"
-               [ -n "${IFACECFGNEW['Gateway']}" ] && eval "ip route add default via ${IFACECFGNEW['Gateway']} dev $IFACE"
+             [ -n "${IFACECFG['Gateway']}" ] && eval "ip route del default via ${IFACECFG['Gateway']} dev $IFACE 2>/dev/null"
+             [ -n "${IFACECFGNEW['Gateway']}" ] && eval "ip route add default via ${IFACECFGNEW['Gateway']} dev $IFACE"
 
-               break; 
-               ;;
-             esac
-           done
+             break; 
+             ;;
+           esac
+         done
          continue;
          ;;
        "HTTP PROXY")
-                mapfile -t CFGLINE < <( grep "^http-proxy " "$OPENVPNCONFIG"| awk -vFPAT='([^ ]*)|("[^"]+")' '{for(i=1;i<=NF;i++){print $i}}' )
-    declare -A PROXYCFG;
-      PROXYCFG["Host"]="${CFGLINE[1]}"
-      PROXYCFG["Port"]="${CFGLINE[2]}"
-                mapfile -t PROXYAUTH < <(cat "${CFGLINE[3]}" 2>&-)
-      PROXYCFG["User"]="${PROXYAUTH[0]}"
-          PROXYCFG["Password"]="${PROXYAUTH[1]}"
-                #cloning array with the next two lines:
-                TMPVAR=$(declare -p PROXYCFG)
-                eval "${TMPVAR/PROXYCFG=/PROXYCFGNEW=}";
-
-                while true
-    do
-      CHOICE=`dialog --extra-label "Edit" --cancel-label "Delete" --title "HTTP PROXY" --inputmenu "Configuration of HTTP proxy:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "Host" "${PROXYCFGNEW['Host']}" "Port" "${PROXYCFGNEW['Port']}" "User" "${PROXYCFGNEW['User']}" "Password" "${PROXYCFGNEW['Password']}" 3>&2 2>&1 1>&3`
-      RETCODE=$?
-      case $RETCODE in
-        $DIALOG_EXTRA)
-      CHANGES=($CHOICE)
-      if [ "${CHANGES[0]}" == "RENAMED" ]; then
-        PROXYCFGNEW["${CHANGES[1]}"]="${CHANGES[2]}"
-        continue;
-      fi
-      ;;
-        $DIALOG_CANCEL)
-                         rm "${OPENVPNCONFIG}.httpauth" 2>&-
-                         sed -i "/^http-proxy/d" "$OPENVPNCONFIG"
-      break;
-      ;;
-        $DIALOG_OK)
-          if [ -z "${PROXYCFGNEW['Host']}" ]; then
-            rm "${OPENVPNCONFIG}.httpauth" 2>&-
-            sed -i "/^http-proxy/d" "$OPENVPNCONFIG"
-            break;
-          fi
-          echo -ne "${PROXYCFGNEW['User']}\n${PROXYCFGNEW['Password']}" > "${OPENVPNCONFIG}.httpauth"
-          sed -i "/^socks-proxy/d" "$OPENVPNCONFIG"
-          if [ -z "${CFGLINE[3]}" ]; then
-            echo "http-proxy ${PROXYCFGNEW['Host']} ${PROXYCFGNEW['Port']} ${OPENVPNCONFIG}.httpauth basic" >> "$OPENVPNCONFIG"
-          else
-            sed -i "s#^http-proxy \([^ ]*\) \([[^ ]*]\) \([[^ ]*]\) \([[^ ]*]\)\$#http-proxy ${PROXYCFGNEW['Host']} ${PROXYCFGNEW['Port']} ${OPENVPNCONFIG}.httpauth \4#" "$OPENVPNCONFIG"      
-          fi
-          grep -q "^http-proxy-retry" "$OPENVPNCONFIG" || echo "http-proxy-retry" >> "$OPENVPNCONFIG"
-         break; 
-      ;;
-      esac
-    done
-    ;;
-    "SOCKS PROXY")
-      mapfile -t CFGLINE < <( grep "^socks-proxy " "$OPENVPNCONFIG"| awk -vFPAT='([^ ]*)|("[^"]+")' '{for(i=1;i<=NF;i++){print $i}}' )
-      declare -A PROXYCFG;
-      PROXYCFG["Host"]="${CFGLINE[1]}"
-      PROXYCFG["Port"]="${CFGLINE[2]}"
-                mapfile -t PROXYAUTH < <(cat "${CFGLINE[3]}" 2>&-)
-      PROXYCFG["User"]="${PROXYAUTH[0]}"
-      PROXYCFG["Password"]="${PROXYAUTH[1]}"
-      #cloning array with the next two lines:
-      TMPVAR=$(declare -p PROXYCFG)
-      eval "${TMPVAR/PROXYCFG=/PROXYCFGNEW=}";
-     while true
-     do
-      CHOICE=`dialog --extra-label "Edit" --cancel-label "Delete" --title "SOCKS PROXY" --inputmenu "Configuration of SOCKS proxy:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "Host" "${PROXYCFGNEW['Host']}" "Port" "${PROXYCFGNEW['Port']}" "User" "${PROXYCFGNEW['User']}" "Password" "${PROXYCFGNEW['Password']}" 3>&2 2>&1 1>&3`
-      RETCODE=$?
-      case $RETCODE in
-        $DIALOG_EXTRA)
-      CHANGES=($CHOICE)
-      if [ "${CHANGES[0]}" == "RENAMED" ]; then
-        PROXYCFGNEW["${CHANGES[1]}"]="${CHANGES[2]}"
-        continue;
-      fi
-      ;;
-        $DIALOG_CANCEL)
-                         rm "${OPENVPNCONFIG}.socksauth" 2>&-
-                         sed -i "/^socks-proxy/d" "$OPENVPNCONFIG"
-      break;
-      ;;
-        $DIALOG_OK)
-                        if [ -z "${PROXYCFGNEW['Host']}" ]; then
-                          rm "${OPENVPNCONFIG}.socksauth" 2>&-
-                          sed -i "/^socks-proxy/d" "$OPENVPNCONFIG"
-                          break;
-                        fi
-                        echo -ne "${PROXYCFGNEW['User']}\n${PROXYCFGNEW['Password']}" > "${OPENVPNCONFIG}.socksauth"
-                        sed -i "/^http-proxy/d" "$OPENVPNCONFIG"
-                        if [ -z "${CFGLINE[3]}" ]; then
-                          echo "socks-proxy ${PROXYCFGNEW['Host']} ${PROXYCFGNEW['Port']} ${OPENVPNCONFIG}.socksauth" >> "$OPENVPNCONFIG"
-                        else
-                          sed -i "s#^socks-proxy \([^ ]*\) \([[^ ]*]\) \([[^ ]*]\)\$#socks-proxy ${PROXYCFGNEW['Host']} ${PROXYCFGNEW['Port']} ${OPENVPNCONFIG}.socksauth#" "$OPENVPNCONFIG"      
-                        fi
-                        grep -q "^socks-proxy-retry" "$OPENVPNCONFIG" || echo "socks-proxy-retry" >> "$OPENVPNCONFIG"
-      break; 
-      ;;
-      esac
-    done
-                ;;
-
-              *)
-                feature_not_implemented
-                ;;
-      esac
-  done
-  continue
-  ;;
-    "DISK")
-  while true
-  do
-    read DISKCHOICE <<< $(dialog_menu "DISK" "$DISKMENUTEXT" "$(declare -p DISKMENU)")
-    if [ "$DISKCHOICE" == "VIEW" ]; then
-      dialog --title "BLOCK DEVICES VIEW" --msgbox "$(lsblk -f | grep -vE "sr0|loop[0-9]*|zram[0-9]*|nbd[0-9]*"; echo "-----EXISTING MAPPINGS-----"; losetup -a| sed 's#/dev/loop\([^:]*\):.*(\([^)]*\))#\1 \2#'| awk '{if($1>=8 && $1<18){print $2" => evidence"($1-8)} else if($1>=18 && $1<28){print $2" => storage"($1-18)} }' ; )" $BOXHEIGHT $BOXWIDTH 
-      continue
-    fi 
-
-    if [ "$DISKCHOICE" == "MAP" ]; then
-      ITEMS=`lsblk -l | tail -n +2 | grep -vE "sr0|loop[0-9]*|zram0" | awk '{print $1 " "$6"-"$4" off"}'`
-      CHOICE1=`dialog --title "SOURCE DEVICE" --radiolist "Please select the SOURCE device to map FROM:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $ITEMS 3>&2 2>&1 1>&3`
-      if [ $? -ne 0 ]; then continue; fi;
-
-      ALREADYMAPPED=`losetup -a | grep -o "^/dev/loop\([89]\|1[0-9]\|2[0-7]\)" | cut -d":" -f1 | sed 's#/dev/loop##g' | awk '{ORS="|";if($1<18){print "^evidence"($1-8)"$"} else{print "^storage"($1-18)"$"}}' | sed 's#|$##'`
-      if [ -z "$ALREADYMAPPED" ]; then ALREADYMAPPED="EMPTYLIST"; fi;
-      ITEMS=`echo "NONE disconnect on"; ls -1 /dev/container/| grep -vE "$ALREADYMAPPED" | awk '{if($1 ~ "evidence"){print $1" read-only off"}; if($1 ~ "storage"){print $1" READ-WRITE off"};}'`
-      CHOICE2=`dialog --title "DESTINATION DEVICE" --radiolist "Please select the DESTINATION device to map TO:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $ITEMS 3>&2 2>&1 1>&3`
-      if [ $? -ne 0 ]; then continue; fi;
-
-      if [ "$CHOICE2" == "NONE" ] #unmap the device
-      then
-        losetup -a | grep "(/dev/$CHOICE1)$"| cut -d":" -f1 | grep -o "^/dev/loop\([89]\|1[0-9]\|2[0-7]\)$" | xargs -n1 losetup -d
-      else
-        if echo "$CHOICE2" | grep -q "evidence"; 
-        then 
-            losetup -r /dev/container/$CHOICE2 /dev/$CHOICE1
-            blockdev --setro /dev/$CHOICE1
-            blockdev --setro /dev/container/$CHOICE2
-        elif echo "$CHOICE2" | grep -q "storage"; 
-        then 
-            losetup /dev/container/$CHOICE2 /dev/$CHOICE1
-            blockdev --setrw /dev/$CHOICE1
-            blockdev --setrw /dev/container/$CHOICE2
-        fi
-        dialog --title "INFO" --msgbox "Succesfully mapped /dev/$CHOICE1 to $CHOICE2." $BOXHEIGHT $BOXWIDTH 
-      fi
-      continue
-    fi 
+         mapfile -t CFGLINE < <( grep "^http-proxy " "$OPENVPNCONFIG"| awk -vFPAT='([^ ]*)|("[^"]+")' '{for(i=1;i<=NF;i++){print $i}}' )
+         declare -A PROXYCFG;
+         PROXYCFG["Host"]="${CFGLINE[1]}"
+         PROXYCFG["Port"]="${CFGLINE[2]}"
+         mapfile -t PROXYAUTH < <(cat "${CFGLINE[3]}" 2>&-)
+         PROXYCFG["User"]="${PROXYAUTH[0]}"
+         PROXYCFG["Password"]="${PROXYAUTH[1]}"
+         #cloning array with the next two lines:
+         TMPVAR=$(declare -p PROXYCFG)
+         eval "${TMPVAR/PROXYCFG=/PROXYCFGNEW=}";
+         while true
+         do
+           internet_status
+           CHOICE=`dialog --extra-label "Edit" --cancel-label "Delete" --title "HTTP PROXY" --inputmenu "Configuration of HTTP proxy:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "Host" "${PROXYCFGNEW['Host']}" "Port" "${PROXYCFGNEW['Port']}" "User" "${PROXYCFGNEW['User']}" "Password" "${PROXYCFGNEW['Password']}" 3>&2 2>&1 1>&3`
+           RETCODE=$?
+           case $RETCODE in
+             $DIALOG_EXTRA)
+               CHANGES=($CHOICE)
+               if [ "${CHANGES[0]}" == "RENAMED" ]; then
+                 PROXYCFGNEW["${CHANGES[1]}"]="${CHANGES[2]}"
+                continue;
+               fi
+               ;;
+             $DIALOG_CANCEL)
+               rm "${OPENVPNCONFIG}.httpauth" 2>&-
+               sed -i "/^http-proxy/d" "$OPENVPNCONFIG"
+               break;
+               ;;
+             $DIALOG_OK)
+               if [ -z "${PROXYCFGNEW['Host']}" ]; then
+                 rm "${OPENVPNCONFIG}.httpauth" 2>&-
+                 sed -i "/^http-proxy/d" "$OPENVPNCONFIG"
+                 break;
+               fi
+               echo -ne "${PROXYCFGNEW['User']}\n${PROXYCFGNEW['Password']}" > "${OPENVPNCONFIG}.httpauth"
+               sed -i "/^socks-proxy/d" "$OPENVPNCONFIG"
+               if [ -z "${CFGLINE[3]}" ]; then
+                 echo "http-proxy ${PROXYCFGNEW['Host']} ${PROXYCFGNEW['Port']} ${OPENVPNCONFIG}.httpauth basic" >> "$OPENVPNCONFIG"
+               else
+                 sed -i "s#^http-proxy \([^ ]*\) \([[^ ]*]\) \([[^ ]*]\) \([[^ ]*]\)\$#http-proxy ${PROXYCFGNEW['Host']} ${PROXYCFGNEW['Port']} ${OPENVPNCONFIG}.httpauth \4#" "$OPENVPNCONFIG"      
+               fi
+               grep -q "^http-proxy-retry" "$OPENVPNCONFIG" || echo "http-proxy-retry" >> "$OPENVPNCONFIG"
+              break; 
+             ;;
+           esac
+         done
+         ;;
+       "SOCKS PROXY")
+         mapfile -t CFGLINE < <( grep "^socks-proxy " "$OPENVPNCONFIG"| awk -vFPAT='([^ ]*)|("[^"]+")' '{for(i=1;i<=NF;i++){print $i}}' )
+         declare -A PROXYCFG;
+         PROXYCFG["Host"]="${CFGLINE[1]}"
+         PROXYCFG["Port"]="${CFGLINE[2]}"
+         mapfile -t PROXYAUTH < <(cat "${CFGLINE[3]}" 2>&-)
+         PROXYCFG["User"]="${PROXYAUTH[0]}"
+         PROXYCFG["Password"]="${PROXYAUTH[1]}"
+         #cloning array with the next two lines:
+         TMPVAR=$(declare -p PROXYCFG)
+         eval "${TMPVAR/PROXYCFG=/PROXYCFGNEW=}";
+         while true; do
+           internet_status
+           CHOICE=`dialog --extra-label "Edit" --cancel-label "Delete" --title "SOCKS PROXY" --inputmenu "Configuration of SOCKS proxy:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 "Host" "${PROXYCFGNEW['Host']}" "Port" "${PROXYCFGNEW['Port']}" "User" "${PROXYCFGNEW['User']}" "Password" "${PROXYCFGNEW['Password']}" 3>&2 2>&1 1>&3`
+           RETCODE=$?
+           case $RETCODE in
+             $DIALOG_EXTRA)
+               CHANGES=($CHOICE)
+               if [ "${CHANGES[0]}" == "RENAMED" ]; then
+                 PROXYCFGNEW["${CHANGES[1]}"]="${CHANGES[2]}"
+                 continue;
+               fi
+               ;;
+             $DIALOG_CANCEL)
+               rm "${OPENVPNCONFIG}.socksauth" 2>&-
+               sed -i "/^socks-proxy/d" "$OPENVPNCONFIG"
+               break;
+               ;;
+             $DIALOG_OK)
+               if [ -z "${PROXYCFGNEW['Host']}" ]; then
+                 rm "${OPENVPNCONFIG}.socksauth" 2>&-
+                 sed -i "/^socks-proxy/d" "$OPENVPNCONFIG"
+                 break;
+               fi
+               echo -ne "${PROXYCFGNEW['User']}\n${PROXYCFGNEW['Password']}" > "${OPENVPNCONFIG}.socksauth"
+               sed -i "/^http-proxy/d" "$OPENVPNCONFIG"
+               if [ -z "${CFGLINE[3]}" ]; then
+                 echo "socks-proxy ${PROXYCFGNEW['Host']} ${PROXYCFGNEW['Port']} ${OPENVPNCONFIG}.socksauth" >> "$OPENVPNCONFIG"
+               else
+                sed -i "s#^socks-proxy \([^ ]*\) \([[^ ]*]\) \([[^ ]*]\)\$#socks-proxy ${PROXYCFGNEW['Host']} ${PROXYCFGNEW['Port']} ${OPENVPNCONFIG}.socksauth#" "$OPENVPNCONFIG"      
+               fi
+               grep -q "^socks-proxy-retry" "$OPENVPNCONFIG" || echo "socks-proxy-retry" >> "$OPENVPNCONFIG"
+               break; 
+               ;;
+           esac
+         done
+         ;;
+          "BACK")
+        break;
+        ;;
+       *)
+         feature_not_implemented
+         ;;
+       esac
+       done
+       continue
+       ;;
+     "DISK")
+       while true
+       do
+         internet_status
+         read DISKCHOICE <<< $(dialog_menu "DISK" "$DISKMENUTEXT" "$(declare -p DISKMENU)")
+         if [ "$DISKCHOICE" == "VIEW" ]; then
+           dialog --title "BLOCK DEVICES VIEW" --msgbox "$(lsblk -f | grep -vE "sr0|loop[0-9]*|zram[0-9]*|nbd[0-9]*"; echo "-----EXISTING MAPPINGS-----"; losetup -a| sed 's#/dev/loop\([^:]*\):.*(\([^)]*\))#\1 \2#'| awk '{if($1>=8 && $1<18){print $2" => evidence"($1-8)} else if($1>=18 && $1<28){print $2" => storage"($1-18)} }' ; )" $BOXHEIGHT $BOXWIDTH 
+           continue
+         fi 
      
-    if [ "$DISKCHOICE" == "UNMAP" ]; then
-      ITEMS=`losetup -a| sed 's#/dev/loop\([^:]*\):.*(\([^)]*\))#\1 \2#'| awk '{if($1>=8 && $1<18){print "evidence"($1-8)" <="$2" off"} else if($1>=18 && $1<28){print "storage"($1-18)" <="$2" off"} }'; `
-      CHOICE1=`dialog --title "UNMAP DEVICE" --radiolist "Please select the device pair to break mapping:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $ITEMS 3>&2 2>&1 1>&3`
-      if [ $? -ne 0 ] || [ -z "$CHOICE1" ]; then continue; fi;
-      if echo "$CHOICE1"| grep -q "evidence"; then LOOPCHOICE1=$[${CHOICE1##evidence}+8]; fi
-      if echo "$CHOICE1"| grep -q "storage"; then LOOPCHOICE1=$[${CHOICE1##storage}+18]; fi; 
-            
-            if machinectl -q shell root@$CONTAINERNAME /usr/bin/mount | grep -q "^/dev/host/$CHOICE1"  
-            then
-              MNTLINES=$( machinectl -q shell root@$CONTAINERNAME /usr/bin/mount | grep "^/dev/host/$CHOICE1" | awk '{print $1" is mounted on "$3}' );
-              dialog --title "UNMAP DEVICE" --yesno "Device is currently mounted and used inside the container:\n$MNTLINES\n\nHowever, we can force unmapping. The processes using the device will be killed, it will be unmounted and unmapped from the container. Some work inside the container may be interrupted and lost.\n\nProceed with forced disk unmapping?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
-              case $RETCODE in
-                $DIALOG_YES)
-                  echo "$MNTLINES" | awk '{print $1" "$NF}' | while read src dst; 
-                   do
-                     machinectl -q shell root@$CONTAINERNAME /bin/bash -c "lsof | grep \"$dst\" | awk '{print \$2}' | xargs kill -9 "
-                     machinectl -q shell root@$CONTAINERNAME /usr/bin/umount -lf "$dst"
-                   done
-                ;;
-                $DIALOG_NO)
-                  continue;
-                ;;
-             esac
-            fi
-            losetup -d "/dev/loop$LOOPCHOICE1" && dialog --title "INFO" --msgbox "Succesfully unmapped $CHOICE1." $BOXHEIGHT $BOXWIDTH 
-      continue
-    fi
-    
-    if [ "$DISKCHOICE" == "PRIVILEGED MODE" ]; 
-      then
-        while true
-        do
-          PMSTATE="DISABLED"
-          if [ -f "$PRIVMODECONTROLFILE" ]; then PMSTATE="ENABLED"; fi;
-          _PRIVMODEMENUTEXT="$PRIVMODEMENUTEXT
-Privileged mount mode is currently $PMSTATE.";
-          read PRIVMODECHOICE <<< $(dialog_menu "PRIVILEGED MOUNT MODE" "${_PRIVMODEMENUTEXT}" "$(declare -p PRIVMODEMENU)")
-          case "$PRIVMODECHOICE" in
-            "ENABLE")
-              touch "$PRIVMODECONTROLFILE"
-            ;;
-            "DISABLE")
-              rm -f "$PRIVMODECONTROLFILE"
-            ;;
-            "LOG")
-              if [ -f "$PRIVMODELOG" ]
-              then
-                dialog --title "PRIVILEGED OPERATIONS LOG" --textbox "$PRIVMODELOG" $BOXHEIGHT $BOXWIDTH
-              else
-                dialog --title "PRIVILEGED MOUNT MODE" --msgbox "The log file for privileged mode was not created yet. This is normal and means that there were no attempts to use privileged mode yet." $BOXHEIGHT $BOXWIDTH
-              fi
-            ;;
-            "BACK")
-             break;
-            ;;
-          esac
-        done
-        continue;
-      fi;
-        
+         if [ "$DISKCHOICE" == "MAP" ]; then
+           ITEMS=`lsblk -l  | tail -n +2 | grep -vE "sr0|loop[0-9]*|zram[0-9]*|nbd[0-9]*" | awk '{print $1 " "$6"-"$4" off"}'`
+           CHOICE1=`dialog --title "SOURCE DEVICE" --radiolist "Please select the SOURCE device to map FROM:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $ITEMS 3>&2 2>&1 1>&3`
+           if [ $? -ne 0 ]; then continue; fi;
      
-    if [ "$DISKCHOICE" == "BACK" ]; then break; fi;
-    feature_not_implemented
-  done 
-  continue
-        ;;
-  ### OTHER COMMANDS ###
-     "SHUTDOWN") 
-        clear;
-        poweroff;
-        break; 
-        ;;
-     "EXIT") 
-        clear; 
-        break; 
-        ;;
-     "INTRODUCTION")
-        dialog --title "INTRODUCTION" --textbox /usr/share/bitscout/introduction $BOXHEIGHT $BOXWIDTH
-        continue;
-        ;;
-
-     "CONTAINER-SHELL")
-         clear;
-         machinectl -q shell root@$CONTAINERNAME /bin/bash --rcfile /etc/bash.bashrc -i
-         clear
-         continue;
-         ;;
-
-     "SHELL")
-         clear;
-         pushd /root 2>/dev/null >/dev/null
-         /bin/bash --rcfile /etc/bash.bashrc -i
-         popd 2>/dev/null >/dev/null
-         continue;
-         ;;
-     "CHAT")
-         dialog --title "COMMON USER WARNING" --msgbox "You are about to enter IRC chat application. If you would like to exit chat, you have to type command \"/quit\" and press ENTER. IRC chat can be started from any shell session as well just by running \"irssi\" command. It will automatically use settings at /etc/irssi.conf to connect to internal IRC server." $BOXHEIGHT $BOXWIDTH 
-         /usr/bin/irssi
-         continue;
-         ;;
-     "STATUS")
-         SESSNAME="status"
-         if ! tmux has-session -t "$SESSNAME" >/dev/null
-         then
-           tmux new-session -n main -s "$SESSNAME" /usr/bin/scout-monitor
-         else
-           tmux attach-session -t "$SESSNAME:main"
+           ALREADYMAPPED=`losetup -a | grep -o "^/dev/loop\([89]\|1[0-9]\|2[0-7]\)" | cut -d":" -f1 | sed 's#/dev/loop##g' | awk '{ORS="|";if($1<18){print "^evidence"($1-8)"$"} else{print "^storage"($1-18)"$"}}' | sed 's#|$##'`
+           if [ -z "$ALREADYMAPPED" ]; then ALREADYMAPPED="EMPTYLIST"; fi;
+           ITEMS=`echo "NONE disconnect on"; ls -1 /dev/container/| grep -vE "$ALREADYMAPPED" | awk '{if($1 ~ "evidence"){print $1" read-only off"}; if($1 ~ "storage"){print $1" READ-WRITE off"};}'`
+           CHOICE2=`dialog --title "DESTINATION DEVICE" --radiolist "Please select the DESTINATION device to map TO:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $ITEMS 3>&2 2>&1 1>&3`
+           if [ $? -ne 0 ]; then continue; fi;
+     
+           if [ "$CHOICE2" == "NONE" ] #unmap the device
+           then
+             losetup -a | grep "(/dev/$CHOICE1)$"| cut -d":" -f1 | grep -o "^/dev/loop\([89]\|1[0-9]\|2[0-7]\)$" | xargs -n1 losetup -d
+           else
+             if echo "$CHOICE2" | grep -q "evidence"; 
+             then 
+                 losetup -r /dev/container/$CHOICE2 /dev/$CHOICE1
+                 blockdev --setro /dev/$CHOICE1
+                 blockdev --setro /dev/container/$CHOICE2
+             elif echo "$CHOICE2" | grep -q "storage"; 
+             then 
+                 losetup /dev/container/$CHOICE2 /dev/$CHOICE1
+                 blockdev --setrw /dev/$CHOICE1
+                 blockdev --setrw /dev/container/$CHOICE2
+             fi
+             dialog --title "INFO" --msgbox "Succesfully mapped /dev/$CHOICE1 to $CHOICE2." $BOXHEIGHT $BOXWIDTH 
+           fi
+           continue
+         fi 
+          
+         if [ "$DISKCHOICE" == "UNMAP" ]; then
+           ITEMS=`losetup -a| sed 's#/dev/loop\([^:]*\):.*(\([^)]*\))#\1 \2#'| awk '{if($1>=8 && $1<18){print "evidence"($1-8)" <="$2" off"} else if($1>=18 && $1<28){print "storage"($1-18)" <="$2" off"} }'; `
+           CHOICE1=`dialog --title "UNMAP DEVICE" --radiolist "Please select the device pair to break mapping:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $ITEMS 3>&2 2>&1 1>&3`
+           if [ $? -ne 0 ] || [ -z "$CHOICE1" ]; then continue; fi;
+           if echo "$CHOICE1"| grep -q "evidence"; then LOOPCHOICE1=$[${CHOICE1##evidence}+8]; fi
+           if echo "$CHOICE1"| grep -q "storage"; then LOOPCHOICE1=$[${CHOICE1##storage}+18]; fi; 
+                 
+           if machinectl -q shell root@$CONTAINERNAME /usr/bin/mount | grep -q "^/dev/host/$CHOICE1"  
+           then
+             MNTLINES=$( machinectl -q shell root@$CONTAINERNAME /usr/bin/mount | grep "^/dev/host/$CHOICE1" | awk '{print $1" is mounted on "$3}' );
+             dialog --title "UNMAP DEVICE" --yesno "Device is currently mounted and used inside the container:\n$MNTLINES\n\nHowever, we can force unmapping. The processes using the device will be killed, it will be unmounted and unmapped from the container. Some work inside the container may be interrupted and lost.\n\nProceed with forced disk unmapping?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
+             case $RETCODE in
+               $DIALOG_YES)
+                 echo "$MNTLINES" | awk '{print $1" "$NF}' | while read src dst; 
+                  do
+                    machinectl -q shell root@$CONTAINERNAME /bin/bash -c "lsof | grep \"$dst\" | awk '{print \$2}' | xargs kill -9 "
+                    machinectl -q shell root@$CONTAINERNAME /usr/bin/umount -lf "$dst"
+                  done
+               ;;
+               $DIALOG_NO)
+                 continue;
+               ;;
+            esac
+           fi
+           losetup -d "/dev/loop$LOOPCHOICE1" && dialog --title "INFO" --msgbox "Succesfully unmapped $CHOICE1." $BOXHEIGHT $BOXWIDTH 
+           continue
          fi
-         continue;
-         ;;
+         
+         if [ "$DISKCHOICE" == "PRIVILEGED MODE" ]; then
+           while true
+           do
+             internet_status
+             PMSTATE="DISABLED"
+             if [ -f "$PRIVMODECONTROLFILE" ]; then PMSTATE="ENABLED"; fi;
+             _PRIVMODEMENUTEXT="$PRIVMODEMENUTEXT
+   Privileged mount mode is currently $PMSTATE.";
+             read PRIVMODECHOICE <<< $(dialog_menu "PRIVILEGED MOUNT MODE" "${_PRIVMODEMENUTEXT}" "$(declare -p PRIVMODEMENU)")
+             case "$PRIVMODECHOICE" in
+               "ENABLE")
+                 touch "$PRIVMODECONTROLFILE"
+               ;;
+               "DISABLE")
+                 rm -f "$PRIVMODECONTROLFILE"
+               ;;
+               "LOG")
+                 if [ -f "$PRIVMODELOG" ]
+                 then
+                   dialog --title "PRIVILEGED OPERATIONS LOG" --textbox "$PRIVMODELOG" $BOXHEIGHT $BOXWIDTH
+                 else
+                   dialog --title "PRIVILEGED MOUNT MODE" --msgbox "The log file for privileged mode was not created yet. This is normal and means that there were no attempts to use privileged mode yet." $BOXHEIGHT $BOXWIDTH
+                 fi
+               ;;
+               "BACK")
+                break;
+               ;;
+             esac
+           done
+           continue;
+         fi;
+          
+         if [ "$DISKCHOICE" == "BACK" ]; then break; fi;
+         feature_not_implemented
+       done 
+       continue
+       ;;
+     ### OTHER COMMANDS ###
+     "SHUTDOWN") 
+       clear;
+       poweroff;
+       break; 
+       ;;
+     "EXIT") 
+       clear; 
+       break; 
+       ;;
+     "INTRODUCTION")
+       dialog --title "INTRODUCTION" --textbox /usr/share/bitscout/introduction $BOXHEIGHT $BOXWIDTH
+       continue;
+       ;;
+     "CONTAINER-SHELL")
+       clear;
+       machinectl -q shell root@$CONTAINERNAME /bin/bash --rcfile /etc/bash.bashrc -i
+       clear
+       continue;
+       ;;
+     "SHELL")
+       clear;
+       pushd /root 2>/dev/null >/dev/null
+       /bin/bash --rcfile /etc/bash.bashrc -i
+       popd 2>/dev/null >/dev/null
+       continue;
+       ;;
+     "CHAT")
+       dialog --title "COMMON USER WARNING" --msgbox "You are about to enter IRC chat application. If you would like to exit chat, you have to type command \"/quit\" and press ENTER. IRC chat can be started from any shell session as well just by running \"irssi\" command. It will automatically use settings at /etc/irssi.conf to connect to internal IRC server." $BOXHEIGHT $BOXWIDTH 
+       /usr/bin/irssi
+       continue;
+       ;;
+     "STATUS")
+       SESSNAME="status"
+       if ! tmux has-session -t "$SESSNAME" >/dev/null
+       then
+         tmux new-session -n main -s "$SESSNAME" /usr/bin/scout-monitor
+       else
+         tmux attach-session -t "$SESSNAME:main"
+       fi
+       continue;
+       ;;
+     "WATCHDOG")
+       while true; do
+         internet_status
+         container_state=$( machinectl show container | grep State | sed 's/^State=//' )
+         WATCHDOGMENUTEXT="This allows to stop memory/disk greedy processes.\nCurrent container state: $container_state.\n"
+         read WATCHDOGCHOICE <<< $(dialog_menu "WATCHDOG" "$WATCHDOGMENUTEXT" "$(declare -p WATCHDOGMENU)")
+         case "$WATCHDOGCHOICE" in
+           "MEMORY")
+             total_ram=$(free -m | awk '/^Mem:/ {print int($2)}')
+             available_ram=$(free -m | grep '^Mem:' | awk '{print $7}' | xargs printf "%.0f\n")
+             list_of_process=$(ps aux --sort=-%mem | awk 'NR<=11{print $2,$11"("$4"%)"}' | sed -n '2,$p')
+             process_id=$(dialog --no-collapse --title "TOP 10 PROCESSES" --ok-label "SHOW DETAILS" --menu "The list of TOP10 memory greedy processes is below.\nThe system currently has $total_ram MB of RAM, out of which $available_ram MB is free.\nThe list below shows a process id, the path and the memory usage percentage." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $list_of_process  3>&2 2>&1 1>&3 )
+             [ $? -ne 0 ] && continue
+             process_id_summary=$(ps -p "$process_id" -o pid,ppid,%mem,%cpu,user,cmd --no-headers | awk '{printf("Would you like to kill the following process?\n\nProcess ID: %s\nParent Process ID: %s\nMemory Usage: %s\nCPU Load: %s\nProcess Owner: %s\n", $1, $2, $3, $4, $5); $1=$2=$3=$4=$5=""; sub(" *","",$0); printf("Command: %s\n",$0);}')
+             process_action=$(dialog --title "CONFIRMATION" --yesno "$process_id_summary" $BOXHEIGHT $BOXWIDTH 3>&2 2>&1 1>&3 )
+             [ $? -ne 0 ] && continue
+             kill -9 $process_id
+             continue
+             ;;
+           "DISK")
+             total_disk=$(df -h --total 2>/dev/null | awk '/total/{print $2}')
+             available_disk=$(df -h --output=avail / 2>/dev/null | awk 'NR==2 {print $1}')
+             list_of_open_files=$(lsof 2>/dev/null | awk '/REG/{if($7 > 1048576) print $7, $9}' | sort -urn -k1 | head -n 10 | awk '{ printf "%s %5.1fMB\n", $2, $1/1048576 }')
+             disk_path=$(dialog --no-collapse --ok-label "FORCED REMOVAL" --menu "List of the TOP10 largest open files in the system.\nThe system has a total of $total_disk disk space out of which $available_disk is available.\nThe lise below contains opened file path and its size on disk." $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $list_of_open_files 3>&2 2>&1 1>&3 )
+             [ $? -ne 0 ] && continue
 
+             disk_path_summary=$(lsof $disk_path | awk '{if(NR!=1){print "Destroy the process and wipe the following file?\n\nFile Size:",$7"\nLocation:",$9"\nOpened By:",$3"\nProcess ID:",$2"\n"}}')
+             dialog --no-collapse --no-nl-expand --scrolltext --scrollbar --title "CONFIRMATION" --yesno "$disk_path_summary" $BOXHEIGHT $BOXWIDTH
+             [ $? -ne 0 ] && continue
+             lsof -t $disk_path 2>/dev/null | xargs -r kill -9 
+             [ $? -ne 0 ] && continue
+             rm -f $disk_path
+             continue
+             ;;
+          "BACK")
+             break;
+             ;;
+          *)
+            feature_not_implemented
+            ;;
+        esac
+      done
+      continue;
+
+      ;;
+
+      "EXPORT")
+      while true
+      do
+        internet_status
+
+        usb_root_drives=$( lsblk -l -o PATH,TYPE -n  | grep -Ev "loop[0-9]*|zram[0-9]*|sr[0-9]*|nbd[0-9]*" | grep "disk" | cut -d' ' -f1 | while read R; do if udevadm info -q path $R | grep -qE "/usb[0-9]/"; then echo $R; fi; done | xargs )
+        exp_device=$(mount | grep "/mnt/export/" | cut -d' ' -f1 | sed 's#^/dev/##')
+
+        if [ -n "$exp_device" ]; then
+          EXPORTMENU[$[${#EXPORTMENU[@]}-2]]="UNMOUNT DRIVE:Remove $exp_device drive safely."
+          exp_mountpoint="/mnt/export/$exp_device"
+        else
+          EXPORTMENU[$[${#EXPORTMENU[@]}-2]]="MOUNT DRIVE:Mount an external drive."
+        fi
+
+        unset EXPORT_LOGS_ALL
+        declare -a EXPORT_LOGS_ALL
+        EXPORT_LOGS_ALL+=("/opt/container/history/log")
+        EXPORT_LOGS_ALL+=("/var/log/irssi")
+
+        read EXPORTCHOICE <<< $(dialog_menu "EXPORT" "$EXPORTMENUTEXT" "$(declare -p EXPORTMENU)") 
+        case "$EXPORTCHOICE" in
+          "VIEW DRIVES")
+            dialog --title "VIEW EXPORT DRIVES" --msgbox "$(echo -e 'The following is a list of USB drives and partitions attached to the system:\n'; lsblk -o NAME,FSTYPE,SIZE,LABEL -f $usb_root_drives )" $BOXHEIGHT $BOXWIDTH
+            continue;
+            ;;
+          "MOUNT DRIVE")
+            device_list=$(lsblk -n -l -o NAME,TYPE,FSTYPE,SIZE,LABEL $usb_root_drives | sed 's/^\([^ ]*\) *\(.*\) $/\1 \2/; s/ \+/ /g; s/ /\t/; s/ /,/g; s/\t/ /' | tr $'\n' ' ' )
+            exp_device=$(dialog --menu "Please choose a device to mount:" $BOXHEIGHT $BOXWIDTH $BOXHEIGHT2 $device_list 3>&2 2>&1 1>&3 )
+            exp_mountpoint="/mnt/export/$exp_device"
+
+            [ ! -d $exp_mountpoint ] && mkdir -p $exp_mountpoint
+            [ ! -d $exp_mountpoint ] && dialog --msgbox "Failed to create mountpoint at $exp_mountpoint." $BOXHEIGHT $BOXWIDTH && continue
+            blockdev_setrw /dev/$exp_device
+            [ $? -ne 0 ] && dialog --msgbox "Failed to enable write permission on $exp_device." $BOXHEIGHT $BOXWIDTH && continue
+            mount "/dev/$exp_device" $exp_mountpoint
+            mount_status=$?
+            [ $mount_status -ne 0 ] && dialog --msgbox "Failed to mount $exp_device at $exp_mountpoint" $BOXHEIGHT $BOXWIDTH
+            continue;
+            ;;
+          "UNMOUNT DRIVE")
+            umount $exp_mountpoint
+            umount_status=$?
+            [ $umount_status -eq 0 ] || blockdev_setro /dev/$exp_device && dialog --msgbox "Device $deviceName failed to unmount at $exp_mountpoint" $BOXHEIGHT $BOXWIDTH
+            continue;
+            ;;
+
+          "LOGS EXPORT")
+            if [ -z "$exp_device" ]; then
+              dialog --title "ERROR" --msgbox "You must mount an export drive before exporting logs. Please use MOUNT DRIVE command in previous menu." $BOXHEIGHT $BOXWIDTH
+              continue;
+            fi
+            EXPORT_FILE="bitscout_export_logs.$(date +%F_%T).tgz"
+            EXPORT_DEST="$exp_mountpoint/$EXPORT_FILE"
+            tar cfz $EXPORT_DEST ${EXPORT_LOGS_ALL[@]} 2>/dev/null >/dev/null
+            dialog --title "INFO" --msgbox "The data was saved to $EXPORT_FILE on the drive's root.\nFull export file path: $EXPORT_DEST\nThe file size: $(stat -c %s $EXPORT_DEST) bytes" $BOXHEIGHT $BOXWIDTH
+            continue;
+            ;;
+          "DIRECTORY EXPORT")
+            EXPORT_FILE="bitscout_export_dir.$(date +%F_%T).tgz"
+            EXPORT_DEST="$exp_mountpoint/$EXPORT_FILE"
+            custom_dir=$(dialog --title "Select a directory to export. Just type the full path:" --dselect "/" $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
+            [ $? -eq 1 ] && continue;
+            tar cfz $EXPORT_DEST $custom_dir 2>/dev/null >/dev/null
+            dialog --title "INFO" --msgbox "The data was saved to $EXPORT_FILE on the drive's root.\nFull export file path: $EXPORT_DEST\nThe file size: $(stat -c %s $EXPORT_DEST) bytes" $BOXHEIGHT $BOXWIDTH
+            continue;
+            ;;
+          "RESET LOGS")            
+            dir_list=""
+            for (( i=0; i<${#EXPORT_LOGS_ALL[@]}; i++ )); do dir_list="$dir_list\n${EXPORT_LOGS_ALL[$i]}"; done
+            dialog --yesno "You are about to delete all non-opened log files in the following directories:\n$dir_list\n\nProceed?" $BOXHEIGHT $BOXWIDTH
+            [ $? -ne 0 ] && continue;
+            for (( i=0; i<${#EXPORT_LOGS_ALL[@]}; i++ )); do remove_nonopen_files ${EXPORT_LOGS_ALL[$i]}; done 
+            continue;
+            ;;
+          "BACK")
+            break;
+            ;;
+            *)
+            feature_not_implemented
+            ;;
+        esac
+      done
+      continue;
+      ;;
     "SUPERVISE")
   while true
   do
+    internet_status
     read SUPERVISECHOICE <<< $(dialog_menu "SUPERVISE" "$SUPERVISEMENUTEXT" "$(declare -p SUPERVISEMENU)")
       
     case "$SUPERVISECHOICE" in
@@ -608,5 +902,7 @@ Privileged mount mode is currently $PMSTATE.";
                 ;;
          esac
        done
+   
   esac
 done
+

@@ -25,6 +25,9 @@ CONTAINERUSERNAME="user"
 LANG=en_US.UTF-8
 HISTORIAN_ZRAM_SIZE=2048M
 
+#Support aliases throughout the scripts
+shopt -s expand_aliases
+
 [ -f "config/$PROJECTNAME-build.conf" ] && . "config/$PROJECTNAME-build.conf"
 
 if [ -n "$GLOBAL_TARGET" -a "$GLOBAL_TARGET" = "iso" ]; then
@@ -297,6 +300,28 @@ file_template_copy()
 sudo_file_template_copy()
 {
   SUDO="sudo" file_template_copy "$1" "$2"
+}
+
+chroot_safecopy_resources()
+{
+  #This function is used to safe-copy files from resources to destination chroot
+  #A simple cp ./resources/usr/share/vim/vimrc to ./build.$GLOBAL_BASEARCH/chroot/resources
+
+  if [ ! -d "./build.$GLOBAL_BASEARCH/chroot/resources" ]; then
+    sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/resources
+  fi
+  if ! mount | grep -q ./build.$GLOBAL_BASEARCH/chroot/resources; then
+    if ! sudo mount --bind ./resources ./build.$GLOBAL_BASEARCH/chroot/resources; then
+      echo "ERROR: Failed to mount-bind ./resources to ./build.$GLOBAL_BASEARCH/chroot/resources."
+      return 1
+    fi
+  fi
+  statusprint "Copying inside the chroot environment:"
+  sudo chroot ./build.$GLOBAL_BASEARCH/chroot /bin/cp $*
+  retcode=$?
+  sudo umount ./build.$GLOBAL_BASEARCH/chroot/resources
+  sudo rmdir ./build.$GLOBAL_BASEARCH/chroot/resources
+  return $retcode
 }
 
 normalize_size()

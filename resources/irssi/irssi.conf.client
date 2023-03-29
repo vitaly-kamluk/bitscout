@@ -9,12 +9,20 @@ channels = (
 );
 
 settings = {
-  core = {
-    real_name = "owner";
-    user_name = "owner";
-    nick = "owner";
-  };
-  "fe-text" = { actlist_sort = "refnum"; term_force_colors = "yes"; };
+    core = {
+        real_name = "owner";
+        user_name = "owner";
+        nick = "owner";
+    };
+
+    "fe-text" = {
+        actlist_sort = "refnum";
+        term_force_colors = "yes";
+    };
+    "fe-common/core" = {
+        autolog = "yes";
+        autolog_path = "/var/log/irssi/irc_$1.$0.%F.log";
+    };
 };
 
 windows = {
