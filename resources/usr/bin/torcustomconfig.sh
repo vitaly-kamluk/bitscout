@@ -2,7 +2,7 @@
 
 sudo chown -R debian-tor:debian-tor /etc/tor
 
-sudo -s chown -R debian-tor:debian-tor /var/lib/tor
+sudo chown -R debian-tor:debian-tor /var/lib/tor
 
 systemd-run --machine container systemctl stop tor
 

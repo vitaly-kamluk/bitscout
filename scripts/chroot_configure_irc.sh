@@ -22,7 +22,10 @@ then
   echo "GLOBAL_IRCOPPASS=\"${GLOBAL_IRCOPPASS}\"" >> "config/${PROJECTNAME}-build.conf"
 fi
 
-statusprint "Copying client irssi configuration.."
+statusprint "Creating irssi client logs directory.."
+sudo mkdir -p ./build.$GLOBAL_BASEARCH/chroot/var/log/irssi
+
+statusprint "Copying irssi client configuration.."
 if [ ! -f "config/irssi/irssi.conf" ]
 then
  irc_template_copy "resources/irssi/irssi.conf.client" "config/irssi/irssi.conf"

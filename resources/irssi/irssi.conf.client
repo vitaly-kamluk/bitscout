@@ -21,7 +21,7 @@ settings = {
     };
     "fe-common/core" = {
         autolog = "yes";
-        autolog_path = "/opt/container/history/log/$0.%m-%d.log";
+        autolog_path = "/var/log/irssi/irc_$1.$0.%F.log";
     };
 };
 

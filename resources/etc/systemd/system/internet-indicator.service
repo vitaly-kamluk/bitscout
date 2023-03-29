@@ -1,0 +1,12 @@
+[Unit]
+Description=internet_indicator on bitscout management tool
+After=networking.service
+
+[Service]
+Type=simple
+
+ExecStart=/usr/bin/internet-indicator.sh start
+ExecStop=
+
+[Install]
+WantedBy=multi-user.target

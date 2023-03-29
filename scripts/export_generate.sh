@@ -47,7 +47,7 @@ fi
 cp -v "./config/ssh/"{${PROJECTSHORTNAME},${PROJECTSHORTNAME}.pub} "$EXPEXPERT/etc/ssh"
 sed 's/owner/expert/g;' "./config/irssi/irssi.conf" > "$EXPEXPERT/etc/irc/irssi.conf"
 
-sudo -s [ -d ./build.$GLOBAL_BASEARCH/chroot/var/lib/tor/tor_hidden_service/ ] && sudo mkdir -p $EXPEXPERT/var/lib/tor && sudo -s cp -r ./build.$GLOBAL_BASEARCH/chroot/var/lib/tor $EXPEXPERT/var/lib/tor
+sudo [ -d ./build.$GLOBAL_BASEARCH/chroot/var/lib/tor/tor_hidden_service/ ] && sudo mkdir -p $EXPEXPERT/var/lib/tor && sudo cp -r ./build.$GLOBAL_BASEARCH/chroot/var/lib/tor $EXPEXPERT/var/lib/tor
 [ $? == '0' ] && statusprint "[SUCCESS] Copying tor config file and key to host success..."
 
 exit 0;

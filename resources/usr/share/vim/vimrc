@@ -1,0 +1,36 @@
+syntax on 
+set background=dark
+set mouse-=a
+
+set smartindent
+set shiftwidth=2
+set expandtab
+set tabstop=2
+
+"set list "show special characters, i.e. end of line
+
+" Tell vim to remember certain things when we exit
+set viminfo='10,\"100,:20,%,n~/.viminfo
+" when we reload, tell vim to restore the cursor to the saved position
+augroup JumpCursorOnEdit
+  autocmd BufReadPost * %
+    if line("'\"") >= 1 && line("'\"") <= line("$") |
+      exe "normal! g`\"" |
+    endif 
+augroup END
+
+set fileencodings=ucs-bom,utf-8,default,latin1
+"F8 menu to switch encodings
+set wildmenu
+"set wildmode
+set wcm=<Tab>
+
+if &term =~ '^screen'
+    " tmux will send xterm-style keys when its xterm-keys option is on
+    execute "set <xUp>=\e[1;*A"
+    execute "set <xDown>=\e[1;*B"
+    execute "set <xRight>=\e[1;*C"
+    execute "set <xLeft>=\e[1;*D"
+endif
+
+set backspace=indent,eol,start

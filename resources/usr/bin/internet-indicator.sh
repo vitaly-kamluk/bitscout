@@ -1,28 +1,30 @@
 #!/bin/bash
+CONNCHECK_HOST="bitscout-forensics.info"
 
-function startIndicator() {
-    ping -c1 bitscout-forensics.info
+function run_test() {
+    ping -n -c1 ${CONNCHECK_HOST}
     status=$?
-    if [ $status == 0 ] ; then
-        [[ ! -f /run/internetOn.status && ! -f /run/internetOff.status ]] && touch /run/internetOn.status
-        [ -f /run/internetOff.status ] && mv /run/internetOff.status /run/internetOn.status
+    if [ $status -eq 0 ]; then
+        [ ! -f /run/internet_on.status -a ! -f /run/internet_off.status ] && touch /run/internet_on.status
+        [ -f /run/internet_off.status ] && rm /run/internet_off.status
     else
-        [[ ! -f /run/internetOn.status && ! -f /run/internetOff.status ]] && touch /run/internetOff.status
-        [ -f /run/internetOn.status ] && mv /run/internetOn.status /run/internetOff.status
+        [ ! -f /run/internet_on.status -a ! -f /run/internet_off.status ] && touch /run/internet_off.status
+        [ -f /run/internet_on.status ] && rm /run/internet_on.status
     fi
+    return 0
 }
 
-function stopIndicator() {
-    [ -f /run/internetOn.status ] && rm /run/internetOn.status 
-    [ -f /run/internetOff.status ] && rm /run/internetOff.status 
+function clean() {
+    rm /run/internet_{on,off}.status 2>/dev/null
+    return 0
 }
 
 case "$1" in
     start)
-        startIndicator
+        run_test
         ;;
 
     stop)
-        stopIndicator
+        clean
         ;;
 esac
