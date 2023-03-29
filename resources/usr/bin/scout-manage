@@ -141,6 +141,7 @@ NETWORKMENU+=("SOCKS PROXY:Configure internet access via SOCKS proxy.")
 NETWORKMENU+=("SYSLOG:Configure a new Syslog forwarder.")
 NETWORKMENU+=("DISABLE INTERNET TEST:Shows red/blue bg when offline/online.")
 NETWORKMENU+=("ENABLE SSH WITH PASSWORD:Allow password authentication for SSH.")
+NETWORKMENU+=("ENABLE EGRESS TRAFFIC VIA VPN:Enable rerouting the egress traffic through the VPN")
 NETWORKMENU+=("BACK:Return to previous menu.")
 #reverse array elements
 unset T; T=("${NETWORKMENU[@]}"); unset NETWORKMENU; declare -a NETWORKMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do NETWORKMENU[${#NETWORKMENU[@]}]=${T[i]}; done
@@ -286,6 +287,7 @@ do
         continue
         ;;
 
+<<<<<<< HEAD
       "ENABLE ACCESS FROM LAN")
         dialog --title "ENABLE ACCESS FROM LAN" --yesno "This will enable access to SSH and other port(s) of this Bitscout instance from LAN. It's good for testing or if you want to enable local expert connect to the instance directly other than using VPN.\n\nAre you sure you want to do this?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
         case $RETCODE in
@@ -376,6 +378,32 @@ __SYSLOG__
         done
         continue
         ;;       
+
+          "ENABLE EGRESS TRAFFIC VIA VPN")
+                sed -i 's/EgressTraffic no/EgressTraffic yes/g' /etc/openvpn/client/scout.conf
+                [ "$?" != "0" ] && process_fail_menu && break
+                ip route save 1>default
+                [ "$?" != "0" ] && process_fail_menu && break
+                defaultVPNIP=$(ip a | grep "global scout" | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}')
+                ip route add default via $defaultVPNIP
+                [ "$?" != "0" ] && process_fail_menu && break
+                defaultIP=$(ip route show | grep "default" | grep -v "scout" | awk '{print $3}' )
+                ip route del default via $defaultIP
+                [ "$?" != "0" ] && process_fail_menu && break
+                NETWORKMENU[$[${#NETWORKMENU[@]}-10]]="DISABLE EGRESS TRAFFIC VIA VPN:Disable rerouting the egress traffic through the VPN."
+                continue
+                ;;
+          "DISABLE EGRESS TRAFFIC VIA VPN")
+                sed -i 's/EgressTraffic yes/EgressTraffic no/g' /etc/openvpn/client/scout.conf
+                [ "$?" != "0" ] && process_fail_menu && break
+                defaultVPNIP=$(ip a | grep "global scout" | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}')
+                ip route del default via $defaultVPNIP
+                [ "$?" != "0" ] && process_fail_menu && break
+                ip route restore < default
+                [ "$?" != "0" ] && process_fail_menu && break
+                NETWORKMENU[$[${#NETWORKMENU[@]}-10]]="ENABLE EGRESS TRAFFIC VIA VPN:Enable rerouting the egress traffic through the VPN."
+                continue
+                ;;
       "STATIC IP")
         declare -a IFACEMENU;
         mapfile -t IFACEMENU < <( ip -o link show | awk '{if($2!~/ve-container.*|scout.*|lo:.*/){print $2}}'| while read dev; do echo -n "$dev"; ip -4 -o addr show "${dev%:}" | awk '{print $4}'; done; )
