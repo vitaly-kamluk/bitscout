@@ -13,6 +13,7 @@ SUPERVISEDBYPASS=/var/run/supervised/bypass
 SUPERVISEDAUTHPIPE=/var/run/supervised/auth.pipe
 DIALOGRC=/etc/dialogrc
 SETTINGSFILE=/etc/scout-manage.conf
+VPNIFNAME=scout
 
 if [ `id -u` -ne 0 ]; then sudo "$0"; fi;  #this script should be run as root.
 
@@ -141,7 +142,7 @@ NETWORKMENU+=("SOCKS PROXY:Configure internet access via SOCKS proxy.")
 NETWORKMENU+=("SYSLOG:Configure a new Syslog forwarder.")
 NETWORKMENU+=("DISABLE INTERNET TEST:Shows red/blue bg when offline/online.")
 NETWORKMENU+=("ENABLE SSH WITH PASSWORD:Allow password authentication for SSH.")
-NETWORKMENU+=("ENABLE EGRESS TRAFFIC VIA VPN:Enable rerouting the egress traffic through the VPN")
+NETWORKMENU+=("ROUTING VIA VPN:Set default packet routing via VPN.")
 NETWORKMENU+=("BACK:Return to previous menu.")
 #reverse array elements
 unset T; T=("${NETWORKMENU[@]}"); unset NETWORKMENU; declare -a NETWORKMENU; for (( i=${#T[@]}-1; i>=0; i-- )); do NETWORKMENU[${#NETWORKMENU[@]}]=${T[i]}; done
@@ -255,12 +256,35 @@ do
   while true
   do
     internet_status
-    if /sbin/host-iptables check-access-from-lan | grep -q "ON$"; then NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."; fi;
-    if systemctl --quiet status ssh > /dev/null; then NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."; fi;
-    if grep -q "^PasswordAuthentication no" /etc/ssh/sshd_config; then NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="ENABLE SSH WITH PASSWORD:Allow password authentication for SSH."; fi;
-    if grep -q "^PasswordAuthentication yes" /etc/ssh/sshd_config; then P=$(cat /root/password.txt); NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="DISABLE SSH WITH PASSWORD:Disallow password authentication for SSH (pw=$P)."; fi;
+
+    #Getting current state of thing and reflecting this on the menu items' state
+    if /sbin/host-iptables check-access-from-lan | grep -q "ON$"; then 
+      NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."
+    fi
+
+    if systemctl --quiet status ssh > /dev/null; then 
+      NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="DISABLE HOST CONTROL:Disable SSH on the host LiveCD system."
+    fi
+
+    if grep -q "^PasswordAuthentication no" /etc/ssh/sshd_config; then 
+      NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="ENABLE SSH WITH PASSWORD:Allow password authentication for SSH."
+    fi
+
+    if grep -q "^PasswordAuthentication yes" /etc/ssh/sshd_config; then 
+      P=$(cat /root/password.txt)
+      NETWORKMENU[$[${#NETWORKMENU[@]}-9]]="DISABLE SSH WITH PASSWORD:Disallow password authentication for SSH (pw=$P)."
+    fi
+
+    if [ -f /run/scout-manage.lan.defgw ]; then 
+      NETWORKMENU[$[${#NETWORKMENU[@]}-10]]="ROUTING VIA LAN:Set default packet routing via LAN."
+    else
+      NETWORKMENU[$[${#NETWORKMENU[@]}-10]]="ROUTING VIA VPN:Set default packet routing via VPN."
+    fi
+
+    #Display the network menu
     read NETWORKCHOICE <<< $(dialog_menu "NETWORK" "$NETWORKMENUTEXT" "$(declare -p NETWORKMENU)")
       
+    #Follow the user choice
     case "$NETWORKCHOICE" in
       "WIFI SETTINGS")
         TERM=vt220 nmtui
@@ -286,8 +310,6 @@ do
         NETWORKMENU[$[${#NETWORKMENU[@]}-2]]="ENABLE HOST CONTROL:Let the expert control LiveCD host directly."
         continue
         ;;
-
-<<<<<<< HEAD
       "ENABLE ACCESS FROM LAN")
         dialog --title "ENABLE ACCESS FROM LAN" --yesno "This will enable access to SSH and other port(s) of this Bitscout instance from LAN. It's good for testing or if you want to enable local expert connect to the instance directly other than using VPN.\n\nAre you sure you want to do this?" $BOXHEIGHT $BOXWIDTH; RETCODE=$?;
         case $RETCODE in
@@ -379,31 +401,24 @@ __SYSLOG__
         continue
         ;;       
 
-          "ENABLE EGRESS TRAFFIC VIA VPN")
-                sed -i 's/EgressTraffic no/EgressTraffic yes/g' /etc/openvpn/client/scout.conf
-                [ "$?" != "0" ] && process_fail_menu && break
-                ip route save 1>default
-                [ "$?" != "0" ] && process_fail_menu && break
-                defaultVPNIP=$(ip a | grep "global scout" | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}')
-                ip route add default via $defaultVPNIP
-                [ "$?" != "0" ] && process_fail_menu && break
-                defaultIP=$(ip route show | grep "default" | grep -v "scout" | awk '{print $3}' )
-                ip route del default via $defaultIP
-                [ "$?" != "0" ] && process_fail_menu && break
-                NETWORKMENU[$[${#NETWORKMENU[@]}-10]]="DISABLE EGRESS TRAFFIC VIA VPN:Disable rerouting the egress traffic through the VPN."
-                continue
-                ;;
-          "DISABLE EGRESS TRAFFIC VIA VPN")
-                sed -i 's/EgressTraffic yes/EgressTraffic no/g' /etc/openvpn/client/scout.conf
-                [ "$?" != "0" ] && process_fail_menu && break
-                defaultVPNIP=$(ip a | grep "global scout" | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}')
-                ip route del default via $defaultVPNIP
-                [ "$?" != "0" ] && process_fail_menu && break
-                ip route restore < default
-                [ "$?" != "0" ] && process_fail_menu && break
-                NETWORKMENU[$[${#NETWORKMENU[@]}-10]]="ENABLE EGRESS TRAFFIC VIA VPN:Enable rerouting the egress traffic through the VPN."
-                continue
-                ;;
+      "ROUTING VIA VPN")
+        prev_default_gw=$(ip -4 route show default | grep -oE 'via [0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | cut -d' ' -f2)
+        vpn_ip=$(ip -4 addr show dev $VPNIFNAME | awk '/inet/{sub("/.*$","",$2); print $2}')
+        vpn_gw="${vpn_ip%.*}.1"
+        echo $prev_default_gw > /run/scout-manage.lan.defgw
+        ip route del default via $prev_default_gw
+        ip route add default via $vpn_gw
+        continue
+        ;;
+      "ROUTING VIA LAN")
+        prev_default_gw=$(cat /run/scout-manage.lan.defgw)
+        vpn_ip=$(ip -4 addr show dev $VPNIFNAME | awk '/inet/{sub("/.*$","",$2); print $2}')
+        vpn_gw="${vpn_ip%.*}.1"
+        ip route del default via $vpn_gw
+        ip route add default via $prev_default_gw
+        [ -f /run/scout-manage.lan.defgw ] && rm /run/scout-manage.lan.defgw
+        continue
+        ;;
       "STATIC IP")
         declare -a IFACEMENU;
         mapfile -t IFACEMENU < <( ip -o link show | awk '{if($2!~/ve-container.*|scout.*|lo:.*/){print $2}}'| while read dev; do echo -n "$dev"; ip -4 -o addr show "${dev%:}" | awk '{print $4}'; done; )
