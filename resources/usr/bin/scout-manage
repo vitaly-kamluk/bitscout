@@ -257,7 +257,7 @@ do
   do
     internet_status
 
-    #Getting current state of thing and reflecting this on the menu items' state
+    #Getting current state of things and reflecting this on the menu items' state
     if /sbin/host-iptables check-access-from-lan | grep -q "ON$"; then 
       NETWORKMENU[$[${#NETWORKMENU[@]}-3]]="DISABLE ACCESS FROM LAN:Disable SSH access from LAN."
     fi
