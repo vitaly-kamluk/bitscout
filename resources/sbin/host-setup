@@ -284,7 +284,7 @@ dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
         i=0
         ROOTDEV=$( blkid -t $ROOTDEVID -l -o device )
         ROOTDEVSRC="/dev/$( lsblk -n -o PKNAME $ROOTDEV )"
-        lsblk --pair --paths -o MOUNTPOINT,NAME,FSTYPE | grep -vE "/dev/zram|${ROOTDEVSRC}" | while read blkline; do
+        lsblk --pair --paths -o MOUNTPOINT,NAME,FSTYPE | grep -vE "/dev/zram[0-9]*|${ROOTDEVSRC}|/dev/nbd[0-9]*|/dev/sr[0-9]*" | while read blkline; do
           eval "$blkline"
           NAME=${NAME##*/}
           echo -n "Attempting to map /dev/$NAME device to /dev/container/evidence$i.. "
@@ -292,7 +292,7 @@ dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
             echo "OK"
             if echo "$FSTYPE" | grep -qE "(vfat|ext2|ext3|ext4|ntfs|exfat|iso9660)"; then
               echo -n " Attempting to mount /dev/container/$NAME to /mnt/container/$NAME.. "
-	      mkdir -p /mnt/$NAME /mnt/container/$NAME 2>/dev/null;
+	            mkdir -p /mnt/$NAME /mnt/container/$NAME 2>/dev/null;
               case $FSTYPE in
                 'ext2') 
                         mount -o ro,nosuid,noexec,nodev /dev/loop$[8+$i] /mnt/$NAME;;
@@ -305,11 +305,13 @@ dhcp-option=6,$CONTAINERNET_GUEST_DNS" > /etc/dnsmasq-$CONTAINERNET_NAME.conf
             fi
             if mount | grep -q '^/dev/loop$[8+$i]'; then
               echo "OK"
+              ((i++))
             else
               echo "Failed"
+              echo "Reverting the device mapping..."
+              losetup -d /dev/loop$[8+$i]
             fi
   
-            ((i++))
             if [ $i -ge 10 ]; then 
               echo "Reached max evidence device count. Cannot automount anymore.."
               break
