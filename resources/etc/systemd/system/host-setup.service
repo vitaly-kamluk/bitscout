@@ -1,8 +1,8 @@
 [Unit]
 Description=Host system setup
-Requires=local-fs.target network-pre.target
-Before=systemd-machined.service network-pre.target
-After=local-fs.target
+Requires=local-fs.target
+Before=systemd-machined.service
+After=local-fs.target NetworkManager.service
 
 [Service]
 Type=oneshot
