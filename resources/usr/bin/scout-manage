@@ -849,7 +849,7 @@ EOF
           "UNMOUNT DRIVE")
             umount $exp_mountpoint
             umount_status=$?
-            [ $umount_status -eq 0 ] || blockdev_setro /dev/$exp_device && dialog --msgbox "Device $deviceName failed to unmount at $exp_mountpoint" $BOXHEIGHT $BOXWIDTH
+            [ $umount_status -eq 0 ] && blockdev_setro /dev/$exp_device || dialog --msgbox "Device $deviceName failed to unmount at $exp_mountpoint" $BOXHEIGHT $BOXWIDTH
             continue;
             ;;
 
@@ -858,14 +858,14 @@ EOF
               dialog --title "ERROR" --msgbox "You must mount an export drive before exporting logs. Please use MOUNT DRIVE command in previous menu." $BOXHEIGHT $BOXWIDTH
               continue;
             fi
-            EXPORT_FILE="bitscout_export_logs.$(date +%F_%T).tgz"
+            EXPORT_FILE="bitscout_export_logs.$(date +%Y%m%d_%H%M%S).tgz"
             EXPORT_DEST="$exp_mountpoint/$EXPORT_FILE"
             tar cfz $EXPORT_DEST ${EXPORT_LOGS_ALL[@]} 2>/dev/null >/dev/null
             dialog --title "INFO" --msgbox "The data was saved to $EXPORT_FILE on the drive's root.\nFull export file path: $EXPORT_DEST\nThe file size: $(stat -c %s $EXPORT_DEST) bytes" $BOXHEIGHT $BOXWIDTH
             continue;
             ;;
           "DIRECTORY EXPORT")
-            EXPORT_FILE="bitscout_export_dir.$(date +%F_%T).tgz"
+            EXPORT_FILE="bitscout_export_dir.$(date +%Y%m%d_%H%M%S).tgz"
             EXPORT_DEST="$exp_mountpoint/$EXPORT_FILE"
             custom_dir=$(dialog --title "Select a directory to export. Just type the full path:" --dselect "/" $BOXHEIGHT $BOXWIDTH 3>&1 1>&2 2>&3)
             [ $? -eq 1 ] && continue;
