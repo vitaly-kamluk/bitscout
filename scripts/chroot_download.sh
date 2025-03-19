@@ -119,6 +119,8 @@ $(sha256sum $DEBDIR/Packages | cut -d' ' -f1) $PKGS_SIZE main/binary-$GLOBAL_BAS
   statusprint "Building rootfs based on local deb cache.." &&
   sudo debootstrap --no-check-gpg --foreign --arch=$GLOBAL_BASEARCH $BASERELEASE ./build.$GLOBAL_BASEARCH/chroot "file:///$BASEDIR/build.$GLOBAL_BASEARCH/cache/debootstrap.cache" &&
 
+  install_required_package zstd &&
+
   statusprint "Fixing keyboard-configuration GDM compatibility bug (divert kbd_mode).." &&
   TARGETDEB="./build.$GLOBAL_BASEARCH/chroot$(grep "^kbd " ./build.$GLOBAL_BASEARCH/chroot/debootstrap/debpaths | cut -d' ' -f2)" &&
   if [ "$TARGETDEB" == "./build.$GLOBAL_BASEARCH/chroot" ]
