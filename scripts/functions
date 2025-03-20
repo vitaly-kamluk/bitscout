@@ -326,7 +326,6 @@ chroot_safecopy_resources()
 
 normalize_size()
 {
-  install_required_package gawk 2>&1 > /dev/null
   if [ -z "$1" ]; then return; fi
   echo "$1" | gawk '
     {

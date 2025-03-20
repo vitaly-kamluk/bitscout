@@ -79,6 +79,7 @@ elif [ "$GLOBAL_TARGET" != "iso" ]; then
   ROOTPART_SIZE_MB=$( sudo tar c ./build.$GLOBAL_BASEARCH/chroot/ 2>&1 | wc -c | awk '{ print(int($1/(1024*1024) + 256))}' ) # more accurate estimation
 
   PERSPART_START_MB=$[ $ROOTPART_START_MB + $ROOTPART_SIZE_MB ]
+  install_required_package gawk
   PERSPART_SIZE_B=$( normalize_size $GLOBAL_PERSISTSIZE )
   PERSPART_SIZE_MB=$( awk '{print $0/(1024*1024)}' <<<$PERSPART_SIZE_B )
 
