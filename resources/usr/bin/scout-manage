@@ -710,13 +710,13 @@ EOF
              if echo "$CHOICE2" | grep -q "evidence"; 
              then 
                  losetup -r /dev/container/$CHOICE2 /dev/$CHOICE1
-                 blockdev --setro /dev/$CHOICE1
-                 blockdev --setro /dev/container/$CHOICE2
+                 blockdev_setro /dev/$CHOICE1
+                 blockdev_setro /dev/container/$CHOICE2
              elif echo "$CHOICE2" | grep -q "storage"; 
              then 
                  losetup /dev/container/$CHOICE2 /dev/$CHOICE1
-                 blockdev --setrw /dev/$CHOICE1
-                 blockdev --setrw /dev/container/$CHOICE2
+                 blockdev_setrw /dev/$CHOICE1
+                 blockdev_setrw /dev/container/$CHOICE2
              fi
              dialog --title "INFO" --msgbox "Succesfully mapped /dev/$CHOICE1 to $CHOICE2." $BOXHEIGHT $BOXWIDTH 
            fi
