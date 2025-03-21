@@ -17,6 +17,9 @@ then
   echo "blacklist intel_rapl" | sudo tee -a ./build.$GLOBAL_BASEARCH/chroot/etc/modprobe.d/blacklist.conf > /dev/null
 fi
 
+statusprint "Enabling kvm_intel and kvm-amd modules autoload.."
+sudo cp -v ./resources/etc/modules-load.d/kvm.conf ./build.$GLOBAL_BASEARCH/chroot/etc/modules-load.d/
+
 statusprint "Setting release name.."
 sudo sed -i "s#Ubuntu 22.04[^ ]\{0,3\} LTS#${PROJECTNAME}#" ./build.$GLOBAL_BASEARCH/chroot/etc/issue.net ./build.$GLOBAL_BASEARCH/chroot/etc/lsb-release ./build.$GLOBAL_BASEARCH/chroot/etc/os-release
 echo "${PROJECTNAME} (\m) \d \t \l" | sudo tee ./build.$GLOBAL_BASEARCH/chroot/etc/issue >/dev/null
